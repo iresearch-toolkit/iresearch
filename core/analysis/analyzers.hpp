@@ -23,12 +23,17 @@
 
 #pragma once
 
+#include <velocypack/Slice.h>
+
 #include <functional>
 
 #include "analyzer.hpp"
 #include "shared.hpp"
 #include "utils/text_format.hpp"
 
+namespace arangodb::velocypack {
+class Builder;
+}  // namespace arangodb::velocypack
 namespace irs::analysis {
 
 using factory_f = analysis::analyzer::ptr (*)(std::string_view args);
@@ -70,6 +75,10 @@ void load_all(std::string_view path);
 // Visit all loaded analyzers, terminate early if visitor returns false.
 bool visit(
   const std::function<bool(std::string_view, const type_info&)>& visitor);
+
+bool MakeAnalyzer(arangodb::velocypack::Slice input, analyzer::ptr& output);
+bool NormalizeAnalyzer(arangodb::velocypack::Slice input,
+                       arangodb::velocypack::Builder& output);
 
 }  // namespace analyzers
 }  // namespace irs::analysis

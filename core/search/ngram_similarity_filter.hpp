@@ -51,7 +51,13 @@ struct by_ngram_similarity_options {
 
 class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
  public:
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  static prepared::ptr Prepare(const PrepareContext& ctx,
+                               std::string_view field_name,
+                               const options_type& options);
+
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return Prepare(ctx.Boost(boost()), field(), options());
+  }
 };
 
 }  // namespace irs

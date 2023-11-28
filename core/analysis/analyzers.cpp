@@ -23,12 +23,18 @@
 
 #include "analysis/analyzers.hpp"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+
+#include "analysis/token_streams.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/register.hpp"
-
-namespace {
+#include "utils/vpack_utils.hpp"
 
 using namespace irs;
+using namespace arangodb;
+
+namespace {
 
 struct key {
   key(std::string_view type, const irs::type_info& args_format)
@@ -70,10 +76,10 @@ struct hash<::key> {
 };
 
 }  // namespace std
-
+namespace irs::analysis {
 namespace {
 
-constexpr std::string_view kFileNamePrefix{"libanalyzer-"};
+constexpr std::string_view kFileNamePrefix = "libanalyzer-";
 
 class analyzer_register final
   : public irs::tagged_generic_register<::key, ::value, std::string_view,
@@ -93,9 +99,27 @@ class analyzer_register final
   }
 };
 
-}  // namespace
+constexpr std::string_view kTypeParam = "type";
+constexpr std::string_view kPropertiesParam = "properties";
+constexpr std::string_view kAnalyzerParam = "analyzer";
 
-namespace irs::analysis {
+std::string_view GetType(velocypack::Slice& input) {
+  IRS_ASSERT(input.isObject());
+  input = input.get(kAnalyzerParam);
+  if (input.isNone() || input.isNull() || input.isEmptyObject()) {
+    return irs::string_token_stream::type_name();
+  }
+  if (!input.isObject()) {
+    return {};
+  }
+  auto type = input.get(kTypeParam);
+  if (!type.isString()) {
+    return {};
+  }
+  return type.stringView();
+}
+
+}  // namespace
 
 analyzer_registrar::analyzer_registrar(
   const type_info& type, const type_info& args_format,
@@ -193,6 +217,61 @@ bool visit(
   };
 
   return analyzer_register::instance().visit(wrapper);
+}
+
+bool MakeAnalyzer(velocypack::Slice input, analyzer::ptr& output) {
+  auto type = GetType(input);
+  if (type.empty()) {
+    return false;
+  }
+  if (type == irs::string_token_stream::type_name()) {
+    output = {};
+    return true;
+  }
+  input = input.get(kPropertiesParam);
+  if (input.isNone()) {
+    input = velocypack::Slice::emptyObjectSlice();
+  }
+  output = get(type, irs::type<irs::text_format::vpack>::get(),
+               {input.startAs<char>(), input.byteSize()});
+  if (!output) {
+    // fallback to json format if vpack isn't available
+    output = get(type, irs::type<irs::text_format::json>::get(),
+                 irs::slice_to_string(input));
+  }
+  return output != nullptr;
+}
+
+bool NormalizeAnalyzer(velocypack::Slice input, velocypack::Builder& output) {
+  auto type = GetType(input);
+  if (type.empty()) {
+    return false;
+  }
+  velocypack::ObjectBuilder scope{&output, kAnalyzerParam};
+  if (type == irs::string_token_stream::type_name()) {
+    return true;
+  }
+  output.add(kTypeParam, velocypack::Value{type});
+  input = input.get(kPropertiesParam);
+  if (input.isNone()) {
+    input = velocypack::Slice::emptyObjectSlice();
+  }
+  std::string normalized;
+  if (normalize(normalized, type, irs::type<text_format::vpack>::get(),
+                {input.startAs<char>(), input.byteSize()})) {
+    output.add(
+      kPropertiesParam,
+      velocypack::Slice{reinterpret_cast<const uint8_t*>(normalized.data())});
+    return true;
+  }
+  // fallback to json format if vpack isn't available
+  if (normalize(normalized, type, irs::type<text_format::json>::get(),
+                slice_to_string(input))) {
+    auto vpack = velocypack::Parser::fromJson(normalized);
+    output.add(kPropertiesParam, vpack->slice());
+    return true;
+  }
+  return false;
 }
 
 }  // namespace analyzers
