@@ -221,14 +221,14 @@ bool ParseNumHashes(velocypack::Slice input, uint32_t& num_hashes) {
   IRS_ASSERT(input.isObject());
   input = input.get(kNumHashes);
   if (!input.isNumber<uint32_t>()) {
-    IRS_LOG_ERROR(
-      absl::StrCat(kNumHashes, " attribute must be uint32_t", kParseError));
+    IRS_LOG_ERROR(absl::StrCat(
+      kNumHashes, " attribute must be positive integer", kParseError));
     return false;
   }
   num_hashes = input.getNumber<uint32_t>();
   if (num_hashes < kMinHashes) {
-    IRS_LOG_ERROR(
-      absl::StrCat(kNumHashes, " attribute must be at least 1", kParseError));
+    IRS_LOG_ERROR(absl::StrCat(kNumHashes, " attribute must be at least ",
+                               kMinHashes, kParseError));
     return false;
   }
   return true;
@@ -252,7 +252,11 @@ bool ParseOptions(velocypack::Slice slice,
 
 std::shared_ptr<velocypack::Builder> ParseArgs(std::string_view args) try {
   return velocypack::Parser::fromJson(args.data(), args.size());
+} catch (const std::exception& e) {
+  IRS_LOG_ERROR(absl::StrCat("Caught exception: ", e.what(), kParseError));
+  return {};
 } catch (...) {
+  IRS_LOG_ERROR(absl::StrCat("Caught unknown exception", kParseError));
   return {};
 }
 
@@ -297,7 +301,6 @@ analyzer::ptr MakeJson(std::string_view args) {
   }
   auto builder = ParseArgs(args);
   if (!builder) {
-    IRS_LOG_ERROR(absl::StrCat("Cannot parse vpack from string", kParseError));
     return {};
   }
   return MakeImpl(builder->slice());
@@ -324,7 +327,6 @@ bool NormalizeJson(std::string_view args, std::string& definition) {
   }
   auto input = ParseArgs(args);
   if (!input) {
-    IRS_LOG_ERROR(absl::StrCat("Cannot parse vpack from string", kParseError));
     return {};
   }
   velocypack::Builder output;
