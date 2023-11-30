@@ -83,7 +83,7 @@ class column_prefix_existence_query : public column_existence_query {
   }
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
-    using adapter_t = irs::ScoreAdapter<irs::doc_iterator::ptr>;
+    using adapter_t = irs::ScoreAdapter<>;
 
     IRS_ASSERT(acceptor_);
 

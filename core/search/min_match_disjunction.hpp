@@ -26,6 +26,22 @@
 
 namespace irs {
 
+template<typename DocIterator = doc_iterator::ptr>
+struct CostAdapter : ScoreAdapter<DocIterator> {
+  explicit CostAdapter(DocIterator&& it) noexcept
+    : ScoreAdapter<DocIterator>{std::move(it)} {
+    // TODO(MBkkt) 0 instead of kMax?
+    est = cost::extract(*this->it, cost::kMax);
+  }
+
+  CostAdapter(CostAdapter&&) noexcept = default;
+  CostAdapter& operator=(CostAdapter&&) noexcept = default;
+
+  cost::cost_t est{};
+};
+
+using CostAdapters = std::vector<CostAdapter<>>;
+
 // Heapsort-based "weak and" iterator
 // -----------------------------------------------------------------------------
 //      [0] <-- begin
@@ -38,59 +54,39 @@ namespace irs {
 // s |  ...      |
 // t |  [n] <-- end
 // -----------------------------------------------------------------------------
-template<typename DocIterator, typename Merger>
-class min_match_disjunction : public doc_iterator,
-                              private Merger,
-                              private score_ctx {
+template<typename Merger>
+class MinMatchDisjunction : public doc_iterator,
+                            protected Merger,
+                            protected score_ctx {
  public:
-  struct cost_iterator_adapter : ScoreAdapter<DocIterator> {
-    cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-      : ScoreAdapter<DocIterator>(std::move(it)) {
-      est = cost::extract(*this->it, cost::kMax);
-    }
-
-    cost_iterator_adapter(cost_iterator_adapter&&) = default;
-    cost_iterator_adapter& operator=(cost_iterator_adapter&&) = default;
-
-    cost::cost_t est;
-  };
-
-  static_assert(std::is_nothrow_move_constructible_v<cost_iterator_adapter>);
-
-  typedef cost_iterator_adapter doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
-
-  min_match_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
-                        Merger&& merger = Merger{})
+  MinMatchDisjunction(CostAdapters&& itrs, size_t min_match_count,
+                      Merger&& merger = {})
     : Merger{std::move(merger)},
-      itrs_(std::move(itrs)),
-      min_match_count_(
-        std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()) {
+      itrs_{std::move(itrs)},
+      min_match_count_{std::clamp(min_match_count, size_t{1}, itrs_.size())},
+      lead_{itrs_.size()} {
     IRS_ASSERT(!itrs_.empty());
     IRS_ASSERT(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
     // sort subnodes in ascending order by their cost
-    std::sort(
-      itrs_.begin(), itrs_.end(),
-      [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) noexcept {
-        return cost::extract(lhs, 0) < cost::extract(rhs, 0);
-      });
+    std::sort(itrs_.begin(), itrs_.end(),
+              [](const auto& lhs, const auto& rhs) noexcept {
+                return lhs.est < rhs.est;
+              });
 
     std::get<cost>(attrs_).reset([this]() noexcept {
-      return std::accumulate(
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) noexcept {
-          return lhs + cost::extract(rhs, 0);
-        });
+      return std::accumulate(itrs_.begin(), itrs_.end(), cost::cost_t{0},
+                             [](cost::cost_t lhs, const auto& rhs) noexcept {
+                               return lhs + rhs.est;
+                             });
     });
 
     // prepare external heap
     heap_.resize(itrs_.size());
-    std::iota(heap_.begin(), heap_.end(), size_t(0));
+    std::iota(heap_.begin(), heap_.end(), size_t{0});
 
     if constexpr (HasScore_v<Merger>) {
-      prepare_score();
+      PrepareScore();
     }
   }
 
@@ -101,63 +97,58 @@ class min_match_disjunction : public doc_iterator,
   doc_id_t value() const final { return std::get<document>(attrs_).value; }
 
   bool next() final {
-    auto& doc_ = std::get<document>(attrs_);
+    auto& doc_value = std::get<document>(attrs_).value;
 
-    if (doc_limits::eof(doc_.value)) {
+    if (doc_limits::eof(doc_value)) {
       return false;
     }
 
-    while (check_size()) {
+    while (CheckSize()) {
       // start next iteration. execute next for all lead iterators
       // and move them to head
-      if (!pop_lead()) {
-        doc_.value = doc_limits::eof();
+      if (!PopLead()) {
+        doc_value = doc_limits::eof();
         return false;
       }
 
       // make step for all head iterators less or equal current doc (doc_)
-      while (top().value() <= doc_.value) {
-        const bool exhausted = top().value() == doc_.value
-                                 ? !top()->next()
-                                 : doc_limits::eof(top()->seek(doc_.value + 1));
+      while (Top().value() <= doc_value) {
+        const bool exhausted = Top().value() == doc_value
+                                 ? !Top()->next()
+                                 : doc_limits::eof(Top()->seek(doc_value + 1));
 
-        if (exhausted && !remove_top()) {
-          doc_.value = doc_limits::eof();
+        if (exhausted && !RemoveTop()) {
+          doc_value = doc_limits::eof();
           return false;
-        } else {
-          refresh_top();
         }
+        RefreshTop();
       }
 
       // count equal iterators
-      const auto top = this->top().value();
+      const auto top = Top().value();
 
       do {
-        add_lead();
+        AddLead();
         if (lead_ >= min_match_count_) {
-          return !doc_limits::eof(doc_.value = top);
+          return !doc_limits::eof(doc_value = top);
         }
-      } while (top == this->top().value());
+      } while (top == Top().value());
     }
 
-    doc_.value = doc_limits::eof();
+    doc_value = doc_limits::eof();
     return false;
   }
 
   doc_id_t seek(doc_id_t target) final {
-    auto& doc_ = std::get<document>(attrs_);
+    auto& doc_value = std::get<document>(attrs_).value;
 
-    if (target <= doc_.value) {
-      return doc_.value;
-    }
-
-    if (doc_limits::eof(doc_.value)) {
-      return doc_.value;
+    if (target <= doc_value) {
+      return doc_value;
     }
 
     // execute seek for all lead iterators and
     // move one to head if it doesn't hit the target
-    for (auto it = lead(), end = heap_.end(); it != end;) {
+    for (auto it = Lead(), end = heap_.end(); it != end;) {
       IRS_ASSERT(*it < itrs_.size());
       const auto doc = itrs_[*it]->seek(target);
 
@@ -165,16 +156,16 @@ class min_match_disjunction : public doc_iterator,
         --lead_;
 
         // iterator exhausted
-        if (!remove_lead(it)) {
-          return (doc_.value = doc_limits::eof());
+        if (!RemoveLead(it)) {
+          return doc_value = doc_limits::eof();
         }
 
-        it = lead();
+        it = Lead();
         end = heap_.end();
       } else {
         if (doc != target) {
           // move back to head
-          push_head(it);
+          PushHead(it);
           --lead_;
         }
         ++it;
@@ -183,36 +174,36 @@ class min_match_disjunction : public doc_iterator,
 
     // check if we still satisfy search criteria
     if (lead_ >= min_match_count_) {
-      return doc_.value = target;
+      return doc_value = target;
     }
 
     // main search loop
-    for (;; target = top().value()) {
-      while (top().value() <= target) {
-        const auto doc = top()->seek(target);
+    for (;; target = Top().value()) {
+      while (Top().value() <= target) {
+        const auto doc = Top()->seek(target);
 
         if (doc_limits::eof(doc)) {
           // iterator exhausted
-          if (!remove_top()) {
-            return (doc_.value = doc_limits::eof());
+          if (!RemoveTop()) {
+            return doc_value = doc_limits::eof();
           }
         } else if (doc == target) {
           // valid iterator, doc == target
-          add_lead();
+          AddLead();
           if (lead_ >= min_match_count_) {
-            return (doc_.value = target);
+            return doc_value = target;
           }
         } else {
           // invalid iterator, doc != target
-          refresh_top();
+          RefreshTop();
         }
       }
 
       // can't find enough iterators equal to target here.
       // start next iteration. execute next for all lead iterators
       // and move them to head
-      if (!pop_lead()) {
-        return doc_.value = doc_limits::eof();
+      if (!PopLead()) {
+        return doc_value = doc_limits::eof();
       }
     }
   }
@@ -222,27 +213,27 @@ class min_match_disjunction : public doc_iterator,
   // to current matched document after this call.
   // Returns total matched iterators count.
   size_t match_count() {
-    push_valid_to_lead();
+    PushValidToLead();
     return lead_;
   }
 
  private:
-  using attributes = std::tuple<document, cost, score>;
+  using Attributes = std::tuple<document, cost, score>;
 
-  void prepare_score() {
+  void PrepareScore() {
     IRS_ASSERT(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
 
     score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-      auto& self = *static_cast<min_match_disjunction*>(ctx);
+      auto& self = static_cast<MinMatchDisjunction&>(*ctx);
       IRS_ASSERT(!self.heap_.empty());
 
-      self.push_valid_to_lead();
+      self.PushValidToLead();
 
       // score lead iterators
       std::memset(res, 0, static_cast<Merger&>(self).byte_size());
-      std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
+      std::for_each(self.Lead(), self.heap_.end(), [&self, res](size_t it) {
         IRS_ASSERT(it < self.itrs_.size());
         if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
           auto& merger = static_cast<Merger&>(self);
@@ -254,30 +245,30 @@ class min_match_disjunction : public doc_iterator,
   }
 
   // Push all valid iterators to lead.
-  void push_valid_to_lead() {
-    auto& doc_ = std::get<document>(attrs_);
+  void PushValidToLead() {
+    auto& doc_value = std::get<document>(attrs_).value;
 
-    for (auto lead = this->lead(), begin = heap_.begin();
-         lead != begin && top().value() <= doc_.value;) {
+    for (auto lead = Lead(), begin = heap_.begin();
+         lead != begin && Top().value() <= doc_value;) {
       // hitch head
-      if (top().value() == doc_.value) {
+      if (Top().value() == doc_value) {
         // got hit here
-        add_lead();
+        AddLead();
         --lead;
       } else {
-        if (doc_limits::eof(top()->seek(doc_.value))) {
+        if (doc_limits::eof(Top()->seek(doc_value))) {
           // iterator exhausted
-          remove_top();
-          lead = this->lead();
+          RemoveTop();
+          lead = Lead();
         } else {
-          refresh_top();
+          RefreshTop();
         }
       }
     }
   }
 
   template<typename Iterator>
-  void push(Iterator begin, Iterator end) noexcept {
+  void Push(Iterator begin, Iterator end) noexcept {
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end,
                    [this](const size_t lhs, const size_t rhs) noexcept {
@@ -293,7 +284,7 @@ class min_match_disjunction : public doc_iterator,
   }
 
   template<typename Iterator>
-  void pop(Iterator begin, Iterator end) noexcept {
+  void Pop(Iterator begin, Iterator end) noexcept {
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end,
                      [this](const size_t lhs, const size_t rhs) noexcept {
@@ -311,22 +302,22 @@ class min_match_disjunction : public doc_iterator,
   // Performs a step for each iterator in lead group and pushes it to the head.
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise
-  bool pop_lead() {
-    for (auto it = lead(), end = heap_.end(); it != end;) {
+  bool PopLead() {
+    for (auto it = Lead(), end = heap_.end(); it != end;) {
       IRS_ASSERT(*it < itrs_.size());
       if (!itrs_[*it]->next()) {
         --lead_;
 
         // remove iterator
-        if (!remove_lead(it)) {
+        if (!RemoveLead(it)) {
           return false;
         }
 
-        it = lead();
+        it = Lead();
         end = heap_.end();
       } else {
         // push back to head
-        push(heap_.begin(), ++it);
+        Push(heap_.begin(), ++it);
         --lead_;
       }
     }
@@ -339,71 +330,71 @@ class min_match_disjunction : public doc_iterator,
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
   template<typename Iterator>
-  bool remove_lead(Iterator it) noexcept {
+  bool RemoveLead(Iterator it) noexcept {
     if (&*it != &heap_.back()) {
       std::swap(*it, heap_.back());
     }
     heap_.pop_back();
-    return check_size();
+    return CheckSize();
   }
 
   // Removes iterator from the top of the head without moving
   // iterators after the specified iterator.
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
-  bool remove_top() noexcept {
-    auto lead = this->lead();
-    pop(heap_.begin(), lead);
-    return remove_lead(--lead);
+  bool RemoveTop() noexcept {
+    auto lead = Lead();
+    Pop(heap_.begin(), lead);
+    return RemoveLead(--lead);
   }
 
   // Refresh the value of the top of the head.
-  void refresh_top() noexcept {
-    auto lead = this->lead();
-    pop(heap_.begin(), lead);
-    push(heap_.begin(), lead);
+  void RefreshTop() noexcept {
+    auto lead = Lead();
+    Pop(heap_.begin(), lead);
+    Push(heap_.begin(), lead);
   }
 
   // Push the specified iterator from lead group to the head
   // without movinh iterators after the specified iterator.
   template<typename Iterator>
-  void push_head(Iterator it) noexcept {
-    Iterator lead = this->lead();
+  void PushHead(Iterator it) noexcept {
+    Iterator lead = Lead();
     if (it != lead) {
       std::swap(*it, *lead);
     }
     ++lead;
-    push(heap_.begin(), lead);
+    Push(heap_.begin(), lead);
   }
 
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
-  bool check_size() const noexcept { return heap_.size() >= min_match_count_; }
+  bool CheckSize() const noexcept { return heap_.size() >= min_match_count_; }
 
   // Returns reference to the top of the head
-  doc_iterator_t& top() noexcept {
+  auto& Top() noexcept {
     IRS_ASSERT(!heap_.empty());
     IRS_ASSERT(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
   }
 
   // Returns the first iterator in the lead group
-  auto lead() noexcept {
+  auto Lead() noexcept {
     IRS_ASSERT(lead_ <= heap_.size());
     return heap_.end() - lead_;
   }
 
   // Adds iterator to the lead group
-  void add_lead() {
-    pop(heap_.begin(), lead());
+  void AddLead() {
+    Pop(heap_.begin(), Lead());
     ++lead_;
   }
 
-  doc_iterators_t itrs_;  // sub iterators
+  CostAdapters itrs_;  // sub iterators
   std::vector<size_t> heap_;
   size_t min_match_count_;  // minimum number of hits
   size_t lead_;             // number of iterators in lead group
-  attributes attrs_;
+  Attributes attrs_;
 };
 
 }  // namespace irs

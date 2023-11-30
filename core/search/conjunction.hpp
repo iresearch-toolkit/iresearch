@@ -32,7 +32,7 @@
 namespace irs {
 
 // Adapter to use DocIterator with conjunction and disjunction.
-template<typename DocIterator>
+template<typename DocIterator = doc_iterator::ptr>
 struct ScoreAdapter {
   ScoreAdapter() noexcept = default;
   ScoreAdapter(DocIterator&& it) noexcept
@@ -67,8 +67,7 @@ struct ScoreAdapter {
   const irs::score* score{};
 };
 
-template<typename DocIterator>
-using ScoreAdapters = std::vector<ScoreAdapter<DocIterator>>;
+using ScoreAdapters = std::vector<ScoreAdapter<>>;
 
 // Helpers
 template<typename T>
@@ -92,10 +91,8 @@ template<typename DocIterator, typename Merger>
 struct ConjunctionBase : public doc_iterator,
                          protected Merger,
                          protected score_ctx {
-  using merger_type = Merger;
-
  protected:
-  explicit ConjunctionBase(Merger&& merger, ScoreAdapters<DocIterator>&& itrs,
+  explicit ConjunctionBase(Merger&& merger, std::vector<DocIterator>&& itrs,
                            std::vector<irs::score*>&& scorers)
     : Merger{std::move(merger)},
       itrs_{std::move(itrs)},
@@ -150,7 +147,7 @@ struct ConjunctionBase : public doc_iterator,
   auto end() const noexcept { return itrs_.end(); }
   size_t size() const noexcept { return itrs_.size(); }
 
-  ScoreAdapters<DocIterator> itrs_;
+  std::vector<DocIterator> itrs_;
   std::vector<score*> scores_;
 };
 
@@ -161,7 +158,7 @@ class Conjunction : public ConjunctionBase<DocIterator, Merger> {
     std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
  public:
-  explicit Conjunction(Merger&& merger, ScoreAdapters<DocIterator>&& itrs,
+  explicit Conjunction(Merger&& merger, std::vector<DocIterator>&& itrs,
                        std::vector<irs::score*>&& scores = {})
     : Base{std::move(merger), std::move(itrs), std::move(scores)},
       front_{this->itrs_.front().it.get()} {
@@ -236,7 +233,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
   using Attributes = std::tuple<document, attribute_ptr<cost>, irs::score>;
 
  public:
-  explicit BlockConjunction(Merger&& merger, ScoreAdapters<DocIterator>&& itrs,
+  explicit BlockConjunction(Merger&& merger, std::vector<DocIterator>&& itrs,
                             SubScores&& scores, bool strict)
     : Base{std::move(merger), std::move(itrs), std::move(scores.scores)},
       sum_scores_{scores.sum_score},
@@ -439,7 +436,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 template<template<typename> typename Wrapper = EmptyWrapper, typename Merger,
          typename DocIterator, typename... Args>
 doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
-                                  ScoreAdapters<DocIterator>&& itrs,
+                                  std::vector<DocIterator>&& itrs,
                                   Args&&... args) {
   if (const auto size = itrs.size(); 0 == size) {
     // empty or unreachable search criteria

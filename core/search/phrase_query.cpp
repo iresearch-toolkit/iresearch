@@ -35,13 +35,13 @@ constexpr IndexFeatures kRequireOffs =
 
 template<bool OneShot, bool HasFreq>
 using FixedPhraseIterator =
-  PhraseIterator<Conjunction<doc_iterator::ptr, NoopAggregator>,
+  PhraseIterator<Conjunction<ScoreAdapter<>, NoopAggregator>,
                  FixedPhraseFrequency<OneShot, HasFreq>>;
 
 // FIXME add proper handling of overlapped case
 template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
 using VariadicPhraseIterator = PhraseIterator<
-  Conjunction<doc_iterator::ptr, NoopAggregator>,
+  Conjunction<ScoreAdapter<>, NoopAggregator>,
   VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot, HasFreq>>;
 
 }  // namespace
@@ -69,7 +69,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   // get index features required for query & order
   const IndexFeatures features = ord.features() | kRequiredFeatures;
 
-  ScoreAdapters<doc_iterator::ptr> itrs;
+  ScoreAdapters itrs;
   itrs.reserve(phrase_state->terms.size());
 
   std::vector<FixedTermPosition> positions;
@@ -113,7 +113,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
 doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
   const SubReader& rdr) const {
   using FixedPhraseIterator =
-    PhraseIterator<Conjunction<doc_iterator::ptr, NoopAggregator>,
+    PhraseIterator<Conjunction<ScoreAdapter<>, NoopAggregator>,
                    PhrasePosition<FixedPhraseFrequency<true, false>>>;
 
   // get phrase state for the specified reader
@@ -124,7 +124,7 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
     return doc_iterator::empty();
   }
 
-  ScoreAdapters<doc_iterator::ptr> itrs;
+  ScoreAdapters itrs;
   itrs.reserve(phrase_state->terms.size());
 
   std::vector<FixedPhraseIterator::TermPosition> positions;
@@ -223,7 +223,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
   // get features required for query & order
   const IndexFeatures features = ord.features() | kRequiredFeatures;
 
-  ScoreAdapters<doc_iterator::ptr> conj_itrs;
+  ScoreAdapters conj_itrs;
   conj_itrs.reserve(phrase_state->terms.size());
 
   const auto phrase_size = phrase_state->num_terms.size();
@@ -297,7 +297,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
   const irs::SubReader& rdr) const {
   using Adapter = VariadicPhraseOffsetAdapter;
   using FixedPhraseIterator = PhraseIterator<
-    Conjunction<doc_iterator::ptr, NoopAggregator>,
+    Conjunction<ScoreAdapter<>, NoopAggregator>,
     PhrasePosition<VariadicPhraseFrequency<Adapter, false, true, false>>>;
   using CompundDocIterator = irs::compound_doc_iterator<Adapter>;
   using Disjunction = disjunction<doc_iterator::ptr, NoopAggregator, Adapter>;
@@ -310,7 +310,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
     return doc_iterator::empty();
   }
 
-  ScoreAdapters<doc_iterator::ptr> conj_itrs;
+  ScoreAdapters conj_itrs;
   conj_itrs.reserve(phrase_state->terms.size());
 
   const auto phrase_size = phrase_state->num_terms.size();
