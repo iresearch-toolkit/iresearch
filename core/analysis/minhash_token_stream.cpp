@@ -205,236 +205,139 @@ uint64_t CityHash64(const char* s, size_t len) {
 }
 
 }  // namespace
-
+namespace irs::analysis {
 namespace {
 
 using namespace arangodb;
-using namespace irs;
-using namespace irs::analysis;
+
+constexpr std::string_view kParseError =
+  ", failed to parse options for MinHashTokenStream";
+constexpr offset kEmptyOffset;
 
 constexpr uint32_t kMinHashes = 1;
-constexpr std::string_view kTypeParam{"type"};
-constexpr std::string_view kPropertiesParam{"properties"};
-constexpr std::string_view kAnalyzerParam{"analyzer"};
-constexpr std::string_view kNumHashes{"numHashes"};
+constexpr std::string_view kNumHashes = "numHashes";
 
-const offset kEmptyOffset;
+bool ParseNumHashes(velocypack::Slice input, uint32_t& num_hashes) {
+  IRS_ASSERT(input.isObject());
+  input = input.get(kNumHashes);
+  if (!input.isNumber<uint32_t>()) {
+    IRS_LOG_ERROR(absl::StrCat(
+      kNumHashes, " attribute must be positive integer", kParseError));
+    return false;
+  }
+  num_hashes = input.getNumber<uint32_t>();
+  if (num_hashes < kMinHashes) {
+    IRS_LOG_ERROR(absl::StrCat(kNumHashes, " attribute must be at least ",
+                               kMinHashes, kParseError));
+    return false;
+  }
+  return true;
+}
 
-std::pair<std::string_view, velocypack::Slice> ParseAnalyzer(
-  velocypack::Slice slice) {
+bool ParseOptions(velocypack::Slice slice,
+                  MinHashTokenStream::Options& options) {
   if (!slice.isObject()) {
-    return {};
-  }
-
-  const auto typeSlice = slice.get(kTypeParam);
-
-  if (!typeSlice.isString()) {
-    IRS_LOG_ERROR(absl::StrCat("Failed to read '", kTypeParam,
-                               "' attribute of '", kAnalyzerParam,
-                               "' member as string while constructing "
-                               "MinHashTokenStream from VPack arguments"));
-    return {};
-  }
-
-  return {typeSlice.stringView(), slice.get(kPropertiesParam)};
-}
-
-bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
-  IRS_ASSERT(opts);
-
-  if (const auto num_hashesSlice = slice.get(kNumHashes);
-      !num_hashesSlice.isNumber()) {
-    IRS_LOG_ERROR(absl::StrCat("Failed to read '", kNumHashes,
-                               "' attribute as number while constructing "
-                               "MinHashTokenStream from VPack arguments"));
-    return false;
-  } else {
-    opts->num_hashes = num_hashesSlice.getNumber<decltype(opts->num_hashes)>();
-  }
-
-  if (opts->num_hashes < kMinHashes) {
-    IRS_LOG_ERROR(
-      "Number of hashes must be at least 1, failed to construct "
-      "MinHashTokenStream from VPack arguments");
     return false;
   }
-
-  if (const auto analyzerSlice = slice.get(kAnalyzerParam);
-      analyzerSlice.isNone() || analyzerSlice.isNull()) {
-    opts->analyzer.reset();
-    return true;
-  } else {
-    auto [type, props] = ParseAnalyzer(analyzerSlice);
-
-    if (IsNull(type)) {
-      return false;
-    }
-
-    if (props.isNone()) {
-      props = velocypack::Slice::emptyObjectSlice();
-    }
-
-    auto analyzer =
-      analyzers::get(type, irs::type<irs::text_format::vpack>::get(),
-                     {props.startAs<char>(), props.byteSize()});
-
-    if (!analyzer) {
-      // fallback to json format if vpack isn't available
-      analyzer = analyzers::get(type, irs::type<irs::text_format::json>::get(),
-                                irs::slice_to_string(props));
-    }
-
-    if (analyzer) {
-      opts->analyzer = std::move(analyzer);
-      return true;
-    } else {
-      IRS_LOG_ERROR(absl::StrCat("Failed to create analyzer of type '", type,
-                                 "' with properties '",
-                                 irs::slice_to_string(props),
-                                 "' while constructing MinHashTokenStream "
-                                 "pipeline_token_stream from VPack arguments"));
-    }
+  if (!ParseNumHashes(slice, options.num_hashes)) {
+    return false;
   }
-
-  return false;
+  if (!analyzers::MakeAnalyzer(slice, options.analyzer)) {
+    IRS_LOG_ERROR(absl::StrCat("Invalid analyzer definition in ",
+                               slice_to_string(slice), kParseError));
+    return false;
+  }
+  return true;
 }
 
-analyzer::ptr MakeVPack(velocypack::Slice slice) {
-  MinHashTokenStream::Options opts;
-  if (ParseVPack(slice, &opts)) {
+std::shared_ptr<velocypack::Builder> ParseArgs(std::string_view args) try {
+  return velocypack::Parser::fromJson(args.data(), args.size());
+} catch (const std::exception& e) {
+  IRS_LOG_ERROR(absl::StrCat("Caught exception: ", e.what(), kParseError));
+  return {};
+} catch (...) {
+  IRS_LOG_ERROR(absl::StrCat("Caught unknown exception", kParseError));
+  return {};
+}
+
+analyzer::ptr MakeImpl(velocypack::Slice slice) {
+  if (MinHashTokenStream::Options opts; ParseOptions(slice, opts)) {
     return std::make_unique<MinHashTokenStream>(std::move(opts));
   }
-  return nullptr;
+  return {};
 }
 
-irs::analysis::analyzer::ptr MakeVPack(std::string_view args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
-  return MakeVPack(slice);
-}
-
-// `args` is a JSON encoded object with the following attributes:
-// "analyzer"(object) the analyzer definition containing "type"(string) and
-// optional "properties"(object)
-analyzer::ptr MakeJson(std::string_view args) {
-  try {
-    if (IsNull(args)) {
-      IRS_LOG_ERROR("Null arguments while constructing MinHashAnalyzer");
-      return nullptr;
-    }
-    auto vpack = velocypack::Parser::fromJson(args.data(), args.size());
-    return MakeVPack(vpack->slice());
-  } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing MinHashAnalyzer from JSON"));
-  } catch (...) {
-    IRS_LOG_ERROR("Caught error while constructing MinHashAnalyzer from JSON");
-  }
-  return nullptr;
-}
-
-bool MakeVPackOptions(const MinHashTokenStream::Options& opts,
-                      VPackSlice analyzerSlice, velocypack::Builder* out) {
-  velocypack::Slice props = velocypack::Slice::emptyObjectSlice();
-
-  if (analyzerSlice.isObject()) {
-    props = analyzerSlice.get(kPropertiesParam);
-    if (props.isNone()) {
-      props = velocypack::Slice::emptyObjectSlice();
-    }
-  } else if (!analyzerSlice.isNone()) {
-    IRS_LOG_ERROR(
-      "Failed to normalize definition of MinHashAnalyzer, 'properties' field "
-      "must be object");
+bool NormalizeImpl(velocypack::Slice input, velocypack::Builder& output) {
+  if (!input.isObject()) {
     return false;
   }
-
-  velocypack::ObjectBuilder root_scope{out};
-  out->add(kNumHashes, velocypack::Value{opts.num_hashes});
-
-  if (props.isObject() && opts.analyzer) {
-    const auto type = opts.analyzer->type()().name();
-    std::string normalized;
-
-    velocypack::ObjectBuilder analyzer_scope{out, kAnalyzerParam};
-    out->add(kTypeParam, velocypack::Value{type});
-
-    if (analyzers::normalize(normalized, type,
-                             irs::type<irs::text_format::vpack>::get(),
-                             {props.startAs<char>(), props.byteSize()})) {
-      out->add(kPropertiesParam,
-               velocypack::Slice{
-                 reinterpret_cast<const uint8_t*>(normalized.c_str())});
-
-      return true;
-    }
-
-    // fallback to json format if vpack isn't available
-    if (analyzers::normalize(normalized, type,
-                             irs::type<irs::text_format::json>::get(),
-                             irs::slice_to_string(props))) {
-      auto vpack = velocypack::Parser::fromJson(normalized);
-      out->add(kPropertiesParam, vpack->slice());
-      return true;
-    }
-  } else if (!opts.analyzer) {
-    out->add(kAnalyzerParam, velocypack::Slice::emptyObjectSlice());
-    return true;
+  uint32_t num_hashes = 0;
+  if (!ParseNumHashes(input, num_hashes)) {
+    return false;
   }
-
-  return false;
+  velocypack::ObjectBuilder scope{&output};
+  output.add(kNumHashes, velocypack::Value{num_hashes});
+  if (!analyzers::NormalizeAnalyzer(input, output)) {
+    IRS_LOG_ERROR(absl::StrCat("Invalid analyzer definition in ",
+                               slice_to_string(input), kParseError));
+    return false;
+  }
+  return true;
 }
 
-bool NormalizeVPack(velocypack::Slice slice, velocypack::Builder* out) {
-  MinHashTokenStream::Options opts;
-  if (ParseVPack(slice, &opts)) {
-    return MakeVPackOptions(opts, slice.get(kAnalyzerParam), out);
+analyzer::ptr MakeVPack(std::string_view args) {
+  if (args.empty()) {
+    IRS_LOG_ERROR(absl::StrCat("Empty arguments", kParseError));
+    return {};
   }
-  return false;
+  velocypack::Slice slice{reinterpret_cast<const uint8_t*>(args.data())};
+  return MakeImpl(slice);
+}
+
+analyzer::ptr MakeJson(std::string_view args) {
+  if (args.empty()) {
+    IRS_LOG_ERROR(absl::StrCat("Empty arguments", kParseError));
+    return {};
+  }
+  auto builder = ParseArgs(args);
+  if (!builder) {
+    return {};
+  }
+  return MakeImpl(builder->slice());
 }
 
 bool NormalizeVPack(std::string_view args, std::string& definition) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
-  VPackBuilder builder;
-  bool res = NormalizeVPack(slice, &builder);
-  if (res) {
-    definition.assign(builder.slice().startAs<char>(),
-                      builder.slice().byteSize());
+  if (args.empty()) {
+    IRS_LOG_ERROR(absl::StrCat("Empty arguments", kParseError));
+    return false;
   }
-  return res;
+  velocypack::Slice input{reinterpret_cast<const uint8_t*>(args.data())};
+  velocypack::Builder output;
+  if (!NormalizeImpl(input, output)) {
+    return false;
+  }
+  definition.assign(output.slice().startAs<char>(), output.slice().byteSize());
+  return true;
 }
 
 bool NormalizeJson(std::string_view args, std::string& definition) {
-  try {
-    if (IsNull(args)) {
-      IRS_LOG_ERROR("Null arguments while normalizing MinHashAnalyzer");
-      return false;
-    }
-    auto vpack = velocypack::Parser::fromJson(args.data(), args.size());
-    VPackBuilder builder;
-    if (NormalizeVPack(vpack->slice(), &builder)) {
-      definition = builder.toString();
-      return !definition.empty();
-    }
-  } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing MinHashAnalyzer from JSON"));
-  } catch (...) {
-    IRS_LOG_ERROR(
-      "Caught error while normalizing MinHashAnalyzerfrom from JSON");
+  if (args.empty()) {
+    IRS_LOG_ERROR(absl::StrCat("Empty arguments", kParseError));
+    return false;
   }
-  return false;
+  auto input = ParseArgs(args);
+  if (!input) {
+    return {};
+  }
+  velocypack::Builder output;
+  if (!NormalizeImpl(input->slice(), output)) {
+    return false;
+  }
+  definition = output.toString();
+  return !definition.empty();
 }
 
-auto sRegisterTypes = []() {
-  MinHashTokenStream::init();
-  return std::nullopt;
-}();
-
 }  // namespace
-
-namespace irs::analysis {
 
 void MinHashTokenStream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::MinHashTokenStream, MakeVPack,

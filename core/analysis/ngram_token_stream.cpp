@@ -455,11 +455,7 @@ bool ngram_token_stream_base::reset(std::string_view value) noexcept {
                            ? data_.size()
                            : std::min(data_.size(), options_.max_gram);
     buffer_size += max_marker_size;
-    if (buffer_size >
-        marked_term_buffer_
-          .capacity()) {  // until c++20 this check is needed to avoid shrinking
-      marked_term_buffer_.reserve(buffer_size);
-    }
+    marked_term_buffer_.reserve(buffer_size);
   }
   return true;
 }

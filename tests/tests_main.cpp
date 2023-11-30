@@ -51,6 +51,7 @@
 
 #include <unicode/udata.h>
 
+#include <analysis/minhash_token_stream.hpp>
 #include <ctime>
 #include <filesystem>
 #include <formats/formats.hpp>
@@ -294,6 +295,8 @@ int test_env::initialize(int argc, char* argv[]) {
 
   ::testing::AddGlobalTestEnvironment(new IterationTracker());
   ::testing::InitGoogleTest(&argc_, argv_);
+
+  irs::analysis::MinHashTokenStream::init();
 
   return RUN_ALL_TESTS();
 }

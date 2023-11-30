@@ -31,33 +31,27 @@
 
 namespace irs {
 
-filter::prepared::ptr by_ngram_similarity::prepare(
-  const PrepareContext& ctx) const {
-  const auto& ngrams = options().ngrams;
+filter::prepared::ptr by_ngram_similarity::Prepare(
+  const PrepareContext& ctx, std::string_view field_name,
+  const options_type& options) {
+  const auto& ngrams = options.ngrams;
 
-  if (ngrams.empty() || field().empty()) {
+  if (ngrams.empty() || field_name.empty()) {
     // empty field or terms or invalid threshold
     return filter::prepared::empty();
   }
 
-  const auto threshold = std::clamp(options().threshold, 0.f, 1.f);
+  const auto threshold = std::clamp(options.threshold, 0.f, 1.f);
   const auto min_match_count =
     std::clamp(static_cast<size_t>(std::ceil(ngrams.size() * threshold)),
                size_t{1}, ngrams.size());
-  const auto sub_boost = ctx.boost * boost();
   if (ctx.scorers.empty() && 1 == min_match_count) {
     irs::by_terms disj;
-    for (auto& terms = disj.mutable_options()->terms;
-         auto& term : options().ngrams) {
+    for (auto& terms = disj.mutable_options()->terms; auto& term : ngrams) {
       terms.emplace(term, irs::kNoBoost);
     }
-    *disj.mutable_field() = this->field();
-    return disj.prepare({
-      .index = ctx.index,
-      .memory = ctx.memory,
-      .ctx = ctx.ctx,
-      .boost = sub_boost,
-    });
+    *disj.mutable_field() = field_name;
+    return disj.prepare(ctx);
   }
   NGramStates query_states{ctx.memory, ctx.index.size()};
 
@@ -69,8 +63,6 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   // prepare ngrams stats
   field_collectors field_stats{ctx.scorers};
   term_collectors term_stats{ctx.scorers, terms_count};
-
-  const std::string_view field_name = this->field();
 
   for (const auto& segment : ctx.index) {
     // get term dictionary for field
@@ -129,7 +121,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
 
   return memory::make_tracked<NGramSimilarityQuery>(
     ctx.memory, min_match_count, std::move(query_states), std::move(stats),
-    sub_boost);
+    ctx.boost);
 }
 
 }  // namespace irs
