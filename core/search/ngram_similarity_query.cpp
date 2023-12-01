@@ -581,12 +581,16 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
   if (itrs.size() < min_match_count_) {
     return doc_iterator::empty();
   }
+  // TODO(MBkkt) itrs.size() == 1: return itrs_[0], but needs to add score
+  // optimization for single ngram case
   if (itrs.size() == min_match_count_) {
     return memory::make_managed<NGramSimilarityDocIterator<
       NGramApprox<true>, SerialPositionsChecker<Dummy>>>(
       std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
       query_state->terms.size(), min_match_count_, ord);
   }
+  // TODO(MBkkt) min_match_count_ == 1: disjunction for approx,
+  // optimization for low threshold case
   return memory::make_managed<NGramSimilarityDocIterator<
     NGramApprox<false>, SerialPositionsChecker<Dummy>>>(
     std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
@@ -607,11 +611,15 @@ doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
   if (itrs.size() < min_match_count_) {
     return doc_iterator::empty();
   }
+  // TODO(MBkkt) itrs.size() == 1: return itrs_[0], but needs to add score
+  // optimization for single ngram case
   if (itrs.size() == min_match_count_) {
     return memory::make_managed<NGramSimilarityDocIterator<
       NGramApprox<true>, SerialPositionsChecker<NGramPosition>>>(
       std::move(itrs), query_state->terms.size(), min_match_count_, true);
   }
+  // TODO(MBkkt) min_match_count_ == 1: disjunction for approx,
+  // optimization for low threshold case
   return memory::make_managed<NGramSimilarityDocIterator<
     NGramApprox<false>, SerialPositionsChecker<NGramPosition>>>(
     std::move(itrs), query_state->terms.size(), min_match_count_, true);
