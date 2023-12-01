@@ -33,15 +33,13 @@ namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::Prepare(
   const PrepareContext& ctx, std::string_view field_name,
-  const options_type& options) {
-  const auto& ngrams = options.ngrams;
-
+  const std::vector<irs::bstring>& ngrams, float_t threshold) {
   if (ngrams.empty() || field_name.empty()) {
     // empty field or terms or invalid threshold
     return filter::prepared::empty();
   }
 
-  const auto threshold = std::clamp(options.threshold, 0.f, 1.f);
+  threshold = std::clamp(threshold, 0.f, 1.f);
   const auto min_match_count =
     std::clamp(static_cast<size_t>(std::ceil(ngrams.size() * threshold)),
                size_t{1}, ngrams.size());

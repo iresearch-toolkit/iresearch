@@ -131,7 +131,7 @@ class same_position_query : public filter::prepared {
     const IndexFeatures features =
       ord.features() | by_same_position::kRequiredFeatures;
 
-    ScoreAdapters<irs::doc_iterator::ptr> itrs;
+    ScoreAdapters itrs;
     itrs.reserve(query_state->size());
 
     std::vector<position::ref> positions;

@@ -208,7 +208,6 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
                           private score_ctx {
  public:
   using adapter = Adapter;
-  using merger_type = Merger;
 
   basic_disjunction(adapter&& lhs, adapter&& rhs, Merger&& merger = Merger{})
     : basic_disjunction{std::move(lhs), std::move(rhs), std::move(merger),
@@ -613,7 +612,6 @@ class disjunction : public compound_doc_iterator<Adapter>,
                     private score_ctx {
  public:
   using adapter = Adapter;
-  using merger_type = Merger;
   using doc_iterators_t = std::vector<adapter>;
   using heap_container = std::vector<size_t>;
   using heap_iterator = heap_container::iterator;
@@ -896,7 +894,6 @@ class block_disjunction : public doc_iterator,
  public:
   using traits_type = Traits;
   using adapter = Adapter;
-  using merger_type = Merger;
   using doc_iterators_t = std::vector<adapter>;
 
   block_disjunction(doc_iterators_t&& itrs, Merger&& merger, cost::cost_t est)

@@ -165,10 +165,10 @@ class FixedPhraseFrequency {
 };
 
 // Adapter to use doc_iterator with positions for disjunction
-struct VariadicPhraseAdapter : ScoreAdapter<doc_iterator::ptr> {
+struct VariadicPhraseAdapter : ScoreAdapter<> {
   VariadicPhraseAdapter() = default;
   VariadicPhraseAdapter(doc_iterator::ptr&& it, score_t boost) noexcept
-    : ScoreAdapter<doc_iterator::ptr>(std::move(it)),
+    : ScoreAdapter<>(std::move(it)),
       position(irs::get_mutable<irs::position>(this->it.get())),
       boost(boost) {}
 
@@ -549,8 +549,7 @@ class PhraseIterator : public doc_iterator {
  public:
   using TermPosition = typename Frequency::TermPosition;
 
-  PhraseIterator(ScoreAdapters<doc_iterator::ptr>&& itrs,
-                 std::vector<TermPosition>&& pos)
+  PhraseIterator(ScoreAdapters&& itrs, std::vector<TermPosition>&& pos)
     : approx_{NoopAggregator{},
               [](auto&& itrs) {
                 std::sort(itrs.begin(), itrs.end(),
@@ -569,7 +568,7 @@ class PhraseIterator : public doc_iterator {
       irs::get_mutable<irs::cost>(&approx_);
   }
 
-  PhraseIterator(ScoreAdapters<doc_iterator::ptr>&& itrs,
+  PhraseIterator(ScoreAdapters&& itrs,
                  std::vector<typename Frequency::TermPosition>&& pos,
                  const SubReader& segment, const term_reader& field,
                  const byte_type* stats, const Scorers& ord, score_t boost)
