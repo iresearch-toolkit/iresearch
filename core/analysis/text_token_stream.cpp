@@ -155,7 +155,7 @@ struct StringHash {
 
 absl::node_hash_map<std::string, cached_options_t, StringHash>
   cached_state_by_key;
-std::mutex mutex;
+ABSL_CONST_INIT absl::Mutex mutex(absl::kConstInit);
 
 // Retrieves a set of ignored words from FS at the specified custom path
 bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,

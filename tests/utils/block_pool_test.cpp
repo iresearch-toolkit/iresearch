@@ -43,7 +43,6 @@ class block_pool_test : public test_base {
   void ctor() {
     ASSERT_EQ(BlockSize, size_t(block_type::SIZE));
     ASSERT_EQ(0, pool_.block_count());
-    ASSERT_EQ(0, pool_.size());
     ASSERT_EQ(0, pool_.begin().pool_offset());
     ASSERT_EQ(0, pool_.end().pool_offset());
     ASSERT_EQ(pool_.begin(), pool_.end());
@@ -75,7 +74,7 @@ class block_pool_test : public test_base {
     ASSERT_NE(pool_.begin(), pool_.end());
 
     // clear buffers
-    pool_.clear();
+    pool_.Reset();
     ASSERT_EQ(0, pool_.block_count());
     ASSERT_EQ(0, pool_.value_count());
     ASSERT_EQ(pool_.begin(), pool_.end());
@@ -205,7 +204,7 @@ class block_pool_test : public test_base {
         ++begin;
       }
       ASSERT_EQ(irs::detail::LEVELS[i].next, *begin);
-      pool_.clear();
+      pool_.Reset();
     }
   }
 
@@ -306,7 +305,7 @@ class block_pool_test : public test_base {
       ASSERT_EQ(0, *begin);
       ++begin;
       ASSERT_EQ(0, *begin);
-      pool_.clear();
+      pool_.Reset();
     }
   }
 

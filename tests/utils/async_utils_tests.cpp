@@ -371,8 +371,8 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
     };
     std::unique_lock<std::mutex> lock(mutex);
 
-    pool.run(std::move(task1), 30ms);
-    pool.run(std::move(task2), 500ms);
+    pool.run(std::move(task1), absl::Milliseconds(30));
+    pool.run(std::move(task2), absl::Milliseconds(500));
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -438,10 +438,10 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
     };
     std::unique_lock<std::mutex> lock(mutex);
 
-    pool.run(std::move(task1), 0ms);
-    pool.run(std::move(task2), 0ms);
-    pool.run(std::move(task3), 30ms);
-    pool.run(std::move(task4), 500ms);
+    pool.run(std::move(task1));
+    pool.run(std::move(task2));
+    pool.run(std::move(task3), absl::Milliseconds(30));
+    pool.run(std::move(task4), absl::Milliseconds(500));
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -672,8 +672,8 @@ TEST_F(async_utils_tests, test_queue_thread_pool_delay_mt) {
     ASSERT_EQ(1, pool.threads());
     // delay is ignored for non priority qeue
     // tasks are executed as is
-    pool.run(std::move(task), 10000s);
-    pool.run(std::move(task2), 1s);
+    pool.run(std::move(task), absl::Seconds(10000));
+    pool.run(std::move(task2), absl::Seconds(1));
     ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 100s));
     ASSERT_EQ(0, counter);
   }

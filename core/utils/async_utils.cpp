@@ -61,7 +61,7 @@ ThreadPool<UseDelay>::ThreadPool(size_t threads, basic_string_view<Char> name) {
 
 template<bool UseDelay>
 void ThreadPool<UseDelay>::start(size_t threads, basic_string_view<Char> name) {
-  std::lock_guard lock{m_};
+  absl::MutexLock lock{&m_};
   IRS_ASSERT(threads_.empty());
   threads_.reserve(threads);
   for (size_t i = 0; i != threads; ++i) {
@@ -76,30 +76,28 @@ void ThreadPool<UseDelay>::start(size_t threads, basic_string_view<Char> name) {
 }
 
 template<bool UseDelay>
-bool ThreadPool<UseDelay>::run(Func&& fn, Clock::duration delay) {
+bool ThreadPool<UseDelay>::run(Func&& fn, absl::Duration delay) {
   IRS_ASSERT(fn);
   if constexpr (UseDelay) {
-    auto at = Clock::now() + delay;
-    std::unique_lock lock{m_};
+    auto at = absl::Now() + delay;
+    absl::MutexLock lock{&m_};
     if (WasStop()) {
       return false;
     }
-    tasks_.emplace(std::move(fn), at);
-    // TODO We can skip notify when new element is more delayed than min
+    tasks_.emplace(at, std::move(fn));
   } else {
-    std::unique_lock lock{m_};
+    absl::MutexLock lock{&m_};
     if (WasStop()) {
       return false;
     }
     tasks_.push(std::move(fn));
   }
-  cv_.notify_one();
   return true;
 }
 
 template<bool UseDelay>
 void ThreadPool<UseDelay>::stop(bool skip_pending) noexcept {
-  std::unique_lock lock{m_};
+  absl::ReleasableMutexLock lock{&m_};
   if (skip_pending) {
     tasks_ = decltype(tasks_){};
   }
@@ -108,8 +106,7 @@ void ThreadPool<UseDelay>::stop(bool skip_pending) noexcept {
   }
   state_ |= 1;
   auto threads = std::move(threads_);
-  lock.unlock();
-  cv_.notify_all();
+  lock.Release();
   for (auto& t : threads) {
     t.join();
   }
@@ -117,15 +114,15 @@ void ThreadPool<UseDelay>::stop(bool skip_pending) noexcept {
 
 template<bool UseDelay>
 void ThreadPool<UseDelay>::Work() {
-  std::unique_lock lock{m_};
+  absl::MutexLock lock{&m_};
   while (true) {
     while (!tasks_.empty()) {
       Func fn;
       if constexpr (UseDelay) {
         auto& top = tasks_.top();
-        if (top.at > Clock::now()) {
-          const auto at = top.at;
-          cv_.wait_until(lock, at);
+        if (top.at > absl::Now()) {
+          m_.AwaitWithDeadline(absl::Condition{this, &ThreadPool::NeedsWorkAt},
+                               top.at);
           continue;
         }
         fn = std::move(const_cast<Func&>(top.fn));
@@ -134,18 +131,18 @@ void ThreadPool<UseDelay>::Work() {
       }
       tasks_.pop();
       state_ += 2;
-      lock.unlock();
+      m_.unlock();
       try {
         fn();
       } catch (...) {
       }
-      lock.lock();
+      m_.lock();
       state_ -= 2;
     }
     if (WasStop()) {
       return;
     }
-    cv_.wait(lock);
+    m_.Await(absl::Condition{this, &ThreadPool::NeedsWork});
   }
 }
 

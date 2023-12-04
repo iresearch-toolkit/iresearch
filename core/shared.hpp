@@ -134,8 +134,6 @@ consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
 }
 
-inline constexpr size_t kCmpXChg16Align = 16;
-
 }  // namespace irs
 
 #define IRS_STRINGIFY(x) #x

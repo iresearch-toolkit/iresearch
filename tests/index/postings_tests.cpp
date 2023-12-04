@@ -387,7 +387,7 @@ TEST(postings_tests, clear) {
   bh.clear();
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
-  pool->clear();
+  pool->Reset();
   ASSERT_LT(memory.counter_, block_size);
   pool.reset();
   ASSERT_EQ(0, memory.counter_);

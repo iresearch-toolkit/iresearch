@@ -3147,48 +3147,6 @@ TEST_P(index_test_case, document_context) {
     thread1.join();
   }
 
-  // remove without tick
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto query_doc3 = MakeByTerm("name", "C");
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end()));
-    writer->GetBatch().Remove<false>(*query_doc1);
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    writer->GetBatch().Remove(*query_doc3);
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    writer->Commit();
-    auto reader = irs::DirectoryReader(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    EXPECT_EQ(3, reader.docs_count());
-    EXPECT_EQ(2, reader.live_docs_count());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B",
-              irs::to_string<std::string_view>(actual_value->value.data()));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A",
-              irs::to_string<std::string_view>(actual_value->value.data()));
-    ASSERT_FALSE(docsItr->next());
-  }
-
   // holding document_context after insert across commit does not block
   {
     auto writer = open_writer();
@@ -3914,7 +3872,7 @@ TEST_P(index_test_case, document_context) {
         ASSERT_TRUE(doc.Insert<irs::Action::STORE>(doc3->stored.begin(),
                                                    doc3->stored.end()));
       }
-      ASSERT_TRUE(ctx.Commit());
+      ctx.Commit();
     }
 
     writer->Commit();
@@ -7090,7 +7048,7 @@ static void ConsolidateRange(irs::Consolidation& candidates,
 
   for (; begin < end; ++begin) {
     auto& r = reader[begin];
-    if (!segments.contains(r.Meta().name)) {
+    if (!segments.contains(r.Meta().id)) {
       candidates.emplace_back(&r);
     }
   }
@@ -7606,7 +7564,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       for (auto i : expected_consolidating_segments) {
         auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().name));
+          expected_consolidating_segment.Meta().id));
       }
     };
 
@@ -7798,7 +7756,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           for (auto i : expected_consolidating_segments) {
             const auto& expected_consolidating_segment = reader[i];
             ASSERT_TRUE(consolidating_segments.contains(
-              expected_consolidating_segment.Meta().name));
+              expected_consolidating_segment.Meta().id));
           }
         };
       // check segments registered for consolidation
@@ -8153,7 +8111,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           for (auto i : expected_consolidating_segments) {
             const auto& expected_consolidating_segment = reader[i];
             ASSERT_TRUE(consolidating_segments.contains(
-              expected_consolidating_segment.Meta().name));
+              expected_consolidating_segment.Meta().id));
           }
         };
       // check segments registered for consolidation
@@ -8314,7 +8272,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           for (auto i : expected_consolidating_segments) {
             const auto& expected_consolidating_segment = reader[i];
             ASSERT_TRUE(consolidating_segments.contains(
-              expected_consolidating_segment.Meta().name));
+              expected_consolidating_segment.Meta().id));
           }
         };
       // check segments registered for consolidation
@@ -8447,7 +8405,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().name));
+          expected_consolidating_segment.Meta().id));
       }
     };
 
@@ -8609,7 +8567,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().name));
+          expected_consolidating_segment.Meta().id));
       }
     };
 
@@ -9042,7 +9000,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
         ASSERT_EQ(reader.size(), consolidating_segments.size());
         for (auto& expected_consolidating_segment : reader) {
           ASSERT_TRUE(consolidating_segments.contains(
-            expected_consolidating_segment.Meta().name));
+            expected_consolidating_segment.Meta().id));
         }
       };
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
@@ -9122,7 +9080,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().name));
+          expected_consolidating_segment.Meta().id));
       }
     };
 
@@ -9135,7 +9093,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().name));
+          expected_consolidating_segment.Meta().id));
       }
     };
 

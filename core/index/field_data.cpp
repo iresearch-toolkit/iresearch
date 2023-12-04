@@ -676,14 +676,14 @@ doc_iterator::ptr cached_column::iterator(ColumnHint hint) const {
                                                       stream_.Data());
 }
 
-field_data::field_data(
-  std::string_view name, const features_t& features,
-  const FeatureInfoProvider& feature_columns,
-  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
-    cached_columns,
-  const feature_set_t& cached_features, columnstore_writer& columns,
-  byte_block_pool::inserter& byte_writer, int_block_pool::inserter& int_writer,
-  IndexFeatures index_features, bool random_access)
+field_data::field_data(std::string_view name, const features_t& features,
+                       const FeatureInfoProvider& feature_columns,
+                       CachedColumns& cached_columns,
+                       const feature_set_t& cached_features,
+                       columnstore_writer& columns,
+                       byte_block_pool::inserter& byte_writer,
+                       int_block_pool::inserter& int_writer,
+                       IndexFeatures index_features, bool random_access)
   // Unset optional features
   : meta_{name, index_features & (~(IndexFeatures::OFFS | IndexFeatures::PAY))},
     terms_{*byte_writer},
@@ -1079,20 +1079,18 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
   return true;
 }
 
-fields_data::fields_data(
-  const FeatureInfoProvider& feature_info,
-  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
-    cached_columns,
-  const feature_set_t& cached_features, IResourceManager& rm,
-  const Comparer* comparator /*= nullptr*/)
+fields_data::fields_data(const FeatureInfoProvider& feature_info,
+                         field_data::CachedColumns& cached_columns,
+                         const feature_set_t& cached_features,
+                         const Comparer* comparator)
   : comparator_{comparator},
     feature_info_{&feature_info},
-    fields_{{rm}},
+    fields_{cached_columns.get_allocator()},
     cached_columns_{&cached_columns},
     cached_features_{&cached_features},
-    byte_pool_{{rm}},
+    byte_pool_{cached_columns.get_allocator()},
     byte_writer_{byte_pool_.begin()},
-    int_pool_{{rm}},
+    int_pool_{cached_columns.get_allocator()},
     int_writer_{int_pool_.begin()} {}
 
 field_data* fields_data::emplace(const hashed_string_view& name,
@@ -1102,9 +1100,7 @@ field_data* fields_data::emplace(const hashed_string_view& name,
   IRS_ASSERT(fields_map_.size() == fields_.size());
 
   auto it = fields_map_.lazy_emplace(
-    name, [&name](const fields_map::constructor& ctor) {
-      ctor(nullptr, name.hash());
-    });
+    name, [&name](const auto& ctor) { ctor(nullptr, name.hash()); });
 
   if (!it->ref) {
     try {
@@ -1161,23 +1157,32 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   fw.end();
 }
 
-void fields_data::reset() noexcept {
-  byte_writer_ = byte_pool_.begin();  // reset position pointer to start of pool
+void fields_data::Clear() noexcept {
   fields_.clear();
   fields_map_.clear();
-  int_writer_ = int_pool_.begin();  // reset position pointer to start of pool
+  Init();
+}
+
+void fields_data::Reset() noexcept {
+  fields_.clear();
+  fields_.shrink_to_fit();
+  fields_map_.clear();
+  byte_pool_.Reset();
+  int_pool_.Reset();
+  Init();
 }
 
 size_t fields_data::memory_active() const noexcept {
-  return byte_writer_.pool_offset() +
-         int_writer_.pool_offset() * sizeof(int_block_pool::value_type) +
-         fields_map_.size() * sizeof(fields_map::value_type) +
-         fields_.size() * sizeof(decltype(fields_)::value_type);
+  return fields_.size() * sizeof(Fields::value_type) +
+         fields_map_.size() * sizeof(FieldsMap::value_type) +
+         byte_writer_.pool_offset() * sizeof(byte_block_pool::value_type) +
+         int_writer_.pool_offset() * sizeof(int_block_pool::value_type);
 }
 
 size_t fields_data::memory_reserved() const noexcept {
-  // FIXME(@gnusi): revisit the implementation
-  return byte_pool_.size() + int_pool_.size();
+  return fields_.size() * sizeof(Fields::value_type) +
+         fields_map_.capacity() * sizeof(FieldsMap::value_type) +
+         byte_pool_.ByteCapacity() + int_pool_.ByteCapacity();
 }
 
 // use base irs::position type for ancestors

@@ -23,8 +23,8 @@
 #pragma once
 
 #include <atomic>
-#include <condition_variable>
-#include <mutex>
+
+#include <absl/synchronization/mutex.h>
 
 namespace irs {
 
@@ -39,18 +39,20 @@ struct WaitGroup {
   void Done(size_t counter = 1) noexcept {
     if (counter_.fetch_sub(2 * counter, std::memory_order_acq_rel) ==
         2 * counter) {
-      std::lock_guard lock{m_};
-      cv_.notify_one();
+      absl::MutexLock{&m_};
     }
   }
 
   // Multiple parallel Wait not supported, if needed check YACLib
   void Wait(size_t counter = 0) noexcept {
     if (counter_.fetch_sub(1, std::memory_order_acq_rel) != 1) {
-      std::unique_lock lock{m_};
-      while (counter_.load(std::memory_order_acquire) != 0) {
-        cv_.wait(lock);
-      }
+      absl::Condition counter_zero{
+        +[](std::atomic_size_t* counter) noexcept {
+          return counter->load(std::memory_order_acquire) == 0;
+        },
+        &counter_};
+      m_.LockWhen(counter_zero);
+      m_.Unlock();
     }
     // We can put acquire here and remove above, but is it worth?
     Reset(counter);
@@ -65,12 +67,11 @@ struct WaitGroup {
     counter_.store(2 * counter + 1, std::memory_order_relaxed);
   }
 
-  std::mutex& Mutex() noexcept { return m_; }
+  auto& Mutex() noexcept { return m_; }
 
  private:
   std::atomic_size_t counter_;
-  std::condition_variable cv_;
-  std::mutex m_;
+  absl::Mutex m_;
 };
 
 }  // namespace irs

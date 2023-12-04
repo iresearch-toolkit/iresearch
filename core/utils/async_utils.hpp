@@ -23,9 +23,7 @@
 
 #pragma once
 
-#include <condition_variable>
 #include <function2/function2.hpp>
-#include <mutex>
 #include <queue>
 #include <thread>
 
@@ -33,6 +31,8 @@
 #include "shared.hpp"
 #include "string.hpp"
 #include "thread_utils.hpp"
+
+#include <absl/synchronization/mutex.h>
 
 namespace irs::async_utils {
 
@@ -47,7 +47,7 @@ class busywait_mutex final {
   void unlock() noexcept;
 
  private:
-  std::atomic<bool> locked_{false};
+  std::atomic_bool locked_{false};
 };
 
 template<bool UseDelay = true>
@@ -62,32 +62,31 @@ class ThreadPool {
   ~ThreadPool() { stop(true); }
 
   void start(size_t threads, basic_string_view<Char> name = {});
-  bool run(Func&& fn, Clock::duration delay = {});
+  bool run(Func&& fn, absl::Duration delay = {});
   void stop(bool skip_pending = false) noexcept;  // always a blocking call
   size_t tasks_active() const {
-    std::lock_guard lock{m_};
+    absl::MutexLock lock{&m_};
     return state_ / 2;
   }
   size_t tasks_pending() const {
-    std::lock_guard lock{m_};
+    absl::MutexLock lock{&m_};
     return tasks_.size();
   }
   size_t threads() const {
-    std::lock_guard lock{m_};
+    absl::MutexLock lock{&m_};
     return threads_.size();
   }
   // 1st - tasks active(), 2nd - tasks pending(), 3rd - threads()
   std::tuple<size_t, size_t, size_t> stats() const {
-    std::lock_guard lock{m_};
+    absl::MutexLock lock{&m_};
     return {state_ / 2, tasks_.size(), threads_.size()};
   }
 
  private:
   struct Task {
-    explicit Task(Func&& fn, Clock::time_point at)
-      : at{at}, fn{std::move(fn)} {}
+    explicit Task(absl::Time at, Func&& fn) : at{at}, fn{std::move(fn)} {}
 
-    Clock::time_point at;
+    absl::Time at;
     Func fn;
 
     bool operator<(const Task& rhs) const noexcept { return rhs.at < at; }
@@ -95,11 +94,20 @@ class ThreadPool {
 
   void Work();
 
-  bool WasStop() const { return state_ % 2 != 0; }
+  bool WasStop() const noexcept { return state_ % 2 != 0; }
+
+  bool NeedsWork() const noexcept { return !tasks_.empty() || WasStop(); }
+
+  bool NeedsWorkAt() const noexcept {
+    if constexpr (UseDelay) {
+      return (!tasks_.empty() && tasks_.top().at <= absl::Now()) || WasStop();
+    } else {
+      return false;
+    }
+  }
 
   std::vector<std::thread> threads_;
-  mutable std::mutex m_;
-  std::condition_variable cv_;
+  mutable absl::Mutex m_;
   std::conditional_t<UseDelay, std::priority_queue<Task>, std::queue<Func>>
     tasks_;
   // stop flag and active tasks counter

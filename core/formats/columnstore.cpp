@@ -1906,13 +1906,11 @@ class sparse_column final : public column {
     block_ref(block_ref&& other) noexcept
       : key(std::move(other.key)),
         offset(std::move(other.offset)),
-        pblock{other.pblock.exchange(
-          nullptr)} {  // no std::move(...) for std::atomic<...>
-    }
+        pblock{other.pblock.exchange(nullptr)} {}
 
-    doc_id_t key;                                // min key in a block
-    uint64_t offset;                             // block offset
-    mutable std::atomic<const block_t*> pblock;  // pointer to cached block
+    doc_id_t key{};                                // min key in a block
+    uint64_t offset{};                             // block offset
+    mutable std::atomic<const block_t*> pblock{};  // pointer to cached block
   };
 
   typedef std::vector<block_ref> refs_t;
@@ -2051,13 +2049,11 @@ class dense_fixed_offset_column final : public column {
 
     block_ref(block_ref&& other) noexcept
       : offset(std::move(other.offset)),
-        pblock{other.pblock.exchange(
-          nullptr)} {  // no std::move(...) for std::atomic<...>
-    }
+        pblock{other.pblock.exchange(nullptr)} {}
 
-    uint64_t offset;  // need to store base offset since blocks may not be
-                      // located sequentially
-    mutable std::atomic<const block_t*> pblock;
+    // need to store base offset since blocks may not be located sequentially
+    uint64_t offset{};
+    mutable std::atomic<const block_t*> pblock{};
   };
 
   typedef std::vector<block_ref> refs_t;

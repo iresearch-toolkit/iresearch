@@ -72,7 +72,7 @@ using Consolidation = std::vector<const SubReader*>;
 using ConsolidationView = std::span<const SubReader* const>;
 
 // segments that are under consolidation
-using ConsolidatingSegments = absl::flat_hash_set<std::string_view>;
+using ConsolidatingSegments = absl::flat_hash_set<SegmentInfo::Id>;
 
 // Mark consolidation candidate segments matching the current policy
 // candidates the segments that should be consolidated
@@ -158,10 +158,6 @@ struct IndexWriterOptions : public SegmentOptions {
   // empty == use default system sorting order
   const Comparer* comparator{nullptr};
 
-  // Number of free segments cached in the segment pool for reuse
-  // 0 == do not cache any segments, i.e. always create new segments
-  size_t segment_pool_size{128};  // arbitrary size
-
   // Acquire an exclusive lock on the repository to guard against index
   // corruption from multiple index_writers
   bool lock_repository{true};
@@ -195,44 +191,41 @@ class IndexWriter : private util::noncopyable {
 
   class ActiveSegmentContext {
    public:
-    ActiveSegmentContext() = default;
-    ActiveSegmentContext(
-      std::shared_ptr<SegmentContext> segment,
-      std::atomic_size_t& segments_active,
-      // the FlushContext the SegmentContext is currently registered with
-      FlushContext* flush = nullptr,
-      // the segment offset in flush->pending_segments_
-      size_t pending_segment_offset = writer_limits::kInvalidOffset) noexcept;
-    ActiveSegmentContext(ActiveSegmentContext&& other) noexcept;
-    ActiveSegmentContext& operator=(ActiveSegmentContext&& other) noexcept;
+    ActiveSegmentContext() noexcept = default;
+    ActiveSegmentContext(IndexWriter& writer, SegmentContext* segment = nullptr,
+                         FlushContext* flush = nullptr) noexcept
+      : writer_{&writer}, segment_{segment}, flush_{flush} {}
+    ActiveSegmentContext(ActiveSegmentContext&& other) noexcept
+      : writer_{std::exchange(other.writer_, nullptr)},
+        segment_{std::exchange(other.segment_, nullptr)},
+        flush_{std::exchange(other.flush_, nullptr)} {}
+    ActiveSegmentContext& operator=(ActiveSegmentContext&& other) noexcept {
+      if (this != &other) {
+        std::swap(writer_, other.writer_);
+        std::swap(segment_, other.segment_);
+        std::swap(flush_, other.flush_);
+      }
+      return *this;
+    }
 
-    ~ActiveSegmentContext();
+    ~ActiveSegmentContext() noexcept { Destroy(); }
 
-    auto* Segment() const noexcept { return segment_.get(); }
-    auto* Segment() noexcept { return segment_.get(); }
-    auto* Flush() noexcept { return flush_; }
+    void Destroy() noexcept;
 
-   private:
-    friend struct FlushContext;  // for FlushContext::AddToPending(...)
-
-    std::shared_ptr<SegmentContext> segment_;
-    // reference to IndexWriter::segments_active_
-    std::atomic_size_t* segments_active_{nullptr};
-    // nullptr will not match any FlushContext
+   protected:
+    IndexWriter* writer_{nullptr};
+    SegmentContext* segment_{nullptr};
     FlushContext* flush_{nullptr};
-    // segment offset in flush_->pending_segments_
-    size_t pending_segment_offset_{writer_limits::kInvalidOffset};
   };
-
-  static_assert(std::is_nothrow_move_constructible_v<ActiveSegmentContext>);
-  static_assert(std::is_nothrow_move_assignable_v<ActiveSegmentContext>);
 
  public:
   // Additional information required for remove/replace requests
   struct QueryContext {
     using FilterPtr = std::shared_ptr<const irs::filter>;
 
-    QueryContext() = default;
+    QueryContext() noexcept = default;
+    QueryContext(QueryContext&&) noexcept = default;
+    QueryContext& operator=(QueryContext&&) = delete;
 
     static constexpr uintptr_t kDone = 0;
     static constexpr uintptr_t kReplace = std::numeric_limits<uintptr_t>::max();
@@ -281,17 +274,16 @@ class IndexWriter : private util::noncopyable {
       }
     }
   };
-  static_assert(std::is_nothrow_move_constructible_v<QueryContext>);
 
   // A context allowing index modification operations.
   // The object is non-thread-safe, each thread should use its own
   // separate instance.
-  class Document : private util::noncopyable {
+  class Document {
    public:
     Document(SegmentContext& segment, segment_writer::DocContext doc,
              QueryContext* query = nullptr);
 
-    Document(Document&&) = default;
+    Document(Document&&) noexcept = default;
     Document& operator=(Document&&) = delete;
 
     ~Document() noexcept;
@@ -341,19 +333,16 @@ class IndexWriter : private util::noncopyable {
     segment_writer& writer_;
     QueryContext* query_;
   };
-  static_assert(std::is_nothrow_move_constructible_v<Document>);
 
-  class Transaction : private util::noncopyable {
+  class Transaction : public ActiveSegmentContext {
    public:
-    Transaction() = default;
-    explicit Transaction(IndexWriter& writer) noexcept : writer_{&writer} {}
+    using ActiveSegmentContext::ActiveSegmentContext;
 
-    Transaction(Transaction&& other) = default;
-    Transaction& operator=(Transaction&& other) = default;
+    Transaction(Transaction&&) noexcept = default;
+    Transaction& operator=(Transaction&&) noexcept = default;
 
     ~Transaction() {
       // FIXME(gnusi): consider calling Abort in future
-      // Commit can throw in such case -> better error handling
       Commit();
     }
 
@@ -366,25 +355,19 @@ class IndexWriter : private util::noncopyable {
     // Transaction should be valid
     Document Insert(bool disable_flush = false) {
       UpdateSegment(disable_flush);
-      return {*active_.Segment(), segment_writer::DocContext{queries_}};
+      return {*segment_, segment_writer::DocContext{Queries()}};
     }
 
     // Marks all documents matching the filter for removal.
-    // TickBound - Remove filter usage is restricted by document creation tick.
     // Filter the filter selecting which documents should be removed.
     // Note that changes are not visible until commit().
     // Note that filter must be valid until commit().
-    // Remove</*TickBound=*/false> is applied even for documents created after
-    // the Remove call and until next TickBound Remove or Replace.
     // Transaction should be valid
-    template<bool TickBound = true, typename Filter>
+    template<typename Filter>
     void Remove(Filter&& filter) {
       UpdateSegment(/*disable_flush=*/true);
-      active_.Segment()->queries_.emplace_back(std::forward<Filter>(filter),
-                                               queries_, QueryContext::kDone);
-      if constexpr (TickBound) {
-        ++queries_;
-      }
+      segment_->queries_.emplace_back(std::forward<Filter>(filter), Queries(),
+                                      QueryContext::kDone);
     }
 
     // Create a document to filled by the caller
@@ -398,14 +381,11 @@ class IndexWriter : private util::noncopyable {
     template<typename Filter>
     Document Replace(Filter&& filter, bool disable_flush = false) {
       UpdateSegment(disable_flush);
-      auto& segment = *active_.Segment();
-      auto& query = segment.queries_.emplace_back(
-        std::forward<Filter>(filter), queries_, QueryContext::kReplace);
-      segment.has_replace_ = true;
-      return {
-        segment,
-        segment_writer::DocContext{++queries_, segment.queries_.size() - 1},
-        &query};
+      auto size = Queries();
+      auto& query = segment_->queries_.emplace_back(
+        std::forward<Filter>(filter), size, QueryContext::kReplace);
+      segment_->has_replace_ = true;
+      return {*segment_, segment_writer::DocContext{size + 1, size}, &query};
     }
 
     // Revert all pending document modifications and release resources
@@ -417,52 +397,43 @@ class IndexWriter : private util::noncopyable {
 
     // Commit all accumulated modifications and release resources
     // return successful or not, if not call Abort
-    bool Commit() noexcept {
-      auto* segment = active_.Segment();
-      if (segment == nullptr) {
-        return true;
+    void Commit() noexcept {
+      if (segment_ != nullptr) {
+        auto queries = Queries();
+        CommitImpl(
+          writer_->tick_.fetch_add(queries, std::memory_order_relaxed) +
+          queries);
       }
-      const auto first_tick =
-        writer_->tick_.fetch_add(queries_, std::memory_order_relaxed);
-      return CommitImpl(first_tick + queries_);
     }
 
-    bool Commit(uint64_t last_tick) noexcept {
-      auto* segment = active_.Segment();
-      if (segment == nullptr) {
-        return true;
+    void Commit(uint64_t last_tick) noexcept {
+      if (segment_ != nullptr) {
+        CommitImpl(last_tick);
       }
-      return CommitImpl(last_tick);
     }
 
     // Reset all accumulated modifications and release resources
     void Abort() noexcept;
 
     bool FlushRequired() const noexcept {
-      auto* segment = active_.Segment();
-      if (segment == nullptr) {
-        return false;
-      }
-      return writer_->FlushRequired(*segment->writer_);
+      return segment_ != nullptr && writer_->FlushRequired(*segment_->writer_);
     }
 
     bool Valid() const noexcept { return writer_ != nullptr; }
 
    private:
-    bool CommitImpl(uint64_t last_tick) noexcept;
+    void CommitImpl(uint64_t last_tick) noexcept;
+    void LazyInit();
     // refresh segment if required (guarded by FlushContext::context_mutex_)
     // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
     // since active 'flush_context' will not change and hence no reload required
     void UpdateSegment(bool disable_flush);
 
-    IndexWriter* writer_{nullptr};
-    // the segment_context used for storing changes (lazy-initialized)
-    ActiveSegmentContext active_;
-    // We can use active_.Segment()->queries_.size() for same purpose
-    uint64_t queries_{0};
+    size_t Queries() const noexcept {
+      IRS_ASSERT(segment_ != nullptr);
+      return segment_->queries_.size();
+    }
   };
-  static_assert(std::is_nothrow_move_constructible_v<Transaction>);
-  static_assert(std::is_nothrow_move_assignable_v<Transaction>);
 
   // Returns a context allowing index modification operations
   // All document insertions will be applied to the same segment on a
@@ -473,8 +444,6 @@ class IndexWriter : private util::noncopyable {
 
   // Name of the lock for index repository
   static constexpr std::string_view kWriteLockName = "write.lock";
-
-  ~IndexWriter() noexcept;
 
   // Returns current index snapshot
   DirectoryReader GetSnapshot() const noexcept {
@@ -538,12 +507,14 @@ class IndexWriter : private util::noncopyable {
   // Returns true if transaction has been successfully started.
 
   bool Begin(const CommitInfo& info = {}) {
+    commit_lock_.ForgetDeadlockInfo();
     std::lock_guard lock{commit_lock_};
     return Start(info);
   }
 
   // Rollbacks the two-phase transaction
   void Rollback() {
+    commit_lock_.ForgetDeadlockInfo();
     std::lock_guard lock{commit_lock_};
     Abort();
   }
@@ -556,6 +527,7 @@ class IndexWriter : private util::noncopyable {
   // relatively lightweight operation.
   // FIXME(gnusi): Commit() should return committed index snapshot
   bool Commit(const CommitInfo& info = {}) {
+    commit_lock_.ForgetDeadlockInfo();
     std::lock_guard lock{commit_lock_};
     const bool modified = Start(info);
     Finish();
@@ -572,9 +544,8 @@ class IndexWriter : private util::noncopyable {
   // public because we want to use std::make_shared
   IndexWriter(ConstructToken, index_lock::ptr&& lock,
               index_file_refs::ref_t&& lock_file_ref, directory& dir,
-              format::ptr codec, size_t segment_pool_size,
-              const SegmentOptions& segment_limits, const Comparer* comparator,
-              const ColumnInfoProvider& column_info,
+              format::ptr codec, const SegmentOptions& segment_limits,
+              const Comparer* comparator, const ColumnInfoProvider& column_info,
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
@@ -626,8 +597,6 @@ class IndexWriter : private util::noncopyable {
     ConsolidationContext consolidation_ctx;
   };
 
-  static_assert(std::is_nothrow_move_constructible_v<ImportContext>);
-
  public:
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
@@ -664,14 +633,11 @@ class IndexWriter : private util::noncopyable {
     size_t docs_end_;
   };
 
-  // The segment writer and its associated ref tracking directory
-  // for use with an unbounded_object_pool
-  struct SegmentContext {
-    using segment_meta_generator_t = std::function<SegmentMeta()>;
-    using ptr = std::unique_ptr<SegmentContext>;
+  using Freelist = concurrent_stack<>;
 
-    // for use with index_writer::buffered_docs(), asynchronous call
-    std::atomic_size_t buffered_docs_{0};
+  // The segment writer and its associated ref tracking directory
+  struct SegmentContext : Freelist::node_type {
+    using segment_meta_generator_t = std::function<SegmentMeta()>;
     // the codec to used for flushing a segment writer
     format::ptr codec_;
     // ref tracking for segment_writer to allow for easy ref removal on
@@ -706,16 +672,12 @@ class IndexWriter : private util::noncopyable {
     // TODO(MBkkt) Better to be per FlushedSegment
     bool has_replace_{false};
 
-    static std::unique_ptr<SegmentContext> make(
-      directory& dir, segment_meta_generator_t&& meta_generator,
-      const SegmentWriterOptions& options);
-
     SegmentContext(directory& dir, segment_meta_generator_t&& meta_generator,
                    const SegmentWriterOptions& options);
 
     void Rollback() noexcept;
 
-    void Commit(uint64_t queries, uint64_t last_tick);
+    void Commit(uint64_t queries, uint64_t last_tick) noexcept;
 
     // Flush current writer state into a materialized segment.
     // Return tick of last committed transaction.
@@ -733,46 +695,45 @@ class IndexWriter : private util::noncopyable {
  private:
   struct SegmentLimits {
    private:
-    // TODO(MBkkt) Change zero meaning
     static constexpr auto kSizeMax = std::numeric_limits<size_t>::max();
     static constexpr auto kDocsMax = std::numeric_limits<uint32_t>::max() - 2;
     static auto ZeroMax(auto value, auto max) noexcept {
       return std::min(value - 1, max - 1) + 1;
     }
 
-   public:
-    // see segment_options::max_segment_count
-    std::atomic_size_t segment_count_max;
-    // see segment_options::max_segment_memory
-    std::atomic_size_t segment_memory_max;
+    static void Assign(auto& to, auto value, auto max) noexcept {
+      to.store(ZeroMax(value, max), std::memory_order_relaxed);
+    }
+
     // see segment_options::max_segment_docs
-    std::atomic_uint32_t segment_docs_max;
+    std::atomic_uint32_t docs_;
+    // see segment_options::max_segment_count
+    std::atomic_size_t count_;
+
+   public:
+    // see segment_options::max_segment_memory
+    std::atomic_size_t memory;
 
     explicit SegmentLimits(const SegmentOptions& opts) noexcept
-      : segment_count_max{ZeroMax(opts.segment_count_max, kSizeMax)},
-        segment_memory_max{ZeroMax(opts.segment_memory_max, kSizeMax)},
-        segment_docs_max{ZeroMax(opts.segment_docs_max, kDocsMax)} {}
+      : docs_{ZeroMax(opts.segment_docs_max, kDocsMax)},
+        count_{ZeroMax(opts.segment_count_max, kSizeMax)},
+        memory{ZeroMax(opts.segment_memory_max, kSizeMax)} {}
 
     SegmentLimits& operator=(const SegmentOptions& opts) noexcept {
-      segment_count_max.store(ZeroMax(opts.segment_count_max, kSizeMax));
-      segment_memory_max.store(ZeroMax(opts.segment_memory_max, kSizeMax));
-      segment_docs_max.store(ZeroMax(opts.segment_docs_max, kDocsMax));
+      Assign(docs_, opts.segment_docs_max, kDocsMax);
+      Assign(count_, opts.segment_count_max, kSizeMax);
+      Assign(memory, opts.segment_memory_max, kSizeMax);
       return *this;
     }
-  };
 
-  using SegmentPool = unbounded_object_pool<SegmentContext>;
-  // 'value' == node offset into 'pending_segment_context_'
-  using Freelist = concurrent_stack<size_t>;
-
-  struct PendingSegmentContext : public Freelist::node_type {
-    std::shared_ptr<SegmentContext> segment_;
-
-    PendingSegmentContext(std::shared_ptr<SegmentContext> segment,
-                          size_t pending_segment_context_offset)
-      : Freelist::node_type{.value = pending_segment_context_offset},
-        segment_{std::move(segment)} {
-      IRS_ASSERT(segment_ != nullptr);
+    size_t Docs() const noexcept {
+      return docs_.load(std::memory_order_relaxed);
+    }
+    size_t Count() const noexcept {
+      return count_.load(std::memory_order_relaxed);
+    }
+    size_t Memory() const noexcept {
+      return memory.load(std::memory_order_relaxed);
     }
   };
 
@@ -786,51 +747,57 @@ class IndexWriter : private util::noncopyable {
   // 'segment_context' is not used once the tracker 'flush_context' is no
   // longer active.
   struct FlushContext {
+    // Protect acuiring this context for read/write before they will finish
+    absl::Mutex lock_;
+    // the next context to switch to
+    FlushContext* next_{nullptr};
+    IndexWriter* writer_{nullptr};
+
     // ref tracking directory used by this context
     // (tracks all/only refs for this context)
     RefTrackingDirectory::ptr dir_;
-    // guard for the current context during flush
-    // (write) operations vs update (read)
-    std::shared_mutex context_mutex_;
-    // the next context to switch to
-    FlushContext* next_{nullptr};
 
-    std::vector<std::shared_ptr<SegmentContext>> segments_;
+    // TODO(MBkkt) maybe better to make it intrusive list?
+    std::vector<SegmentContext*> segments_;
     CachedReaders cached_;
 
     // complete segments to be added during next commit (import)
     std::vector<ImportContext> imports_;
 
-    void ClearPending() noexcept {
-      while (pending_freelist_.pop() != nullptr) {
-      }
-      pending_segments_.clear();
-    }
-
-    // segment writers with data pending for next commit
-    // (all segments that have been used by this flush_context)
-    // must be std::deque to guarantee that element memory location does
-    // not change for use with 'pending_segment_contexts_freelist_'
-    std::deque<PendingSegmentContext> pending_segments_;
-    // entries from 'pending_segments_' that are available for reuse
-    Freelist pending_freelist_;
-    WaitGroup pending_;
-
     // set of segments to be removed from the index upon commit
     ConsolidatingSegments segment_mask_;
+
+    struct PendingPool : WaitGroup {
+      SegmentContext* Acquire() noexcept {
+        auto* node = segments.pop();
+        if (node == nullptr) {
+          return nullptr;
+        }
+        Add();
+        return static_cast<SegmentContext*>(node);
+      }
+
+      void Release(SegmentContext& segment) noexcept {
+        segments.push(segment);
+        Done();
+      }
+
+      Freelist segments;
+    };
+    PendingPool pending_;
 
     FlushContext() = default;
 
     ~FlushContext() noexcept { Reset(); }
 
-    // release segment to this FlushContext
-    void Emplace(ActiveSegmentContext&& active);
+    void MoveTo(Freelist& segments) noexcept {
+      for (auto* segment : segments_) {
+        IRS_ASSERT(segment != nullptr);
+        segments.push(*segment);
+      }
+    }
 
-    // add the segment to this flush_context pending segments
-    // but not to freelist. So this segment would be waited upon flushing
-    void AddToPending(ActiveSegmentContext& active);
-
-    uint64_t FlushPending(uint64_t committed_tick, uint64_t tick);
+    void MovePending(uint64_t committed_tick, uint64_t tick) noexcept;
 
     void Reset() noexcept;
   };
@@ -841,17 +808,6 @@ class IndexWriter : private util::noncopyable {
     // Reference to flush context held until end of commit
     FlushContextPtr ctx{nullptr, nullptr};
     uint64_t tick{writer_limits::kMinTick};
-
-    [[nodiscard]] auto StartReset(IndexWriter& writer,
-                                  bool keep_next = false) noexcept {
-      auto* curr = ctx.get();
-      std::unique_lock lock{writer.consolidation_lock_, std::defer_lock};
-      if (curr != nullptr) {
-        lock.lock();
-        writer.Cleanup(*curr, keep_next ? nullptr : curr->next_);
-      }
-      return lock;
-    }
   };
 
   struct PendingContext : PendingBase {
@@ -878,11 +834,6 @@ class IndexWriter : private util::noncopyable {
       ctx.reset();
       commit.reset();
     }
-
-    void Reset(IndexWriter& writer) noexcept {
-      std::ignore = StartReset(writer);
-      FinishReset();
-    }
   };
 
   static_assert(std::is_nothrow_move_constructible_v<PendingState>);
@@ -894,18 +845,14 @@ class IndexWriter : private util::noncopyable {
   FlushContextPtr GetFlushContext() const noexcept;
   FlushContextPtr SwitchFlushContext() noexcept;
 
-  // Return a usable segment or a nullptr segment if retry is required
-  // (e.g. no free segments available)
-  ActiveSegmentContext GetSegmentContext();
-
   // Return options for segment_writer
   SegmentWriterOptions GetSegmentWriterOptions(
     bool consolidation) const noexcept;
 
   // Return next segment identifier
-  uint64_t NextSegmentId() noexcept;
+  SegmentInfo::Id NextSegmentId() noexcept;
   // Return current segment identifier
-  uint64_t CurrentSegmentId() const noexcept;
+  SegmentInfo::Id CurrentSegmentId() const noexcept;
   // Initialize new index meta
   void InitMeta(IndexMeta& meta, uint64_t tick) const;
 
@@ -916,24 +863,28 @@ class IndexWriter : private util::noncopyable {
   // Abort transaction
   void Abort() noexcept;
 
+  // Prevent concurrent Begin/Commit/Rollback/Clear and multiple Consolidate
+  alignas(64) absl::Mutex commit_lock_;
   feature_set_t wand_features_;  // Set of features required for wand
   ScorersView wand_scorers_;
+  // number of segments currently in use by the writer
+  mutable std::atomic_size_t buffered_docs_{0};
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
   PayloadProvider meta_payload_provider_;  // provides payload for new segments
+  struct {
+    absl::Mutex lock;
+    ConsolidatingSegments segments;  // segments that are under consolidation
+  } consolidating_;
   const Comparer* comparator_;
   format::ptr codec_;
-  // guard for cached_segment_readers_, commit_pool_, meta_
-  // (modification during commit()/defragment()), payload_buf_
-  std::mutex commit_lock_;
-  std::recursive_mutex consolidation_lock_;
-  // segments that are under consolidation
-  ConsolidatingSegments consolidating_segments_;
   // directory used for initialization of readers
   directory& dir_;
-  // collection of contexts that collect data to be
-  // flushed, 2 because just swap them
-  std::vector<FlushContext> flush_context_pool_{2};
+  // Flushed contexts, while one commiting another writing
+  // TODO(MBkkt) Code maybe not ready to more than 2 FlushContext.
+  std::array<FlushContext, 2> flush_contexts_;
+  // TODO(MBkkt) should be global semaphore
+  std::atomic_size_t active_{0};
   // currently active context accumulating data to be
   // processed during the next flush
   std::atomic<FlushContext*> flush_context_;
@@ -943,11 +894,7 @@ class IndexWriter : private util::noncopyable {
   PendingState pending_state_;
   // limits for use with respect to segments
   SegmentLimits segment_limits_;
-  // a cache of segments available for reuse
-  SegmentPool segment_writer_pool_;
-  // number of segments currently in use by the writer
-  std::atomic_size_t segments_active_{0};
-  std::atomic_uint64_t seg_counter_;  // segment counter
+  std::atomic<SegmentInfo::Id> seg_counter_;  // segment counter
   // current modification/update tick
   std::atomic_uint64_t tick_{writer_limits::kMinTick + 1};
   uint64_t committed_tick_{writer_limits::kMinTick};
@@ -957,6 +904,31 @@ class IndexWriter : private util::noncopyable {
   index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
   ResourceManagementOptions resource_manager_;
+  // TODO(MBkkt) share it between different IndexWriters
+  struct CreatedPool {
+    SegmentContext* Acquire() noexcept {
+      if (auto* node = pool_.pop(); node != nullptr) {
+        return static_cast<SegmentContext*>(node);
+      }
+      return nullptr;
+    }
+
+    void Release(SegmentContext& segment) noexcept {
+      segment.Reset();
+      pool_.push(segment);
+    }
+
+    ~CreatedPool() noexcept {
+      while (auto* node = pool_.pop()) {
+        auto* segment = static_cast<SegmentContext*>(node);
+        delete segment;
+      }
+    }
+
+   private:
+    Freelist pool_;
+  };
+  CreatedPool created_;
 };
 
 }  // namespace irs

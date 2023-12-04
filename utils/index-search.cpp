@@ -65,6 +65,7 @@
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
 #include "store/fs_directory.hpp"
+#include "utils/async_utils.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 #include "utils/timer_utils.hpp"
 

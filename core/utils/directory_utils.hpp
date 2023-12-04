@@ -165,7 +165,7 @@ struct RefTrackingDirectory : public directory {
 
   index_file_refs& attribute_;
   directory& impl_;
-  mutable std::mutex mutex_;  // for use with refs_
+  mutable absl::Mutex mutex_;  // for use with refs_
   mutable refs_t refs_;
   bool track_open_;
 };

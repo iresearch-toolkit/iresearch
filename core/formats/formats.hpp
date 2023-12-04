@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <function2/function2.hpp>
 #include <set>
 #include <vector>
@@ -77,6 +78,16 @@ struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
   const FeatureInfoProvider& feature_info;
   const feature_set_t& scorers_features;
+#ifdef IRESEARCH_TEST
+  inline static std::atomic_size_t test_memory_limit =
+    std::numeric_limits<size_t>::max();
+  inline static std::atomic_size_t test_buffered_docs = 0;
+  const std::atomic_size_t& memory_limit = test_memory_limit;
+  std::atomic_size_t& buffered_docs = test_buffered_docs;
+#else
+  const std::atomic_size_t& memory_limit;
+  std::atomic_size_t& buffered_docs;
+#endif
   ScorersView scorers;
   const Comparer* const comparator{};
   IResourceManager& resource_manager{IResourceManager::kNoop};

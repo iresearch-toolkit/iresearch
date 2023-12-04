@@ -298,8 +298,8 @@ TEST(thread_pool_test, test_stop_run_pending_delay_mt) {
   };
   std::unique_lock<std::mutex> lock(mutex);
 
-  ASSERT_TRUE(pool.run(std::move(task1), 30ms));
-  ASSERT_TRUE(pool.run(std::move(task2), 500ms));
+  ASSERT_TRUE(pool.run(std::move(task1), absl::Milliseconds(30)));
+  ASSERT_TRUE(pool.run(std::move(task2), absl::Milliseconds(500)));
   {
     const auto end =
       std::chrono::steady_clock::now() + 10s;  // assume 10s is more than enough
@@ -368,9 +368,9 @@ TEST(thread_pool_test, test_schedule_seq_mt) {
     std::this_thread::sleep_for(301ms);
   };
   std::unique_lock<std::mutex> lock(mutex);
-  ASSERT_TRUE(pool.run(std::move(task1), 1000ms));
-  ASSERT_TRUE(pool.run(std::move(task2), 100ms));
-  ASSERT_TRUE(pool.run(std::move(task3), 500ms));
+  ASSERT_TRUE(pool.run(std::move(task1), absl::Milliseconds(1000)));
+  ASSERT_TRUE(pool.run(std::move(task2), absl::Milliseconds(100)));
+  ASSERT_TRUE(pool.run(std::move(task3), absl::Milliseconds(500)));
   cond.wait_for(lock, 10s);
   ASSERT_EQ(id, 2);
   cond.wait_for(lock, 10s);
@@ -474,7 +474,7 @@ TEST(thread_pool_test, test_stop_long_ruuning_run_skip_pending_mt) {
     ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)), pool.stats());
 
     for (size_t i = 0; i < 100; ++i) {
-      ASSERT_TRUE(pool.run([&count]() { ++count; }, 10ms));
+      ASSERT_TRUE(pool.run([&count]() { ++count; }, absl::Milliseconds(10)));
     }
 
     ASSERT_EQ(1, pool.tasks_active());
@@ -525,10 +525,10 @@ TEST(thread_pool_test, test_stop_run_pending_mt) {
   };
   std::unique_lock<std::mutex> lock(mutex);
 
-  ASSERT_TRUE(pool.run(std::move(task1), 0ms));
-  ASSERT_TRUE(pool.run(std::move(task2), 0ms));
-  ASSERT_TRUE(pool.run(std::move(task3), 30ms));
-  ASSERT_TRUE(pool.run(std::move(task4), 500ms));
+  ASSERT_TRUE(pool.run(std::move(task1)));
+  ASSERT_TRUE(pool.run(std::move(task2)));
+  ASSERT_TRUE(pool.run(std::move(task3), absl::Milliseconds(30)));
+  ASSERT_TRUE(pool.run(std::move(task4), absl::Milliseconds(500)));
   {
     const auto end =
       std::chrono::steady_clock::now() + 10s;  // assume 10s is more than enough
@@ -587,7 +587,7 @@ TEST(thread_pool_test, test_stop_with_pending_task_mt) {
   };
   {
     std::unique_lock<std::mutex> lock(mutex);
-    ASSERT_TRUE(pool.run(std::move(task1), 0ms));
+    ASSERT_TRUE(pool.run(std::move(task1)));
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -619,8 +619,8 @@ TEST(thread_pool_test, test_stop_with_pending_task_mt) {
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)), pool.stats());
   {
     std::unique_lock<std::mutex> lock(mutex);
-    ASSERT_TRUE(pool.run(std::move(task2), 500ms));
-    ASSERT_TRUE(pool.run(std::move(task3), 5000ms));
+    ASSERT_TRUE(pool.run(std::move(task2), absl::Milliseconds(500)));
+    ASSERT_TRUE(pool.run(std::move(task3), absl::Milliseconds(5000)));
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -659,7 +659,7 @@ TEST(thread_pool_test, test_abort_with_pending_task_mt) {
   };
   {
     std::unique_lock<std::mutex> lock(mutex);
-    ASSERT_TRUE(pool.run(std::move(task1), 0ms));
+    ASSERT_TRUE(pool.run(std::move(task1)));
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -691,8 +691,8 @@ TEST(thread_pool_test, test_abort_with_pending_task_mt) {
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)), pool.stats());
   {
     std::unique_lock<std::mutex> lock(mutex);
-    ASSERT_TRUE(pool.run(std::move(task2), 500ms));
-    ASSERT_TRUE(pool.run(std::move(task3), 5000ms));
+    ASSERT_TRUE(pool.run(std::move(task2), absl::Milliseconds(500)));
+    ASSERT_TRUE(pool.run(std::move(task3), absl::Milliseconds(5000)));
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough

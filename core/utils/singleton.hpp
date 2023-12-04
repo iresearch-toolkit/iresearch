@@ -22,12 +22,6 @@
 
 #pragma once
 
-// internal iResearch functionality not to be exported outside main library
-// (so/dll)
-#ifdef IRESEARCH_DLL_PLUGIN
-static_assert(false, "Singleton should not be visible in plugins")
-#else
-
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
@@ -46,5 +40,3 @@ class singleton : util::noncopyable {
 };
 
 }  // namespace irs
-
-#endif  // #ifdef IRESEARCH_DLL_PLUGIN

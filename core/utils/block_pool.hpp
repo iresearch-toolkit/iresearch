@@ -1048,7 +1048,10 @@ class block_pool {
     return block_type::SIZE * block_count();
   }
 
-  size_t size() const noexcept { return sizeof(value_type) * value_count(); }
+  size_t ByteCapacity() const noexcept {
+    return value_count() +
+           blocks_.capacity() * sizeof(typename blocks_t::value_type);
+  }
 
   iterator write(iterator where, value_type b) {
     if (where.eof()) {
@@ -1111,9 +1114,10 @@ class block_pool {
     return where;
   }
 
-  void clear() noexcept {
+  void Reset() noexcept {
     free();
     blocks_.clear();
+    blocks_.shrink_to_fit();
   }
 
   const_reference at(size_t offset) const noexcept {

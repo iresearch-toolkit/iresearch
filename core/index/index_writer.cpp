@@ -363,7 +363,7 @@ size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
     // FIXME(gnusi): We can avoid calling `length` in case if size of
     // the previous mask file would be known.
     auto get_file_size = [&dir](std::string_view file) -> uint64_t {
-      uint64_t size;
+      uint64_t size = 0;
       if (!dir.length(size, file)) {
         throw io_error{
           absl::StrCat("Failed to get length of the file '", file, "'")};
@@ -395,7 +395,7 @@ struct CandidateMapping {
 
 // mapping: name -> { new segment, old segment }
 using CandidatesMapping =
-  absl::flat_hash_map<std::string_view, CandidateMapping>;
+  absl::flat_hash_map<SegmentInfo::Id, CandidateMapping>;
 
 struct MapCandidatesResult {
   // Number of mapped candidates.
@@ -410,9 +410,10 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
                                   ConsolidationView candidates,
                                   const auto& index) {
   size_t num_candidates = 0;
+  candidates_mapping.reserve(candidates.size());
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
-      candidate->Meta().name,
+      candidate->Meta().id,
       CandidateMapping{.old = {candidate, num_candidates++}});
   }
 
@@ -422,7 +423,7 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
 
   for (const auto& segment : index) {
     const auto& meta = segment.Meta();
-    const auto it = candidates_mapping.find(meta.name);
+    const auto it = candidates_mapping.find(meta.id);
 
     if (candidate_not_found == it) {
       // not a candidate
@@ -484,11 +485,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
       if (!merged_itr->next()) {
         if (current_itr->next()) {
           IRS_LOG_WARN(absl::StrCat(
-            "Failed to map removals for consolidated segment '", old_meta.name,
-            "' version '", old_meta.version, "' from current segment '",
-            new_meta.name, "' version '", new_meta.version,
-            "', current segment has doc_id '", current_itr->value(),
-            "' not present in the consolidated segment"));
+            "Failed to map removals for consolidated segment ", old_meta.id,
+            " version ", old_meta.version, " from current segment ",
+            new_meta.id, " version ", new_meta.version,
+            ", current segment has doc_id ", current_itr->value(),
+            " not present in the consolidated segment"));
 
           return false;  // current reader has unmerged docs
         }
@@ -517,12 +518,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
 
           if (!merged_itr->next()) {
             IRS_LOG_WARN(absl::StrCat(
-              "Failed to map removals for consolidated segment '",
-              old_meta.name, "' version '", old_meta.version,
-              "' from current segment '", new_meta.name, "' version '",
-              new_meta.version, "', current segment has doc_id '",
-              current_itr->value(),
-              "' not present in the consolidated segment"));
+              "Failed to map removals for consolidated segment ", old_meta.id,
+              " version ", old_meta.version, " from current segment ",
+              new_meta.id, " version ", new_meta.version,
+              ", current segment has doc_id ", current_itr->value(),
+              " not present in the consolidated segment"));
 
             return false;  // current reader has unmerged docs
           }
@@ -530,11 +530,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
 
         if (merged_itr->value() > current_itr->value()) {
           IRS_LOG_WARN(absl::StrCat(
-            "Failed to map removals for consolidated segment '", old_meta.name,
-            "' version '", old_meta.version, "' from current segment '",
-            new_meta.name, "' version '", new_meta.version,
-            "', current segment has doc_id '", current_itr->value(),
-            "' not present in the consolidated segment"));
+            "Failed to map removals for consolidated segment ", old_meta.id,
+            " version ", old_meta.version, " from current segment ",
+            new_meta.id, " version ", new_meta.version,
+            ", current segment has doc_id ", current_itr->value(),
+            " not present in the consolidated segment"));
 
           return false;  // current reader has unmerged docs
         }
@@ -543,12 +543,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
         if (!merged_itr->next()) {
           if (current_itr->next()) {
             IRS_LOG_WARN(absl::StrCat(
-              "Failed to map removals for consolidated segment '",
-              old_meta.name, "' version '", old_meta.version,
-              "' from current segment '", new_meta.name, "' version '",
-              new_meta.version, "', current segment has doc_id '",
-              current_itr->value(),
-              "' not present in the consolidated segment"));
+              "Failed to map removals for consolidated segment ", old_meta.id,
+              " version ", old_meta.version, " from current segment ",
+              new_meta.id, " version ", new_meta.version,
+              ", current segment has doc_id ", current_itr->value(),
+              " not present in the consolidated segment"));
 
             return false;  // current reader has unmerged docs
           }
@@ -584,8 +583,8 @@ std::string ToString(ConsolidationView consolidation) {
   for (const auto* segment : consolidation) {
     auto& meta = segment->Meta();
 
-    absl::StrAppend(&str, "Name='", meta.name,
-                    "', docs_count=", meta.docs_count,
+    absl::StrAppend(&str, "Id=", meta.id, ", version=", meta.version,
+                    ", docs_count=", meta.docs_count,
                     ", live_docs_count=", meta.live_docs_count,
                     ", size=", meta.byte_size, "\n");
 
@@ -648,50 +647,25 @@ std::vector<std::string_view> GetFilesToSync(
   return files_to_sync;
 }
 
+uint64_t LimitTick(uint64_t tick, uint64_t def) noexcept {
+  return tick != writer_limits::kMaxTick ? tick : def;
+}
+
 }  // namespace
 
-using namespace std::chrono_literals;
-
-IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
-  std::shared_ptr<SegmentContext> segment, std::atomic_size_t& segments_active,
-  FlushContext* flush, size_t pending_segment_offset) noexcept
-  : segment_{std::move(segment)},
-    segments_active_{&segments_active},
-    flush_{flush},
-    pending_segment_offset_{pending_segment_offset} {
-  IRS_ASSERT(segment_ != nullptr);
-}
-
-IndexWriter::ActiveSegmentContext::~ActiveSegmentContext() {
-  if (segments_active_ == nullptr) {
-    IRS_ASSERT(segment_ == nullptr);
-    IRS_ASSERT(flush_ == nullptr);
+void IndexWriter::ActiveSegmentContext::Destroy() noexcept {
+  if (segment_ == nullptr) {
     return;
   }
-  segment_.reset();
-  segments_active_->fetch_sub(1, std::memory_order_relaxed);
-  if (flush_ != nullptr) {
-    flush_->pending_.Done();
+  IRS_ASSERT(writer_);
+  if (flush_) {
+    flush_->pending_.Release(*segment_);
+  } else {
+    writer_->created_.Release(*segment_);
   }
-}
-
-IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
-  ActiveSegmentContext&& other) noexcept
-  : segment_{std::move(other.segment_)},
-    segments_active_{std::exchange(other.segments_active_, nullptr)},
-    flush_{std::exchange(other.flush_, nullptr)},
-    pending_segment_offset_{std::exchange(other.pending_segment_offset_,
-                                          writer_limits::kInvalidOffset)} {}
-
-IndexWriter::ActiveSegmentContext& IndexWriter::ActiveSegmentContext::operator=(
-  ActiveSegmentContext&& other) noexcept {
-  if (this != &other) {
-    std::swap(segment_, other.segment_);
-    std::swap(segments_active_, other.segments_active_);
-    std::swap(flush_, other.flush_);
-    std::swap(pending_segment_offset_, other.pending_segment_offset_);
-  }
-  return *this;
+  segment_ = nullptr;
+  flush_ = nullptr;
+  writer_->active_.fetch_sub(1, std::memory_order_relaxed);
 }
 
 IndexWriter::Document::Document(SegmentContext& segment,
@@ -700,8 +674,6 @@ IndexWriter::Document::Document(SegmentContext& segment,
   : writer_{*segment.writer_}, query_{query} {
   IRS_ASSERT(segment.writer_ != nullptr);
   writer_.begin(doc);  // ensure Reset() will be noexcept
-  segment.buffered_docs_.store(writer_.buffered_docs(),
-                               std::memory_order_relaxed);
 }
 
 IndexWriter::Document::~Document() noexcept {
@@ -718,55 +690,67 @@ IndexWriter::Document::~Document() noexcept {
 
 void IndexWriter::Transaction::Reset() noexcept {
   // TODO(MBkkt) rename Reset() to Rollback()
-  if (auto* segment = active_.Segment(); segment != nullptr) {
-    segment->Rollback();
+  if (segment_ != nullptr) {
+    segment_->Rollback();
   }
 }
 
 void IndexWriter::Transaction::RegisterFlush() {
-  if (active_.Segment() != nullptr && active_.Flush() == nullptr) {
-    writer_->GetFlushContext()->AddToPending(active_);
+  if (segment_ != nullptr && flush_ == nullptr) {
+    auto ctx = writer_->GetFlushContext();
+    ctx->pending_.Add();
+    flush_ = ctx.get();
   }
 }
 
-bool IndexWriter::Transaction::CommitImpl(uint64_t last_tick) noexcept try {
-  auto* segment = active_.Segment();
-  IRS_ASSERT(segment != nullptr);
-  segment->Commit(queries_, last_tick);
-  writer_->GetFlushContext()->Emplace(std::move(active_));
-  IRS_ASSERT(active_.Segment() == nullptr);
-  return true;
-} catch (...) {
-  IRS_ASSERT(active_.Segment() != nullptr);
-  // TODO(MBkkt) Use intrusive list to avoid possibility bad_alloc here
-  Abort();
-  return false;
+void IndexWriter::Transaction::CommitImpl(uint64_t last_tick) noexcept {
+  IRS_ASSERT(segment_ != nullptr);
+  segment_->Commit(Queries(), last_tick);
+  RegisterFlush();  // It's suboptimal for case when RegisterFlush not used
+  Destroy();
 }
 
 void IndexWriter::Transaction::Abort() noexcept {
-  auto* segment = active_.Segment();
-  if (segment == nullptr) {
-    return;  // nothing to do
+  if (flush_ != nullptr) {
+    IRS_ASSERT(segment_ != nullptr);
+    segment_->Rollback();
   }
-  if (active_.Flush() == nullptr) {
-    segment->Reset();  // reset before returning to pool
-    active_ = {};      // back to pool no needed Rollback
+  Destroy();
+}
+
+void IndexWriter::Transaction::LazyInit() try {
+  IRS_ASSERT(segment_ == nullptr);
+  while (writer_->active_.fetch_add(1, std::memory_order_relaxed) >=
+         writer_->segment_limits_.Count()) {
+    writer_->active_.fetch_sub(1, std::memory_order_relaxed);
+  }
+  if (auto flush = writer_->GetFlushContext();
+      (segment_ = flush->pending_.Acquire())) {
+    flush_ = flush.get();
     return;
   }
-  segment->Rollback();
-  // cannot throw because active_.Flush() not null
-  writer_->GetFlushContext()->Emplace(std::move(active_));
-  IRS_ASSERT(active_.Segment() == nullptr);
+  if ((segment_ = writer_->created_.Acquire())) {
+    return;
+  }
+  segment_ = new SegmentContext{writer_->dir_,
+                                [this] {
+                                  SegmentMeta meta{.codec = writer_->codec_};
+                                  meta.id = writer_->NextSegmentId();
+                                  meta.name = file_name(meta.id);
+                                  return meta;
+                                },
+                                writer_->GetSegmentWriterOptions(false)};
+} catch (...) {
+  writer_->active_.fetch_sub(1, std::memory_order_relaxed);
 }
 
 void IndexWriter::Transaction::UpdateSegment(bool disable_flush) {
   IRS_ASSERT(Valid());
-  while (active_.Segment() == nullptr) {  // lazy init
-    active_ = writer_->GetSegmentContext();
+  if (IRS_UNLIKELY(segment_ == nullptr)) {
+    LazyInit();
   }
 
-  auto& segment = *active_.Segment();
-  auto& writer = *segment.writer_;
+  auto& writer = *segment_->writer_;
 
   if (IRS_LIKELY(writer.initialized())) {
     if (disable_flush || !writer_->FlushRequired(writer)) {
@@ -776,84 +760,34 @@ void IndexWriter::Transaction::UpdateSegment(bool disable_flush) {
     IRS_LOG_TRACE(absl::StrCat(
       "Flushing segment '", writer.name(), "', docs=", writer.buffered_docs(),
       ", memory=", writer.memory_active(),
-      ", docs limit=", writer_->segment_limits_.segment_docs_max.load(),
-      ", memory limit=", writer_->segment_limits_.segment_memory_max.load()));
+      ", docs limit=", writer_->segment_limits_.Docs(),
+      ", memory limit=", writer_->segment_limits_.Memory()));
 
     try {
-      segment.Flush();
+      segment_->Flush();
     } catch (...) {
-      IRS_LOG_ERROR(absl::StrCat("while flushing segment '",
-                                 segment.writer_meta_.meta.name,
-                                 "', error: failed to flush segment"));
       // TODO(MBkkt) What the goal are we want to achieve
       //  with keeping already flushed data?
-      segment.Reset(true);
+      segment_->Reset(true);
+      IRS_LOG_ERROR(absl::StrCat("while flushing segment '",
+                                 segment_->writer_meta_.meta.name,
+                                 "', error: failed to flush segment"));
       throw;
     }
   }
-  segment.Prepare();
+  segment_->Prepare();
 }
 
 bool IndexWriter::FlushRequired(const segment_writer& segment) const noexcept {
-  const auto& limits = segment_limits_;
-  const auto docs_max = limits.segment_docs_max.load();
-  const auto memory_max = limits.segment_memory_max.load();
-
-  const auto docs = segment.buffered_docs();
-  const auto memory = segment.memory_active();
-
-  return memory_max <= memory || docs_max <= docs;
-}
-
-void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& active) {
-  IRS_ASSERT(active.segment_ != nullptr);
-
-  if (active.segment_->first_tick_ == writer_limits::kMaxTick) {
-    // Reset all segment data because there wasn't successful transactions
-    active.segment_->Reset();
-    active = {};  // release
-    return;
-  }
-
-  auto* flush = active.flush_;
-  const bool is_null = flush == nullptr;
-  if (!is_null && flush != this) {
-    active = {};  // release
-    return;
-  }
-
-  std::lock_guard lock{pending_.Mutex()};
-  auto* node = [&] {
-    if (is_null) {
-      return &pending_segments_.emplace_back(std::move(active.segment_),
-                                             pending_segments_.size());
-    }
-    IRS_ASSERT(active.pending_segment_offset_ < pending_segments_.size());
-    auto& segment_context = pending_segments_[active.pending_segment_offset_];
-    IRS_ASSERT(segment_context.segment_ == active.segment_);
-    return &segment_context;
-  }();
-  pending_freelist_.push(*node);
-  active = {};
-}
-
-void IndexWriter::FlushContext::AddToPending(ActiveSegmentContext& active) {
-  std::lock_guard lock{pending_.Mutex()};
-  const auto size_before = pending_segments_.size();
-  IRS_ASSERT(active.segment_ != nullptr);
-  pending_segments_.emplace_back(active.segment_, size_before);
-  active.flush_ = this;
-  active.pending_segment_offset_ = size_before;
-  pending_.Add();
+  return segment_limits_.Memory() <= segment.memory_active() ||
+         segment_limits_.Docs() <= segment.buffered_docs();
 }
 
 void IndexWriter::FlushContext::Reset() noexcept {
-  // reset before returning to pool
-  for (auto& segment : segments_) {
-    // use_count here isn't used for synchronization
-    if (segment.use_count() == 1) {
-      segment->Reset();
-    }
+  while (auto* node = pending_.segments.pop()) {
+    IRS_ASSERT(writer_ != nullptr);
+    auto& segment = static_cast<SegmentContext&>(*node);
+    writer_->created_.Release(segment);
   }
 
   imports_.clear();
@@ -861,12 +795,6 @@ void IndexWriter::FlushContext::Reset() noexcept {
   segments_.clear();
   segment_mask_.clear();
 
-  for (auto& entry : pending_segments_) {
-    if (auto& segment = entry.segment_; segment != nullptr) {
-      segment->Reset();
-    }
-  }
-  ClearPending();
   dir_->clear_refs();
 }
 
@@ -874,82 +802,54 @@ void IndexWriter::Cleanup(FlushContext& curr, FlushContext* next) noexcept {
   for (auto& import : curr.imports_) {
     auto& candidates = import.consolidation_ctx.candidates;
     for (const auto* candidate : candidates) {
-      consolidating_segments_.erase(candidate->Meta().name);
+      consolidating_.segments.erase(candidate->Meta().id);
     }
   }
   for (const auto& entry : curr.cached_) {
-    consolidating_segments_.erase(entry.second->Meta().name);
+    consolidating_.segments.erase(entry.second->Meta().id);
   }
   if (next != nullptr) {
     for (const auto& entry : next->cached_) {
-      consolidating_segments_.erase(entry.second->Meta().name);
+      consolidating_.segments.erase(entry.second->Meta().id);
     }
   }
 }
 
-uint64_t IndexWriter::FlushContext::FlushPending(uint64_t committed_tick,
-                                                 uint64_t tick) {
-  // if tick is not equal uint64_max, as result of bad_alloc it's possible here
-  // that not all segments which should be committed by next FlushContext
-  // (fully or partially) will be moved to it.
-  // I consider it's ok, because in such situation you rely on tick,
-  // but you cannot assume anything about your IndexWriter::Transaction between
-  // last successfully committed tick and state before you understand that
-  // IndexWriter::Commit(tick) is failed in multi-threaded environment.
-  // Some Transactions after tick is initially in current FlushContext.
-  // Some Transactions after tick is initially in next FlushContext.
-  // From outside view you cannot distinct them!
-  // So even if I will make this moving deterministic it's not helpful at all.
-  // Also on practice such situation is almost impossible.
-  // Probably in future we can implement some out of sync logic for IndexWriter.
-  // But now it's unnecessary for our usage.
-
+void IndexWriter::FlushContext::MovePending(uint64_t committed_tick,
+                                            uint64_t tick) noexcept {
   IRS_ASSERT(next_ != nullptr);
   auto& next_segments = next_->segments_;
   IRS_ASSERT(next_segments.empty());
-  size_t to_next_pending_segments = 0;
-  uint64_t flushed_tick = committed_tick;
-  for (auto& entry : pending_segments_) {
-    auto& segment = entry.segment_;
-    IRS_ASSERT(segment != nullptr);
-    const auto first_tick = segment->first_tick_;
-    const auto last_tick = segment->last_tick_;
-    if (first_tick <= tick) {
-      // This assert is really paranoid, it's not required just try to detect
-      // situation when we commit on tick but forgot to call RegisterFlush().
-      // This assert can work only if any transaction which committed after last
-      // Commit will has greater first tick than committed tick.
-      IRS_ASSERT(committed_tick < first_tick);
-      flushed_tick = std::max(flushed_tick, last_tick);
-      segment->Flush();
-      if (tick < last_tick) {
-        next_segments.push_back(segment);
-      }
-      segments_.push_back(std::move(segment));
+
+  Freelist new_pending;
+  MoveTo(new_pending);
+
+  // We can make reserve here for vectors, but I think it's unnecessary
+  // So it's noexcept
+
+  while (auto* node = pending_.segments.pop()) {
+    auto& segment = static_cast<SegmentContext&>(*node);
+    const auto first_tick = segment.first_tick_;
+    const auto last_tick = segment.last_tick_;
+    IRS_ASSERT(first_tick <= last_tick);
+    // This assert is really paranoid, it's not required just try to detect
+    // situation when we commit on tick but forgot to call RegisterFlush().
+    // This assert can work only if any transaction which committed after last
+    // Commit will has greater first tick than committed tick.
+    IRS_ASSERT(committed_tick < first_tick);
+    if (tick < first_tick) {
+      next_->pending_.segments.push(segment);
     } else {
-      ++to_next_pending_segments;
-    }
-  }
-
-  if (to_next_pending_segments != 0) {
-    std::lock_guard lock{next_->pending_.Mutex()};
-    for (auto& entry : pending_segments_) {
-      if (auto& segment = entry.segment_; segment != nullptr) {
-        IRS_ASSERT(tick < segment->first_tick_);
-        auto& node = next_->pending_segments_.emplace_back(
-          std::move(segment), next_->pending_segments_.size());
-        next_->pending_freelist_.push(node);
+      if (tick < last_tick) {
+        next_segments.push_back(&segment);
+      } else {
+        new_pending.push(segment);
       }
+      segments_.push_back(&segment);
     }
   }
 
-#ifdef IRESEARCH_DEBUG
-  for (auto& entry : pending_segments_) {
-    IRS_ASSERT(entry.segment_ == nullptr);
-  }
-#endif
-  ClearPending();
-  return flushed_tick;
+  pending_.segments = std::move(new_pending);
 }
 
 IndexWriter::SegmentContext::SegmentContext(
@@ -1000,13 +900,6 @@ void IndexWriter::SegmentContext::Flush() {
   committed_flushed_docs_ += committed_buffered_docs_;
 }
 
-IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
-  directory& dir, segment_meta_generator_t&& meta_generator,
-  const SegmentWriterOptions& segment_writer_options) {
-  return std::make_unique<SegmentContext>(dir, std::move(meta_generator),
-                                          segment_writer_options);
-}
-
 void IndexWriter::SegmentContext::Prepare() {
   IRS_ASSERT(!writer_->initialized());
   writer_meta_.filename.clear();
@@ -1015,8 +908,6 @@ void IndexWriter::SegmentContext::Prepare() {
 }
 
 void IndexWriter::SegmentContext::Reset(bool store_flushed) noexcept {
-  buffered_docs_.store(0, std::memory_order_relaxed);
-
   if (IRS_UNLIKELY(store_flushed)) {
     queries_.resize(flushed_queries_);
     committed_queries_ = std::min(committed_queries_, flushed_queries_);
@@ -1104,7 +995,8 @@ void IndexWriter::SegmentContext::Rollback() noexcept {
   committed_buffered_docs_ = buffered_docs;
 }
 
-void IndexWriter::SegmentContext::Commit(uint64_t queries, uint64_t last_tick) {
+void IndexWriter::SegmentContext::Commit(uint64_t queries,
+                                         uint64_t last_tick) noexcept {
   IRS_ASSERT(last_tick < writer_limits::kMaxTick);
   IRS_ASSERT(queries <= last_tick);
   const auto first_tick = last_tick - queries;
@@ -1135,8 +1027,8 @@ void IndexWriter::SegmentContext::Commit(uint64_t queries, uint64_t last_tick) {
 IndexWriter::IndexWriter(
   ConstructToken, index_lock::ptr&& lock,
   index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
-  size_t segment_pool_size, const SegmentOptions& segment_limits,
-  const Comparer* comparator, const ColumnInfoProvider& column_info,
+  const SegmentOptions& segment_limits, const Comparer* comparator,
+  const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
   std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
@@ -1149,7 +1041,6 @@ IndexWriter::IndexWriter(
     dir_{dir},
     committed_reader_{std::move(committed_reader)},
     segment_limits_{segment_limits},
-    segment_writer_pool_{segment_pool_size},
     seg_counter_{committed_reader_->Meta().index_meta.seg_counter},
     last_gen_{committed_reader_->Meta().index_meta.gen},
     writer_{codec_->get_index_meta_writer()},
@@ -1165,16 +1056,18 @@ IndexWriter::IndexWriter(
     scorer->get_features(wand_features_);
   }
 
-  flush_context_.store(flush_context_pool_.data());
+  flush_context_.store(flush_contexts_.data());
 
   // setup round-robin chain
-  auto* ctx = flush_context_pool_.data();
-  for (auto* last = ctx + flush_context_pool_.size() - 1; ctx != last; ++ctx) {
+  auto* ctx = flush_contexts_.data();
+  for (auto* last = ctx + flush_contexts_.size() - 1; ctx != last; ++ctx) {
+    ctx->writer_ = this;
     ctx->dir_ = std::make_unique<RefTrackingDirectory>(dir);
     ctx->next_ = ctx + 1;
   }
+  ctx->writer_ = this;
   ctx->dir_ = std::make_unique<RefTrackingDirectory>(dir);
-  ctx->next_ = flush_context_pool_.data();
+  ctx->next_ = flush_contexts_.data();
 }
 
 void IndexWriter::InitMeta(IndexMeta& meta, uint64_t tick) const {
@@ -1190,6 +1083,7 @@ void IndexWriter::InitMeta(IndexMeta& meta, uint64_t tick) const {
 }
 
 void IndexWriter::Clear(uint64_t tick) {
+  commit_lock_.ForgetDeadlockInfo();
   std::lock_guard commit_lock{commit_lock_};
 
   IRS_ASSERT(committed_reader_);
@@ -1205,14 +1099,15 @@ void IndexWriter::Clear(uint64_t tick) {
   to_commit.ctx = SwitchFlushContext();
   // Ensure there are no active struct update operations
   to_commit.ctx->pending_.Wait();
+  to_commit.ctx->MoveTo(to_commit.ctx->pending_.segments);
 
   Abort();  // iff Clear called between Begin and Commit
   ApplyFlush(std::move(to_commit));
   Finish();
 
   // Clear consolidating segments
-  std::lock_guard lock{consolidation_lock_};
-  consolidating_segments_.clear();
+  std::lock_guard lock{consolidating_.lock};
+  consolidating_.segments.clear();
 }
 
 IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
@@ -1287,8 +1182,7 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
 
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
-    std::move(codec), options.segment_pool_size, SegmentOptions{options},
-    options.comparator,
+    std::move(codec), SegmentOptions{options}, options.comparator,
     options.column_info ? options.column_info : kDefaultColumnInfo,
     options.features ? options.features : kDefaultFeatureInfo,
     options.meta_payload_provider, std::move(reader),
@@ -1300,40 +1194,15 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
   return writer;
 }
 
-IndexWriter::~IndexWriter() noexcept {
-  // Failure may indicate a dangling 'document' instance
-  IRS_ASSERT(!segments_active_.load());
-  write_lock_.reset();  // Reset write lock if any
-  // Reset pending state (if any) before destroying flush contexts
-  pending_state_.Reset(*this);
-  flush_context_.store(nullptr);
-  // Ensure all tracked segment_contexts are released before
-  // segment_writer_pool_ is deallocated
-  flush_context_pool_.clear();
-}
-
 uint64_t IndexWriter::BufferedDocs() const {
-  uint64_t docs_in_ram = 0;
-  auto ctx = GetFlushContext();
-  // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_'
-  // may be modified
-  std::lock_guard lock{ctx->pending_.Mutex()};
-
-  for (const auto& entry : ctx->pending_segments_) {
-    IRS_ASSERT(entry.segment_ != nullptr);
-    // reading segment_writer::docs_count() is not thread safe
-    docs_in_ram +=
-      entry.segment_->buffered_docs_.load(std::memory_order_relaxed);
-  }
-
-  return docs_in_ram;
+  return buffered_docs_.load(std::memory_order_relaxed);
 }
 
-uint64_t IndexWriter::NextSegmentId() noexcept {
+SegmentInfo::Id IndexWriter::NextSegmentId() noexcept {
   return seg_counter_.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
-uint64_t IndexWriter::CurrentSegmentId() const noexcept {
+SegmentInfo::Id IndexWriter::CurrentSegmentId() const noexcept {
   return seg_counter_.load(std::memory_order_relaxed);
 }
 
@@ -1352,7 +1221,7 @@ ConsolidationResult IndexWriter::Consolidate(
   decltype(committed_reader_) committed_reader;
   // collect a list of consolidation candidates
   {
-    std::lock_guard lock{consolidation_lock_};
+    std::lock_guard lock{consolidating_.lock};
     // hold a reference to the last committed state to prevent files from being
     // deleted by a cleaner during the upcoming consolidation
     // use atomic_load(...) since Finish() may modify the pointer
@@ -1366,7 +1235,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
     // FIXME TODO remove from 'consolidating_segments_' any segments in
     // 'committed_state_' or 'pending_state_' to avoid data duplication
-    policy(candidates, *committed_reader, consolidating_segments_);
+    policy(candidates, *committed_reader, consolidating_.segments);
 
     switch (candidates.size()) {
       case 0:  // nothing to consolidate
@@ -1384,16 +1253,16 @@ ConsolidationResult IndexWriter::Consolidate(
     for (const auto* candidate : candidates) {
       IRS_ASSERT(candidate != nullptr);
       // TODO(MBkkt) Make this check assert in future
-      if (consolidating_segments_.contains(candidate->Meta().name)) {
+      if (consolidating_.segments.contains(candidate->Meta().id)) {
         return {0, ConsolidationError::FAIL};
       }
     }
 
     // register for consolidation
-    consolidating_segments_.reserve(consolidating_segments_.size() +
+    consolidating_.segments.reserve(consolidating_.segments.size() +
                                     candidates.size());
     for (const auto* candidate : candidates) {
-      consolidating_segments_.emplace(candidate->Meta().name);
+      consolidating_.segments.emplace(candidate->Meta().id);
     }
   }
 
@@ -1402,9 +1271,9 @@ ConsolidationResult IndexWriter::Consolidate(
     if (candidates.empty()) {
       return;
     }
-    std::lock_guard lock{consolidation_lock_};
+    std::lock_guard lock{consolidating_.lock};
     for (const auto* candidate : candidates) {
-      consolidating_segments_.erase(candidate->Meta().name);
+      consolidating_.segments.erase(candidate->Meta().id);
     }
   };
 
@@ -1430,11 +1299,9 @@ ConsolidationResult IndexWriter::Consolidate(
 
   ConsolidationResult result{candidates.size(), ConsolidationError::FAIL};
 
-  IndexSegment consolidation_segment;
-  consolidation_segment.meta.codec = codec;  // Should use new codec
-  consolidation_segment.meta.version = 0;    // Reset version for new segment
-  // Increment active meta
-  consolidation_segment.meta.name = file_name(NextSegmentId());
+  IndexSegment consolidation_segment{.meta = {.codec = codec}};
+  consolidation_segment.meta.id = NextSegmentId();
+  consolidation_segment.meta.name = file_name(consolidation_segment.meta.id);
 
   RefTrackingDirectory dir{dir_};  // Track references for new segment
 
@@ -1456,196 +1323,120 @@ ConsolidationResult IndexWriter::Consolidate(
                    consolidation_segment.meta.name, "'")};
   }
 
-  // Commit merge
-  {
-    // ensure committed_state_ segments are not modified by concurrent
-    // consolidate()/commit()
-    std::unique_lock lock{commit_lock_};
-    const auto current_committed_reader = committed_reader_;
-    IRS_ASSERT(current_committed_reader != nullptr);
-    if (pending_state_.Valid()) {
-      // check that we haven't added to reader cache already absent readers
-      // only if we have different index meta
-      if (committed_reader != current_committed_reader) {
-        auto begin = current_committed_reader->begin();
-        auto end = current_committed_reader->end();
-
-        // pointers are different so check by name
-        for (const auto* candidate : candidates) {
-          if (end == std::find_if(
-                       begin, end,
-                       [candidate = std::string_view{candidate->Meta().name}](
-                         const SubReader& s) {
-                         // FIXME(gnusi): compare pointers?
-                         return candidate == s.Meta().name;
-                       })) {
-            // not all candidates are valid
-            IRS_LOG_DEBUG(absl::StrCat(
-              "Failed to start consolidation for index generation '",
-              committed_reader->Meta().index_meta.gen, "', not found segment ",
-              candidate->Meta().name, " in committed state"));
-            return result;
-          }
+  // Commit merge, ensure no concurrent Commit/etc
+  commit_lock_.ForgetDeadlockInfo();
+  std::shared_lock lock{commit_lock_};
+  const auto current_committed_reader = committed_reader_;
+  IRS_ASSERT(current_committed_reader != nullptr);
+  const bool pending = pending_state_.Valid();
+  auto ctx = GetFlushContext();
+  lock.unlock();
+  // Guard against concurrent Commit/etc
+  if (pending) {
+    // after some transaction was started:
+    if (committed_reader != current_committed_reader) {
+      // If some segment already not in current reader
+      // and we're waiting commit -- abort
+      auto begin = current_committed_reader->begin();
+      auto end = current_committed_reader->end();
+      for (const auto* candidate : candidates) {
+        auto id = candidate->Meta().id;
+        if (end == std::find_if(begin, end, [id](const SubReader& s) {
+              // FIXME(gnusi): compare pointers?
+              return id == s.Meta().id;
+            })) {
+          IRS_LOG_DEBUG(absl::StrCat(
+            "Failed to start consolidation for index generation '",
+            committed_reader->Meta().index_meta.gen, "', not found segment ",
+            candidate->Meta().id, " in committed state"));
+          return result;
         }
       }
-
-      result.error = ConsolidationError::PENDING;
-
-      // transaction has been started, we're somewhere in the middle
-
-      // can modify ctx->segment_mask_ without
-      // lock since have commit_lock_
-      auto ctx = GetFlushContext();
-
-      // register consolidation for the next transaction
-      ctx->imports_.emplace_back(
-        std::move(consolidation_segment),
-        writer_limits::kMaxTick,      // skip removals, will accumulate
-                                      // removals from existing candidates
-        dir.GetRefs(),                // do not forget to track refs
-        std::move(candidates),        // consolidation context candidates
-        std::move(pending_reader),    // consolidated reader
-        std::move(committed_reader),  // consolidation context meta
-        std::move(merger));           // merge context
-
-      IRS_LOG_TRACE(absl::StrCat("Consolidation id='", run_id,
-                                 "' successfully finished: pending"));
-    } else if (committed_reader == current_committed_reader) {
-      // before new transaction was started:
-      // no commits happened in since consolidation was started
-
-      auto ctx = GetFlushContext();
-      // lock due to context modification
-      std::lock_guard ctx_lock{ctx->pending_.Mutex()};
-
-      // can release commit lock, we guarded against commit by
-      // locked flush context
-      lock.unlock();
-
-      auto& segment_mask = ctx->segment_mask_;
-
-      // persist segment meta
-      index_utils::FlushIndexSegment(dir, consolidation_segment);
-      segment_mask.reserve(segment_mask.size() + candidates.size());
-      const auto& pending_segment = ctx->imports_.emplace_back(
-        std::move(consolidation_segment),
-        writer_limits::kMinTick,      // removals must be applied to the
-                                      // consolidated segment
-        dir.GetRefs(),                // do not forget to track refs
-        std::move(candidates),        // consolidation context candidates
-        std::move(pending_reader),    // consolidated reader
-        std::move(committed_reader),  // consolidation context meta
-        *resource_manager_.consolidations);
-
-      // filter out merged segments for the next commit
-      const auto& consolidation_ctx = pending_segment.consolidation_ctx;
-      const auto& consolidation_meta = pending_segment.segment.meta;
-
-      // mask mapped candidates
-      // segments from the to-be added new segment
-      for (const auto* candidate : consolidation_ctx.candidates) {
-        segment_mask.emplace(candidate->Meta().name);
-      }
-
-      IRS_LOG_TRACE(
-        absl::StrCat("Consolidation id='", run_id,
-                     "' successfully finished: Name='", consolidation_meta.name,
-                     "', docs_count=", consolidation_meta.docs_count,
-                     ", live_docs_count=", consolidation_meta.live_docs_count,
-                     ", size=", consolidation_meta.byte_size));
-    } else {
-      // before new transaction was started:
-      // there was a commit(s) since consolidation was started,
-
-      auto ctx = GetFlushContext();
-      // lock due to context modification
-      std::lock_guard ctx_lock{ctx->pending_.Mutex()};
-
-      // can release commit lock, we guarded against commit by
-      // locked flush context
-      lock.unlock();
-
-      auto& segment_mask = ctx->segment_mask_;
-
-      CandidatesMapping mappings;
-      const auto [count, has_removals] =
-        MapCandidates(mappings, candidates, *current_committed_reader);
-
-      if (count != candidates.size()) {
-        // at least one candidate is missing can't finish consolidation
-        IRS_LOG_DEBUG(absl::StrCat(
-          "Failed to finish consolidation id='", run_id, "' for segment '",
-          consolidation_segment.meta.name, "', found only '", count,
-          "' out of '", candidates.size(), "' candidates"));
+    }
+    auto refs = dir.GetRefs();
+    // Prevent concurrent imports modification
+    std::lock_guard ctx_lock{ctx->pending_.Mutex()};
+    // register consolidation for the next transaction
+    ctx->imports_.emplace_back(
+      std::move(consolidation_segment), writer_limits::kMaxTick,
+      // skip removals, will accumulate removals from existing candidates
+      std::move(refs),              // do not forget to track refs
+      std::move(candidates),        // consolidation context candidates
+      std::move(pending_reader),    // consolidated reader
+      std::move(committed_reader),  // consolidation context meta
+      std::move(merger));
+    IRS_LOG_TRACE(absl::StrCat("Consolidation id='", run_id,
+                               "' successfully finished: pending"));
+    result.error = ConsolidationError::PENDING;
+    return result;
+  }
+  // before new transaction was started:
+  CandidatesMapping mappings;
+  if (committed_reader != current_committed_reader) {
+    // there was a Commit(s) since consolidation was started
+    const auto [count, has_removals] =
+      MapCandidates(mappings, candidates, *current_committed_reader);
+    if (count != candidates.size()) {
+      // at least one candidate is missing can't finish consolidation
+      IRS_LOG_DEBUG(absl::StrCat(
+        "Failed to finish consolidation id='", run_id, "' for segment '",
+        consolidation_segment.meta.name, "', found only '", count, "' out of '",
+        candidates.size(), "' candidates"));
+      return result;
+    }
+    // handle removals if something changed
+    if (has_removals) {
+      DocumentMask docs_mask{{*resource_manager_.readers}};
+      if (!MapRemovals(mappings, merger, docs_mask)) {
+        // consolidated segment has docs missing from
+        // current_committed_meta->segments()
+        IRS_LOG_DEBUG(absl::StrCat("Failed to finish consolidation id='",
+                                   run_id, "' for segment '",
+                                   consolidation_segment.meta.name,
+                                   "', due removed documents still present "
+                                   "the consolidation candidates"));
 
         return result;
       }
-
-      // handle removals if something changed
-      if (has_removals) {
-        DocumentMask docs_mask{{*resource_manager_.readers}};
-
-        if (!MapRemovals(mappings, merger, docs_mask)) {
-          // consolidated segment has docs missing from
-          // current_committed_meta->segments()
-          IRS_LOG_DEBUG(absl::StrCat("Failed to finish consolidation id='",
-                                     run_id, "' for segment '",
-                                     consolidation_segment.meta.name,
-                                     "', due removed documents still present "
-                                     "the consolidation candidates"));
-
-          return result;
-        }
-
-        if (!docs_mask.empty()) {
-          WriteDocumentMask(dir, consolidation_segment.meta, docs_mask, false);
-
-          // Reopen modified reader
-          pending_reader = pending_reader->ReopenDocsMask(
-            dir, consolidation_segment.meta, std::move(docs_mask));
-        }
+      if (!docs_mask.empty()) {
+        WriteDocumentMask(dir, consolidation_segment.meta, docs_mask, false);
+        // Reopen modified reader
+        pending_reader = pending_reader->ReopenDocsMask(
+          dir, consolidation_segment.meta, std::move(docs_mask));
       }
-
-      // persist segment meta
-      index_utils::FlushIndexSegment(dir, consolidation_segment);
-      segment_mask.reserve(segment_mask.size() + candidates.size());
-      const auto& pending_segment = ctx->imports_.emplace_back(
-        std::move(consolidation_segment),
-        writer_limits::kMinTick,      // removals must be applied to the
-                                      // consolidated segment
-        dir.GetRefs(),                // do not forget to track refs
-        std::move(candidates),        // consolidation context candidates
-        std::move(pending_reader),    // consolidated reader
-        std::move(committed_reader),  // consolidation context meta
-        *resource_manager_.consolidations);
-
-      // filter out merged segments for the next commit
-      const auto& consolidation_ctx = pending_segment.consolidation_ctx;
-      const auto& consolidation_meta = pending_segment.segment.meta;
-
-      // mask mapped candidates
-      // segments from the to-be added new segment
-      for (const auto* candidate : consolidation_ctx.candidates) {
-        segment_mask.emplace(candidate->Meta().name);
-      }
-
-      // mask mapped (matched) segments
-      // segments from the already finished commit
-      for (const auto& segment : *current_committed_reader) {
-        if (mappings.contains(segment.Meta().name)) {
-          segment_mask.emplace(segment.Meta().name);
-        }
-      }
-
-      IRS_LOG_TRACE(absl::StrCat(
-        "Consolidation id='", run_id, "' successfully finished:\nName='",
-        consolidation_meta.name,
-        "', docs_count=", consolidation_meta.docs_count,
-        ", live_docs_count=", consolidation_meta.live_docs_count,
-        ", size=", consolidation_meta.byte_size));
     }
   }
-
+  index_utils::FlushIndexSegment(dir, consolidation_segment);
+  auto refs = dir.GetRefs();
+  std::lock_guard ctx_lock{ctx->pending_.Mutex()};
+  auto& segment_mask = ctx->segment_mask_;
+  segment_mask.reserve(segment_mask.size() + mappings.size() +
+                       candidates.size());
+  const auto& pending_segment = ctx->imports_.emplace_back(
+    std::move(consolidation_segment), writer_limits::kMinTick,
+    // removals must be applied to the consolidated segment
+    std::move(refs),              // do not forget to track refs
+    std::move(candidates),        // consolidation context candidates
+    std::move(pending_reader),    // consolidated reader
+    std::move(committed_reader),  // consolidation context meta
+    *resource_manager_.consolidations);
+  // noexcept part: mask consolidated segments
+  for (const auto* candidate : pending_segment.consolidation_ctx.candidates) {
+    segment_mask.emplace(candidate->Meta().id);
+  }
+  if (!mappings.empty()) {
+    for (const auto& segment : *current_committed_reader) {
+      if (mappings.contains(segment.Meta().id)) {
+        segment_mask.emplace(segment.Meta().id);
+      }
+    }
+  }
+  IRS_LOG_TRACE(absl::StrCat(
+    "Consolidation id='", run_id, "' successfully finished: Name='",
+    pending_segment.segment.meta.name,
+    "', docs_count=", pending_segment.segment.meta.docs_count,
+    ", live_docs_count=", pending_segment.segment.meta.live_docs_count,
+    ", size=", pending_segment.segment.meta.byte_size));
   result.error = ConsolidationError::OK;
   return result;
 }
@@ -1670,9 +1461,9 @@ bool IndexWriter::Import(const IndexReader& reader,
 
   RefTrackingDirectory dir{dir_};  // Track references
 
-  IndexSegment segment;
-  segment.meta.name = file_name(NextSegmentId());
-  segment.meta.codec = codec;
+  IndexSegment segment{.meta = {.codec = codec}};
+  segment.meta.id = NextSegmentId();
+  segment.meta.name = file_name(segment.meta.id);
 
   MergeWriter merger{dir, GetSegmentWriterOptions(true)};
   merger.Reset(reader.begin(), reader.end());
@@ -1712,90 +1503,34 @@ bool IndexWriter::Import(const IndexReader& reader,
 IndexWriter::FlushContextPtr IndexWriter::GetFlushContext() const noexcept {
   auto* ctx = flush_context_.load(std::memory_order_relaxed);
   for (;;) {
-    std::shared_lock lock{ctx->context_mutex_, std::try_to_lock};
-    if (auto* new_ctx = flush_context_.load(std::memory_order_relaxed);
-        !lock || ctx != new_ctx) {
-      ctx = new_ctx;
-      continue;
+    const bool lock = ctx->lock_.try_lock_shared();
+    auto* curr = flush_context_.load(std::memory_order_relaxed);
+    if (IRS_LIKELY(lock && ctx == curr)) {
+      return {ctx,
+              [](FlushContext* ctx) noexcept { ctx->lock_.unlock_shared(); }};
     }
-    lock.release();
-    return {ctx, [](FlushContext* ctx) noexcept {
-              ctx->context_mutex_.unlock_shared();
-            }};
+    if (lock) {
+      ctx->lock_.unlock_shared();
+    }
+    ctx = curr;
   }
 }
 
 IndexWriter::FlushContextPtr IndexWriter::SwitchFlushContext() noexcept {
   auto* ctx = flush_context_.load(std::memory_order_relaxed);
   for (;;) {
-    std::unique_lock lock{ctx->context_mutex_};
-    if (!flush_context_.compare_exchange_strong(ctx, ctx->next_,
-                                                std::memory_order_relaxed)) {
-      continue;
+    ctx->lock_.lock();
+    auto* curr = flush_context_.load(std::memory_order_relaxed);
+    if (IRS_LIKELY(ctx == curr)) {
+      flush_context_.store(ctx->next_);
+      return {ctx, [](FlushContext* ctx) noexcept {
+                ctx->Reset();  // reset context and make ready for reuse
+                ctx->lock_.unlock();
+              }};
     }
-    lock.release();
-    return {ctx, [](FlushContext* ctx) noexcept {
-              ctx->Reset();  // reset context and make ready for reuse
-              ctx->context_mutex_.unlock();
-            }};
+    ctx->lock_.unlock();
+    ctx = curr;
   }
-}
-
-IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
-  // TODO(MBkkt) rewrite this when will be written parallel Commit
-  //  Few ideas about rewriting:
-  //  1. We should use all available memory
-  //  2. Flush should be async, waiting Flush only if we don't have other choice
-  //  3. segment_memory/count_max should be removed in their current state
-  // increment counter to acquire reservation,
-  // if another thread tries to reserve last context then it'll be over limit
-  const auto segments_active =
-    segments_active_.fetch_add(1, std::memory_order_relaxed) + 1;
-
-  // no free segment_context available and maximum number of segments reached
-  // must return to caller so as to unlock/relock flush_context before retrying
-  // to get a new segment so as to avoid a deadlock due to a read-write-read
-  // situation for FlushContext::context_mutex_ with threads trying to lock
-  // FlushContext::context_mutex_ to return their segment_context
-  if (const auto segment_count_max =
-        segment_limits_.segment_count_max.load(std::memory_order_relaxed);
-      segment_count_max < segments_active) {
-    segments_active_.fetch_sub(1, std::memory_order_relaxed);
-    return {};
-  }
-
-  {
-    auto flush = GetFlushContext();
-    auto* freelist_node = flush->pending_freelist_.pop();
-    if (freelist_node != nullptr) {
-      flush->pending_.Add();
-      return {static_cast<PendingSegmentContext*>(freelist_node)->segment_,
-              segments_active_, flush.get(), freelist_node->value};
-    }
-  }
-
-  const auto options = GetSegmentWriterOptions(false);
-
-  // should allocate a new segment_context from the pool
-  std::shared_ptr<SegmentContext> segment_ctx = segment_writer_pool_.emplace(
-    dir_,
-    [this] {
-      SegmentMeta meta{.codec = codec_};
-      meta.name = file_name(NextSegmentId());
-      return meta;
-    },
-    options);
-
-  // recreate writer if it reserved more memory than allowed by current limits
-  if (auto segment_memory_max = segment_limits_.segment_memory_max.load();
-      segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, options);
-  }
-
-  return {segment_ctx, segments_active_};
-} catch (...) {
-  segments_active_.fetch_sub(1, std::memory_order_relaxed);
-  throw;
 }
 
 SegmentWriterOptions IndexWriter::GetSegmentWriterOptions(
@@ -1804,6 +1539,8 @@ SegmentWriterOptions IndexWriter::GetSegmentWriterOptions(
     .column_info = column_info_,
     .feature_info = feature_info_,
     .scorers_features = wand_features_,
+    .memory_limit = segment_limits_.memory,
+    .buffered_docs = buffered_docs_,
     .scorers = wand_scorers_,
     .comparator = comparator_,
     .resource_manager = consolidation ? *resource_manager_.consolidations
@@ -1819,21 +1556,23 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   IRS_ASSERT(committed_tick_ <= tick);
   IRS_ASSERT(tick <= writer_limits::kMaxTick);
 
-  // noexcept block: I'm not sure is it really necessary or not
   auto ctx = SwitchFlushContext();
   // ensure there are no active struct update operations
   ctx->pending_.Wait();
-  // Stage 0
-  // wait for any outstanding segments to settle to ensure that any rollbacks
-  // are properly tracked in 'modification_queries_'
-  const auto flushed_tick = ctx->FlushPending(committed_tick_, tick);
+  ctx->MovePending(committed_tick_, tick);
+  // Stage 0 Flush all segments
+  auto flushed_tick = committed_tick_;
+  for (auto* segment : ctx->segments_) {
+    segment->Flush();
+    flushed_tick = std::max(flushed_tick, segment->last_tick_);
+  }
 
-  std::unique_lock cleanup_lock{consolidation_lock_, std::defer_lock};
+  std::unique_lock cleanup_lock{consolidating_.lock, std::defer_lock};
   Finally cleanup = [&]() noexcept {
     if (ctx == nullptr) {
       return;
     }
-    if (!cleanup_lock.owns_lock()) {
+    if (!cleanup_lock) {
       cleanup_lock.lock();
     }
     Cleanup(*ctx);
@@ -1880,7 +1619,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   auto& segment_mask = ctx->segment_mask_;
   segment_mask.reserve(segment_mask.size() + ctx->cached_.size());
   for (const auto& entry : ctx->cached_) {
-    segment_mask.emplace(entry.second->Meta().name);
+    segment_mask.emplace(entry.second->Meta().id);
   }
 
   size_t current_segment_index = 0;
@@ -1897,7 +1636,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
              current_segment_index++, committed_reader_size);
 
     // skip already masked segments
-    if (segment_mask.contains(existing_segment->Meta().name)) {
+    if (segment_mask.contains(existing_segment->Meta().id)) {
       continue;
     }
 
@@ -1919,7 +1658,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         // It's important to mask empty segment to rollback
         // the affected consolidations
 
-        segment_mask.emplace(existing_segment->Meta().name);
+        segment_mask.emplace(existing_segment->Meta().id);
         modified = true;
         continue;
       }
@@ -1991,14 +1730,14 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       for (const auto& mapping : mappings) {
         const auto* reader = mapping.second.old.segment;
         IRS_ASSERT(reader);
-        segment_mask.emplace(reader->Meta().name);
+        segment_mask.emplace(reader->Meta().id);
       }
 
       // Mask mapped (matched) segments from the currently ongoing commit
       for (const auto& segment : readers) {
-        if (mappings.contains(segment.Meta().name)) {
+        if (mappings.contains(segment.Meta().id)) {
           // Important to store the address of implementation
-          segment_mask.emplace(segment.Meta().name);
+          segment_mask.emplace(segment.Meta().id);
         }
       }
 
@@ -2080,7 +1819,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
     auto partial_sync_begin = partial_sync.begin();
     for (size_t i = 0; i < partial_sync_threshold; ++i) {
       if (auto& segment = readers[i];
-          !segment_mask.contains(segment->Meta().name)) {
+          !segment_mask.contains(segment->Meta().id)) {
         partial_sync_begin =
           std::find_if(partial_sync_begin, partial_sync.end(),
                        [i](const auto& v) { return i == v.segment_index; });
@@ -2284,22 +2023,21 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
     return {};
   }
 
-  InitMeta(pending_meta, tick == writer_limits::kMaxTick ? flushed_tick : tick);
+  InitMeta(pending_meta, LimitTick(tick, flushed_tick));
 
   if (!next_cached.empty()) {
     cleanup_lock.lock();
-    consolidating_segments_.reserve(consolidating_segments_.size() +
+    consolidating_.segments.reserve(consolidating_.segments.size() +
                                     next_cached.size());
     for (const auto& entry : next_cached) {
-      consolidating_segments_.emplace(entry.second->Meta().name);
+      consolidating_.segments.emplace(entry.second->Meta().id);
     }
     cleanup_lock.unlock();
   }
 
   return {
-    PendingBase{
-      .ctx = std::move(ctx),  // Retain flush context reference
-      .tick = tick == writer_limits::kMaxTick ? committed_tick_ : tick},
+    PendingBase{.ctx = std::move(ctx),  // Retain flush context reference
+                .tick = LimitTick(tick, committed_tick_)},
     std::move(pending_meta),  // Retain meta pending flush
     std::move(readers),
     std::move(files_to_sync),
@@ -2320,13 +2058,13 @@ void IndexWriter::ApplyFlush(PendingContext&& context) {
   if (!writer_->prepare(dir, to_commit.index_meta, to_commit.filename,
                         index_meta_file)) {
     throw illegal_state{absl::StrCat(
-      "Failed to write index metadata for segment '", index_meta_file, "'.")};
+      "Failed to write index metadata for index: ", index_meta_file)};
   }
 
   // The 1st phase of the transaction successfully finished here,
   // ensure we rollback changes if something goes wrong afterwards
-  Finally update_generation = [this,
-                               new_gen = to_commit.index_meta.gen]() noexcept {
+  auto new_gen = to_commit.index_meta.gen;
+  Finally update_generation = [&]() noexcept {
     if (IRS_UNLIKELY(!pending_state_.Valid())) {
       writer_->rollback();  // Rollback failed transaction
     }
@@ -2338,8 +2076,8 @@ void IndexWriter::ApplyFlush(PendingContext&& context) {
   context.files_to_sync.emplace_back(to_commit.filename);
 
   if (!dir.sync(context.files_to_sync)) {
-    throw io_error{absl::StrCat("Failed to sync files for segment '",
-                                index_meta_file, "'.")};
+    throw io_error{
+      absl::StrCat("Failed to sync files for index: ", index_meta_file)};
   }
 
   // Update file name so that directory reader holds a reference
@@ -2354,8 +2092,6 @@ void IndexWriter::ApplyFlush(PendingContext&& context) {
 }
 
 bool IndexWriter::Start(const CommitInfo& info) {
-  IRS_ASSERT(!commit_lock_.try_lock());  // already locked
-
   REGISTER_TIMER_DETAILED();
 
   if (pending_state_.Valid()) {
@@ -2367,25 +2103,22 @@ bool IndexWriter::Start(const CommitInfo& info) {
 
   if (to_commit.Empty()) {
     // Nothing to commit, no transaction started
-    committed_tick_ =
-      info.tick == writer_limits::kMaxTick ? committed_tick_ : info.tick;
+    committed_tick_ = LimitTick(info.tick, committed_tick_);
     return false;
   }
   Finally cleanup = [&]() noexcept {
-    if (!to_commit.Empty()) {
-      std::ignore = to_commit.StartReset(*this);
+    if (auto* curr = to_commit.ctx.get(); curr != nullptr) {
+      std::lock_guard lock{consolidating_.lock};
+      Cleanup(*curr, curr->next_);
     }
   };
 
-  // TODO(MBkkt) error here means we don't remove cached from consolidating
   ApplyFlush(std::move(to_commit));
 
   return true;
 }
 
 void IndexWriter::Finish() {
-  IRS_ASSERT(!commit_lock_.try_lock());  // Already locked
-
   REGISTER_TIMER_DETAILED();
 
   if (!pending_state_.Valid()) {
@@ -2397,11 +2130,14 @@ void IndexWriter::Finish() {
   };
 
   if (IRS_UNLIKELY(!writer_->commit())) {
-    throw illegal_state{"Failed to commit index metadata."};
+    throw illegal_state{"Failed to commit index metadata"};
   }
 
   // noexcept part!
-  auto lock = pending_state_.StartReset(*this, true);
+  if (auto* curr = pending_state_.ctx.get(); curr != nullptr) {
+    std::lock_guard lock{consolidating_.lock};
+    Cleanup(*curr);
+  }
   IRS_ASSERT(pending_state_.tick != writer_limits::kMaxTick);
   committed_tick_ = pending_state_.tick;
   // after this line transaction is successful (only noexcept operations below)
@@ -2412,14 +2148,16 @@ void IndexWriter::Finish() {
 }
 
 void IndexWriter::Abort() noexcept {
-  IRS_ASSERT(!commit_lock_.try_lock());  // already locked
-
   if (!pending_state_.Valid()) {
     return;  // There is no open transaction
   }
 
   writer_->rollback();
-  pending_state_.Reset(*this);
+  if (auto* curr = pending_state_.ctx.get(); curr != nullptr) {
+    std::lock_guard lock{consolidating_.lock};
+    Cleanup(*curr, curr->next_);
+  }
+  pending_state_.FinishReset();
 }
 
 }  // namespace irs

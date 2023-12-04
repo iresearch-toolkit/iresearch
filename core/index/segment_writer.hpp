@@ -68,7 +68,7 @@ struct DocsMask final {
 // Interface for an index writer over a directory
 // an object that represents a single ongoing transaction
 // non-thread safe
-class segment_writer : public ColumnProvider, util::noncopyable {
+class segment_writer final : public ColumnProvider, util::noncopyable {
  private:
   // Disallow using public constructor
   struct ConstructToken final {
@@ -163,6 +163,10 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
   segment_writer(ConstructToken, directory& dir,
                  const SegmentWriterOptions& options) noexcept;
+
+  ~segment_writer() noexcept final {
+    buffered_docs_.fetch_sub(docs_context_.size(), std::memory_order_relaxed);
+  }
 
   const column_reader* column(field_id id) const final {
     const auto it = column_ids_.find(id);
@@ -379,6 +383,8 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   // Flushes indexed fields to directory
   void FlushFields(flush_state& state);
 
+  const std::atomic_size_t& memory_limit_;
+  std::atomic_size_t& buffered_docs_;
   ScorersView scorers_;
   std::deque<cached_column, ManagedTypedAllocator<cached_column>>
     cached_columns_;  // pointers remain valid
