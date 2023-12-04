@@ -105,10 +105,12 @@ class cached_column final : public column_reader {
 
 class field_data : util::noncopyable {
  public:
+  using CachedColumns =
+    std::deque<cached_column, ManagedTypedAllocator<cached_column>>;
+
   field_data(std::string_view name, const features_t& features,
              const FeatureInfoProvider& feature_columns,
-             std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
-               cached_columns,
+             CachedColumns& cached_columns,
              const feature_set_t& cached_features, columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
              int_block_pool::inserter& int_writer, IndexFeatures index_features,
@@ -213,17 +215,16 @@ class fields_data : util::noncopyable {
     }
   };
 
-  using fields_map = flat_hash_set<FieldEq>;
+  using Fields = std::deque<field_data, ManagedTypedAllocator<field_data>>;
+  using FieldsMap = flat_hash_set<FieldEq>;
 
  public:
   using postings_ref_t = std::vector<const posting*>;
 
-  explicit fields_data(
-    const FeatureInfoProvider& feature_info,
-    std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
-      cached_columns,
-    const feature_set_t& cached_features, IResourceManager& rm,
-    const Comparer* comparator);
+  explicit fields_data(const FeatureInfoProvider& feature_info,
+                       field_data::CachedColumns& cached_columns,
+                       const feature_set_t& cached_features,
+                       const Comparer* comparator);
 
   const Comparer* comparator() const noexcept { return comparator_; }
 
@@ -243,17 +244,21 @@ class fields_data : util::noncopyable {
 
   size_t size() const { return fields_.size(); }
   void flush(field_writer& fw, flush_state& state);
-  void reset() noexcept;
+  void Clear() noexcept;
+  void Reset() noexcept;
 
  private:
+  void Init() noexcept {
+    byte_writer_ = byte_pool_.begin();
+    int_writer_ = int_pool_.begin();
+  }
+
   const Comparer* comparator_;
   const FeatureInfoProvider* feature_info_;
-  std::deque<field_data, ManagedTypedAllocator<field_data>>
-    fields_;  // pointers remain valid
-  std::deque<cached_column, ManagedTypedAllocator<cached_column>>*
-    cached_columns_;  // pointers remain valid
+  Fields fields_;                              // pointers remain valid
+  field_data::CachedColumns* cached_columns_;  // pointers remain valid
   const feature_set_t* cached_features_;
-  fields_map fields_map_;
+  FieldsMap fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;
   byte_block_pool byte_pool_;

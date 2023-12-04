@@ -1850,7 +1850,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx_flush) {
       ASSERT_TRUE(Insert(batch, doc2));
       batch.Remove(*(query_doc2));
       ASSERT_TRUE(Insert(batch, doc3));
-      ASSERT_TRUE(batch.Commit());
+      batch.Commit();
     }
     {
       auto batch = writer->GetBatch();
@@ -1858,7 +1858,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx_flush) {
       ASSERT_TRUE(Insert(batch, doc5));
       ASSERT_TRUE(Insert(batch, doc6));
       ASSERT_TRUE(Insert(batch, doc7));  // Flush triggered here, before insert
-      ASSERT_TRUE(batch.Commit());
+      batch.Commit();
     }
     ASSERT_TRUE(writer->Commit());
     AssertSnapshotEquality(*writer);

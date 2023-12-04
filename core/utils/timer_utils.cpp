@@ -42,7 +42,7 @@ class timer_states : public irs::singleton<timer_states> {
 
   entry_type& find(const key_type& key) {
     if (track_all_keys_) {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       return state_map_[key];
     }
 
@@ -58,7 +58,7 @@ class timer_states : public irs::singleton<timer_states> {
 
   void init(bool track_all_keys = false,
             const absl::flat_hash_set<key_type>& tracked_keys = {}) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
 
     for (auto& entry : state_map_) {
       entry.second.count = 0;
@@ -92,7 +92,7 @@ class timer_states : public irs::singleton<timer_states> {
  private:
   using state_map_type = absl::node_hash_map<key_type, entry_type>;
 
-  std::mutex mutex_;
+  absl::Mutex mutex_;
   state_map_type state_map_;
   bool track_all_keys_;
 };

@@ -105,7 +105,7 @@ class CachingHelper {
   size_t MaxCount() const noexcept { return max_count_; }
 
  private:
-  mutable std::shared_mutex mutex_;
+  mutable absl::Mutex mutex_;
   mutable absl::flat_hash_map<std::string, Value> cache_;
   size_t max_count_;
 };

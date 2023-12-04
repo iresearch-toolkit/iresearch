@@ -286,8 +286,8 @@ class memory_directory final : public directory {
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
-  mutable std::shared_mutex flock_;
-  std::mutex llock_;
+  mutable absl::Mutex flock_;
+  absl::Mutex llock_;
   file_map files_;
   lock_map locks_;
 };

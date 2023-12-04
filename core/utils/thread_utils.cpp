@@ -55,41 +55,39 @@ bool get_thread_name(
 
 #include <windows.h>
 
+#include <absl/base/call_once.h>
+
 namespace {
 
-typedef HRESULT(WINAPI* name_set_ptr)(HANDLE, PCWSTR);
+using name_set_ptr = HRESULT(WINAPI*)(HANDLE, PCWSTR);
 
-typedef HRESULT(WINAPI* name_get_ptr)(HANDLE, PWSTR*);
+using name_get_ptr = HRESULT(WINAPI*)(HANDLE, PWSTR*);
 
 HRESULT WINAPI set_thread_description_noop(HANDLE, PCWSTR) { return E_NOTIMPL; }
 
 HRESULT WINAPI get_thread_description_noop(HANDLE, PWSTR*) { return E_NOTIMPL; }
 
-std::atomic<name_get_ptr> get_thread_description;
-std::atomic<name_set_ptr> set_thread_description;
-std::mutex name_api_mutex;
+ABSL_CONST_INIT absl::once_flag flag;
 
 /// @brief tries to find out if the current host supports thread namings
 void init_thread_name_api() {
-  if (!get_thread_description.load() || !set_thread_description.load()) {
-    std::lock_guard lock(name_api_mutex);
-    if (!get_thread_description.load() && !set_thread_description.load()) {
-      auto kernel32 = LoadLibraryW(L"KERNEL32.DLL");
-      if (kernel32) {
-        get_thread_description = reinterpret_cast<name_get_ptr>(
-          GetProcAddress(kernel32, "GetThreadDescription"));
-        set_thread_description = reinterpret_cast<name_set_ptr>(
-          GetProcAddress(kernel32, "SetThreadDescription"));
-      }
-      if (!get_thread_description) {
-        get_thread_description = get_thread_description_noop;
-      }
-      if (!set_thread_description) {
-        set_thread_description = set_thread_description_noop;
-      }
+  absl::call_once(flag, [] {
+    auto kernel32 = LoadLibraryW(L"KERNEL32.DLL");
+    if (kernel32) {
+      get_thread_description = reinterpret_cast<name_get_ptr>(
+        GetProcAddress(kernel32, "GetThreadDescription"));
+      set_thread_description = reinterpret_cast<name_set_ptr>(
+        GetProcAddress(kernel32, "SetThreadDescription"));
     }
-  }
+    if (!get_thread_description) {
+      get_thread_description = get_thread_description_noop;
+    }
+    if (!set_thread_description) {
+      set_thread_description = set_thread_description_noop;
+    }
+  });
 }
+
 }  // namespace
 
 namespace irs {

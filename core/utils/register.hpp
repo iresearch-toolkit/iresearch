@@ -31,23 +31,17 @@
 #include "so_utils.hpp"
 #include "string.hpp"
 
-#include <absl/container/flat_hash_map.h>
+#include <absl/container/node_hash_map.h>
 #include <absl/strings/str_cat.h>
 
 // use busywait implementation for Win32 since std::mutex cannot be used in
 // calls going through dllmain()
 #ifdef _WIN32
 #include "async_utils.hpp"
-
-namespace {
-typedef irs::async_utils::busywait_mutex mutex_t;
-}
+using mutex_t = irs::async_utils::busywait_mutex;
 #else
 #include <mutex>
-
-namespace {
-typedef std::mutex mutex_t;
-}
+using mutex_t = std::mutex;
 #endif
 
 namespace irs {
@@ -70,7 +64,7 @@ class generic_register : public singleton<RegisterType> {
   // @return the entry registered under the key and inf an insertion took place
   std::pair<entry_type, bool> set(const key_type& key,
                                   const entry_type& entry) {
-    std::lock_guard<mutex_t> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto itr = reg_map_.emplace(key, entry);
     return std::make_pair(itr.first->second, itr.second);
   }
@@ -92,7 +86,7 @@ class generic_register : public singleton<RegisterType> {
   }
 
   bool visit(const visitor_t& visitor) {
-    std::lock_guard<mutex_t> lock(mutex_);
+    std::lock_guard lock(mutex_);
 
     for (auto& entry : reg_map_) {
       if (!visitor(entry.first)) {
@@ -125,7 +119,7 @@ class generic_register : public singleton<RegisterType> {
       generic_register<KeyType, EntryType, RegisterType, Hash, Pred>*>(this);
 
     {
-      std::lock_guard<mutex_t> lock(mutex_);
+      std::lock_guard lock(mutex_);
 
       this_ptr->so_handles_.emplace_back(
         handle, [](void* h) -> void { irs::free_library(h); });
@@ -153,13 +147,13 @@ class generic_register : public singleton<RegisterType> {
   }
 
   virtual const entry_type* lookup(const key_type& key) const {
-    std::lock_guard<mutex_t> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = reg_map_.find(key);
     return reg_map_.end() == it ? nullptr : &it->second;
   }
 
   bool visit(const protected_visitor_t& visitor) {
-    std::lock_guard<mutex_t> lock(mutex_);
+    std::lock_guard lock(mutex_);
 
     for (auto& entry : reg_map_) {
       if (!visitor(entry.first, entry.second)) {
@@ -172,7 +166,7 @@ class generic_register : public singleton<RegisterType> {
 
  private:
   using register_map_t =
-    absl::flat_hash_map<key_type, entry_type, hash_type, pred_type>;
+    absl::node_hash_map<key_type, entry_type, hash_type, pred_type>;
 
   mutable mutex_t mutex_;
   register_map_t reg_map_;
@@ -201,7 +195,7 @@ class tagged_generic_register
     auto itr = parent_type::set(key, entry);
 
     if (tag && itr.second) {
-      std::lock_guard<mutex_t> lock(mutex_);
+      std::lock_guard lock(mutex_);
       tag_map_.emplace(key, *tag);
     }
 
@@ -209,15 +203,15 @@ class tagged_generic_register
   }
 
   const tag_type* tag(const key_type& key) const {
-    std::lock_guard<mutex_t> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto itr = tag_map_.find(key);
 
-    return itr == tag_map_.end() ? nullptr : &(itr->second);
+    return itr == tag_map_.end() ? nullptr : &itr->second;
   }
 
  private:
   using tag_map_t =
-    absl::flat_hash_map<key_type, tag_type, hash_type, pred_type>;
+    absl::node_hash_map<key_type, tag_type, hash_type, pred_type>;
 
   mutable mutex_t mutex_;
   tag_map_t tag_map_;

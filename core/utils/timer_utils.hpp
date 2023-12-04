@@ -40,8 +40,8 @@ namespace irs {
 namespace timer_utils {
 
 struct timer_stat_t {
-  std::atomic<size_t> count;
-  std::atomic<size_t> time;
+  std::atomic_size_t count{};
+  std::atomic_size_t time{};
 };
 
 class scoped_timer : util::noncopyable {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <array>
+#include <thread>
 
 #include "gtest/gtest.h"
 #include "utils/object_pool.hpp"
