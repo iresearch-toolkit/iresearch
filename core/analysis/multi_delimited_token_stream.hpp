@@ -35,17 +35,22 @@ class multi_delimited_token_stream
   : public TypedAnalyzer<multi_delimited_token_stream>,
     private util::noncopyable {
  public:
-  struct Options {
-    std::vector<std::string> delimiters;
+  struct options {
+    std::vector<bstring> delimiters;
   };
 
   static constexpr std::string_view type_name() noexcept { return "multi-delimiter"; }
   static void init();
 
-  static analyzer::ptr make(Options&&);
+  static analyzer::ptr make(options&&);
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
+  }
+
+  bool reset(std::string_view data) final {
+    data_ = ViewCast<byte_type>(data);
+    return true;
   }
 
  protected:

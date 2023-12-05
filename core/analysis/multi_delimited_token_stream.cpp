@@ -20,6 +20,8 @@
 
 #include "multi_delimited_token_stream.hpp"
 
+#include <velocypack/Iterator.h>
+
 #include <string_view>
 
 #include "utils/vpack_utils.hpp"
@@ -63,11 +65,6 @@ class multi_delimited_token_stream_single_chars_base
       return true;
     }
   }
-
-  bool reset(std::string_view data) override {
-    data_ = ViewCast<byte_type>(data);
-    return true;
-  }
 };
 
 template<std::size_t N>
@@ -76,7 +73,7 @@ class multi_delimited_token_stream_single_chars final
       multi_delimited_token_stream_single_chars<N>> {
  public:
   explicit multi_delimited_token_stream_single_chars(
-    const multi_delimited_token_stream::Options& opts) {
+    const multi_delimited_token_stream::options& opts) {
     IRS_ASSERT(opts.delimiters.size() == N);
     std::size_t k = 0;
     for (const auto& delim : opts.delimiters) {
@@ -93,12 +90,47 @@ class multi_delimited_token_stream_single_chars final
   std::array<byte_type, N> bytes_;
 };
 
+template<>
+class multi_delimited_token_stream_single_chars<1> final
+  : public multi_delimited_token_stream_single_chars_base<
+      multi_delimited_token_stream_single_chars<1>> {
+ public:
+  explicit multi_delimited_token_stream_single_chars(
+    const multi_delimited_token_stream::options& opts) {
+    IRS_ASSERT(opts.delimiters.size() == 1);
+    IRS_ASSERT(opts.delimiters[0].size() == 1);
+    delim_ = opts.delimiters[0][0];
+  }
+
+  auto find_next_delim() {
+    if (auto pos = this->data_.find(delim_); pos != bstring::npos) {
+      return this->data_.begin() + pos;
+    }
+    return this->data_.end();
+  }
+
+  byte_type delim_;
+};
+
+template<>
+class multi_delimited_token_stream_single_chars<0> final
+  : public multi_delimited_token_stream_single_chars_base<
+      multi_delimited_token_stream_single_chars<0>> {
+ public:
+  explicit multi_delimited_token_stream_single_chars(
+    const multi_delimited_token_stream::options& opts) {
+    IRS_ASSERT(opts.delimiters.size() == 0);
+  }
+
+  auto find_next_delim() { return this->data_.end(); }
+};
+
 class multi_delimited_token_stream_generic_single_chars final
   : public multi_delimited_token_stream_single_chars_base<
       multi_delimited_token_stream_generic_single_chars> {
  public:
   explicit multi_delimited_token_stream_generic_single_chars(
-    const Options& opts) {
+    const options& opts) {
     for (const auto& delim : opts.delimiters) {
       IRS_ASSERT(delim.size() == 1);
       bytes_[delim[0]] = true;
@@ -106,8 +138,13 @@ class multi_delimited_token_stream_generic_single_chars final
   }
 
   auto find_next_delim() {
-    return std::find_if(data_.begin(), data_.end(),
-                        [&](auto c) { return bytes_[c]; });
+    return std::find_if(data_.begin(), data_.end(), [&](auto c) {
+      if (c > CHAR_MAX) {
+        return false;
+      }
+      IRS_ASSERT(c <= CHAR_MAX);
+      return bytes_[c];
+    });
   }
   // TODO maybe use a bitset instead?
   std::array<bool, CHAR_MAX + 1> bytes_;
@@ -116,22 +153,54 @@ class multi_delimited_token_stream_generic_single_chars final
 class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
-  explicit multi_delimited_token_stream_generic(Options&& opts)
+  explicit multi_delimited_token_stream_generic(options&& opts)
     : options_(std::move(opts)) {}
 
   bool next() override { return false; }
 
-  bool reset(std::string_view data) override {
-    data_ = ViewCast<byte_type>(data);
-    return true;
+  options options_;
+};
+
+class multi_delimited_token_stream_single final
+  : public multi_delimited_token_stream {
+ public:
+  explicit multi_delimited_token_stream_single(options&& opts)
+    : delim_(std::move(opts.delimiters[0])),
+      searcher_(delim_.begin(), delim_.end()) {}
+
+  bool next() override {
+    while (true) {
+      if (data_.begin() == data_.end()) {
+        return false;
+      }
+
+      auto next = std::search(data_.begin(), data_.end(), searcher_);
+      if (next == data_.begin()) {
+        // skip empty terms
+        data_ = bytes_view{next + delim_.size(), data_.end()};
+        continue;
+      }
+
+      auto& term = std::get<term_attribute>(attrs_);
+      term.value = bytes_view{data_.begin(), next};
+
+      if (next == data_.end()) {
+        data_ = {};
+      } else {
+        data_ = bytes_view{next + delim_.size(), data_.end()};
+      }
+
+      return true;
+    }
   }
 
-  Options options_;
+  bstring delim_;
+  std::boyer_moore_searcher<bstring::iterator> searcher_;
 };
 
 template<std::size_t N>
 irs::analysis::analyzer::ptr make_single_char(
-  multi_delimited_token_stream::Options&& opts) {
+  multi_delimited_token_stream::options&& opts) {
   if constexpr (N >= 4) {
     return std::make_unique<multi_delimited_token_stream_generic_single_chars>(
       std::move(opts));
@@ -144,63 +213,76 @@ irs::analysis::analyzer::ptr make_single_char(
 }
 
 irs::analysis::analyzer::ptr make(
-  multi_delimited_token_stream::Options&& opts) {
+  multi_delimited_token_stream::options&& opts) {
   const bool single_character_case =
     std::all_of(opts.delimiters.begin(), opts.delimiters.end(),
                 [](const auto& delim) { return delim.size() == 1; });
   if (single_character_case) {
     return make_single_char<0>(std::move(opts));
+  } else if (opts.delimiters.size() == 1) {
+    return std::make_unique<multi_delimited_token_stream_single>(
+      std::move(opts));
   } else {
     return std::make_unique<multi_delimited_token_stream_generic>(
       std::move(opts));
   }
 }
-/*
+
 constexpr std::string_view DELIMITER_PARAM_NAME{"delimiter"};
 
-bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
-  if (!slice.isObject() && !slice.isString()) {
+bool parse_vpack_options(VPackSlice slice,
+                         multi_delimited_token_stream::options& options) {
+  if (!slice.isObject()) {
     IRS_LOG_ERROR(
       "Slice for multi_delimited_token_stream is not an object or string");
     return false;
   }
 
-  switch (slice.type()) {
-    case VPackValueType::String:
-      delimiter = slice.stringView();
-      return true;
-    case VPackValueType::Object:
-      if (auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
-          !delim_type_slice.isNone()) {
-        if (!delim_type_slice.isString()) {
-          IRS_LOG_WARN(absl::StrCat(
-            "Invalid type '", DELIMITER_PARAM_NAME,
-            "' (string expected) for multi_delimited_token_stream from "
-            "VPack arguments"));
-          return false;
-        }
-        delimiter = delim_type_slice.stringView();
-        return true;
+  if (auto delim_array_slice = slice.get(DELIMITER_PARAM_NAME);
+      !delim_array_slice.isNone()) {
+    if (!delim_array_slice.isArray()) {
+      IRS_LOG_WARN(
+        absl::StrCat("Invalid type '", DELIMITER_PARAM_NAME,
+                     "' (array expected) for multi_delimited_token_stream from "
+                     "VPack arguments"));
+      return false;
+    }
+
+    for (auto delim : VPackArrayIterator(delim_array_slice)) {
+      if (!delim.isString()) {
+        IRS_LOG_WARN(absl::StrCat(
+          "Invalid type in '", DELIMITER_PARAM_NAME,
+          "' (string expected) for multi_delimited_token_stream from "
+          "VPack arguments"));
+        return false;
       }
-    default: {
-    }  // fall through
+      auto view = ViewCast<byte_type>(delim.stringView());
+      options.delimiters.emplace_back(view);
+    }
   }
 
-  IRS_LOG_ERROR(absl::StrCat(
-    "Missing '", DELIMITER_PARAM_NAME,
-    "' while constructing multi_delimited_token_stream from VPack arguments"));
-
-  return false;
+  return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a jSON encoded object with the following attributes:
-///        "delimiter"(string): the delimiter to use for tokenization <required>
-////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  std::string delimiter;
-  if (parse_vpack_options(slice, delimiter)) {
-    return irs::analysis::multi_delimited_token_stream::make(delimiter);
+bool make_vpack_config(const multi_delimited_token_stream::options& options,
+                       VPackBuilder* vpack_builder) {
+  VPackObjectBuilder object(vpack_builder);
+  {
+    VPackArrayBuilder array(vpack_builder, DELIMITER_PARAM_NAME);
+    for (const auto& delim : options.delimiters) {
+      auto view = ViewCast<char>(bytes_view{delim});
+      vpack_builder->add(VPackValue(view));
+    }
+  }
+
+  return true;
+}
+
+irs::analysis::analyzer::ptr make_vpack(VPackSlice slice) {
+  multi_delimited_token_stream::options options;
+  if (parse_vpack_options(slice, options)) {
+    return irs::analysis::multi_delimited_token_stream::make(
+      std::move(options));
   } else {
     return nullptr;
   }
@@ -210,27 +292,11 @@ irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
-///////////////////////////////////////////////////////////////////////////////
-/// @brief builds analyzer config from internal options in json format
-/// @param delimiter reference to analyzer options storage
-/// @param definition string for storing json document with config
-///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(std::string_view delimiter,
-                       VPackBuilder* vpack_builder) {
-  VPackObjectBuilder object(vpack_builder);
-  {
-    // delimiter
-    vpack_builder->add(DELIMITER_PARAM_NAME, VPackValue(delimiter));
-  }
 
-  return true;
-}
-
-bool normalize_vpack_config(const VPackSlice slice,
-                            VPackBuilder* vpack_builder) {
-  std::string delimiter;
-  if (parse_vpack_options(slice, delimiter)) {
-    return make_vpack_config(delimiter, vpack_builder);
+bool normalize_vpack_config(VPackSlice slice, VPackBuilder* vpack_builder) {
+  multi_delimited_token_stream::options options;
+  if (parse_vpack_options(slice, options)) {
+    return make_vpack_config(options, vpack_builder);
   } else {
     return false;
   }
@@ -247,52 +313,10 @@ bool normalize_vpack_config(std::string_view args, std::string& definition) {
   return res;
 }
 
-irs::analysis::analyzer::ptr make_json(std::string_view args) {
-  try {
-    if (irs::IsNull(args)) {
-      IRS_LOG_ERROR(
-        "Null arguments while constructing multi_delimited_token_stream");
-      return nullptr;
-    }
-    auto vpack = VPackParser::fromJson(args.data(), args.size());
-    return make_vpack(vpack->slice());
-  } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(absl::StrCat(
-      "Caught error '", ex.what(),
-      "' while constructing multi_delimited_token_stream from JSON"));
-  } catch (...) {
-    IRS_LOG_ERROR(
-      "Caught error while constructing multi_delimited_token_stream from JSON");
-  }
-  return nullptr;
-}
-
-bool normalize_json_config(std::string_view args, std::string& definition) {
-  try {
-    if (irs::IsNull(args)) {
-      IRS_LOG_ERROR(
-        "Null arguments while normalizing multi_delimited_token_stream");
-      return false;
-    }
-    auto vpack = VPackParser::fromJson(args.data(), args.size());
-    VPackBuilder vpack_builder;
-    if (normalize_vpack_config(vpack->slice(), &vpack_builder)) {
-      definition = vpack_builder.toString();
-      return !definition.empty();
-    }
-  } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(absl::StrCat(
-      "Caught error '", ex.what(),
-      "' while normalizing multi_delimited_token_stream from JSON"));
-  } catch (...) {
-    IRS_LOG_ERROR(
-      "Caught error while normalizing multi_delimited_token_stream from JSON");
-  }
-  return false;
-}
 
 REGISTER_ANALYZER_VPACK(irs::analysis::multi_delimited_token_stream, make_vpack,
                         normalize_vpack_config);
+/*
 REGISTER_ANALYZER_JSON(irs::analysis::multi_delimited_token_stream, make_json,
                        normalize_json_config);
 */
@@ -300,16 +324,16 @@ REGISTER_ANALYZER_JSON(irs::analysis::multi_delimited_token_stream, make_json,
 
 namespace irs {
 namespace analysis {
-/*
+
 void multi_delimited_token_stream::init() {
   REGISTER_ANALYZER_VPACK(multi_delimited_token_stream, make_vpack,
                           normalize_vpack_config);  // match registration above
-  REGISTER_ANALYZER_JSON(multi_delimited_token_stream, make_json,
-                         normalize_json_config);  // match registration above
+  // REGISTER_ANALYZER_JSON(multi_delimited_token_stream, make_json,
+  //                        normalize_json_config);  // match registration above
 }
-*/
+
 analyzer::ptr multi_delimited_token_stream::make(
-  multi_delimited_token_stream::Options&& opts) {
+  multi_delimited_token_stream::options&& opts) {
   return ::make(std::move(opts));
 }
 

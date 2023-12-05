@@ -24,6 +24,11 @@
 
 namespace {
 
+irs::bstring operator""_b(const char* ptr, std::size_t size) {
+  return irs::bstring{
+    irs::ViewCast<irs::byte_type>(std::string_view{ptr, size})};
+}
+
 class multi_delimited_token_stream_tests : public ::testing::Test {
   virtual void SetUp() {
     // Code here will be called immediately after the constructor (right before
@@ -53,7 +58,7 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter) {
   // test delimiter std::string_view{}
   {
     auto stream =
-      irs::analysis::multi_delimited_token_stream::make({.delimiters = {"a"}});
+      irs::analysis::multi_delimited_token_stream::make({.delimiters = {"a"_b}});
     ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
               stream->type());
 
@@ -77,7 +82,7 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_empty_match) {
   // test delimiter std::string_view{}
   {
     auto stream =
-      irs::analysis::multi_delimited_token_stream::make({.delimiters = {"."}});
+      irs::analysis::multi_delimited_token_stream::make({.delimiters = {"."_b}});
     ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
               stream->type());
 
@@ -93,8 +98,8 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_empty_match) {
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
   // test delimiter std::string_view{}
   {
-    auto stream =
-      irs::analysis::multi_delimited_token_stream::make({.delimiters = {";", ",", "|", ".", ":"}});
+    auto stream = irs::analysis::multi_delimited_token_stream::make(
+      {.delimiters = {";"_b, ","_b, "|"_b, "."_b, ":"_b}});
     ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
               stream->type());
 
@@ -114,6 +119,50 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
     ASSERT_EQ("d", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ("ff", irs::ViewCast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
+}
+
+TEST_F(multi_delimited_token_stream_tests, test_delimiter_single_long) {
+  // test delimiter std::string_view{}
+  {
+    auto stream = irs::analysis::multi_delimited_token_stream::make(
+      {.delimiters = {"foo"_b}});
+    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+              stream->type());
+
+    ASSERT_TRUE(stream->reset("foobarfoobazbarfoobar"));
+
+    auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("bazbar", irs::ViewCast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
+}
+
+TEST_F(multi_delimited_token_stream_tests, no_delimiter) {
+  // test delimiter std::string_view{}
+  {
+    auto stream = irs::analysis::multi_delimited_token_stream::make(
+      {.delimiters = {}});
+    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+              stream->type());
+
+    ASSERT_TRUE(stream->reset("foobar"));
+
+    auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("foobar", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }
