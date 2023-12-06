@@ -257,11 +257,13 @@ class multi_delimited_token_stream_generic final
                nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
 
+    fst::drawFst(nfa, std::cout);
     automaton dfa;
     fst::DeterminizeStar(nfa, &dfa);
     std::cout << "number of states (dfa) = " << nfa.NumStates() << std::endl;
 
     fst::Minimize(&dfa);
+    fst::drawFst(dfa, std::cout);
 
     std::cout << "number of states = " << dfa.NumStates() << std::endl;
 
@@ -325,6 +327,8 @@ irs::analysis::analyzer::ptr make_single_char(
 
 irs::analysis::analyzer::ptr make(
   multi_delimited_token_stream::options&& opts) {
+  return std::make_unique<multi_delimited_token_stream_generic>(
+    std::move(opts));
   const bool single_character_case =
     std::all_of(opts.delimiters.begin(), opts.delimiters.end(),
                 [](const auto& delim) { return delim.size() == 1; });
@@ -334,8 +338,7 @@ irs::analysis::analyzer::ptr make(
     return std::make_unique<multi_delimited_token_stream_single>(
       std::move(opts));
   } else {
-    return std::make_unique<multi_delimited_token_stream_generic>(
-      std::move(opts));
+
   }
 }
 

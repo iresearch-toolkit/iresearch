@@ -583,9 +583,18 @@ template<class F> class DeterminizerStar {
     closed_subset_.clear();
     fsa::RangeLabel label;
 
+    std::cout << "ALL ELEMS SIZE = " << all_elems_.size() << std::endl;
+    std::vector<bool> brackets;
     for (auto& e : all_elems_) {
       const auto& bound = e.bound;
       const bool is_max = e.IsMax();
+
+      if (!is_max) {
+        brackets.push_back(true);
+      } else {
+        assert(!brackets.empty());
+        brackets.pop_back();
+      }
 
       if (!is_max) {
         if (label.ilabel != fst::kNoLabel && label.min != bound) {
