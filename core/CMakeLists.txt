@@ -474,6 +474,7 @@ set_target_properties(iresearch-analyzer-multi-delimiter-static
 
 target_link_libraries(iresearch-analyzer-multi-delimiter-static
   iresearch-static
+  iresearch-ofst
 )
 
 ################################################################################

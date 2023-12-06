@@ -18,9 +18,11 @@ namespace fst {
 
 template<typename Arc>
 struct LabelToString {
-  std::string operator()(const Arc&, typename Arc::Label label,
+  std::string operator()(const Arc& arc, typename Arc::Label label,
                          std::string_view) const {
-    return std::to_string(label);
+    std::stringstream ss;
+    ss << arc;
+    return ss.str();
   }
 };
 
@@ -245,7 +247,7 @@ class FstDrawer {
 };
 
 template<typename Fst,
-         typename LabelToString = fst::LabelToString<typename Fst::Arc::Label>>
+         typename LabelToString = fst::LabelToString<typename Fst::Arc>>
 inline void drawFst(
   const Fst& fst, std::ostream& strm, const LabelToString& label_to_string = {},
   const std::string& dest = "", const SymbolTable* isyms = nullptr,

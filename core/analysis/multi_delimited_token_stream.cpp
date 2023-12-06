@@ -20,10 +20,14 @@
 
 #include "multi_delimited_token_stream.hpp"
 
+#include <fst/union.h>
+#include <fstext/determinize-star.h>
 #include <velocypack/Iterator.h>
 
 #include <string_view>
 
+#include "utils/automaton_utils.hpp"
+#include "utils/fstext/fst_draw.hpp"
 #include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -150,15 +154,122 @@ class multi_delimited_token_stream_generic_single_chars final
   std::array<bool, CHAR_MAX + 1> bytes_;
 };
 
+// TODO move to automaton_utils
+automaton make_string(bytes_view str) {
+  // if we find a character c that we don't expect, we have to find
+  // the longest prefix of `str` that is a suffix of the already matched text
+  // including c. then go to that state.
+
+  std::unordered_multimap<byte_type, int> positions;
+
+  for (int i = 0; i < str.length(); i++) {
+    positions.emplace(str[i], i);
+  }
+
+  automaton a;
+  a.AddStates(str.length() + 1);
+  a.SetStart(0);
+  a.SetFinal(str.length());
+
+  for (int i = 0; i < str.length(); i++) {
+    auto expected = str[i];
+    int last_no_match = -1;
+
+    for (int c = 0; c <= UCHAR_MAX; c++) {
+      if (c == expected) {
+        // add reset edges
+        if (last_no_match != -1) {
+          a.EmplaceArc(i, range_label::fromRange(last_no_match, c - 1), 0);
+          last_no_match = -1;
+        }
+        // add forward edge
+        a.EmplaceArc(i, range_label::fromRange(c), i + 1);
+
+      } else if (auto iter = positions.find(c); iter != positions.end()) {
+        // add reset edges
+        if (last_no_match != -1) {
+          a.EmplaceArc(i, range_label::fromRange(last_no_match, c - 1), 0);
+          last_no_match = -1;
+        }
+
+        // find the biggest prefix of `str`
+        // TODO pull this out of the loop
+        bstring matched;
+        matched.reserve(i + 1);
+        matched.assign(str.begin(), str.begin() + i);
+        matched.push_back(c);
+
+        size_t best = 0;
+        while (iter != positions.end() && iter->first == c) {
+          auto view = bytes_view{str.begin(), str.begin() + iter->second};
+          if (matched.ends_with(view) && iter->second > best) {
+            best = iter->second;
+          }
+          ++iter;
+        }
+
+        a.EmplaceArc(i, range_label::fromRange(c), best);
+
+      } else if (last_no_match == -1) {
+        last_no_match = c;
+      }
+    }
+
+    if (last_no_match != -1) {
+      a.EmplaceArc(i, range_label::fromRange(last_no_match, UCHAR_MAX), 0);
+      last_no_match = -1;
+    }
+  }
+
+  return a;
+}
+
 class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
-  explicit multi_delimited_token_stream_generic(options&& opts)
-    : options_(std::move(opts)) {}
+  explicit multi_delimited_token_stream_generic(options&& opts) {
+    automaton nfa;
+    nfa.SetStart(nfa.AddState());
+    nfa.SetFinal(0, true);
+
+    std::vector<irs::automaton> parts;
+    parts.reserve(opts.delimiters.size());
+
+    for (const auto& str : opts.delimiters) {
+      irs::automaton a = make_string(str);
+      std::cout << "Automaton for " << ViewCast<char>(bytes_view{str});
+      ///fst::drawFst(a, std::cout);
+      std::cout << "number of states = " << a.NumStates() << std::endl;
+      fst::Union(&nfa, a);
+
+      std::cout << "number of states (union) = " << nfa.NumStates()
+                << std::endl;
+    }
+
+    ///fst::drawFst(nfa, std::cout);
+
+#ifdef IRESEARCH_DEBUG
+    // ensure nfa is sorted
+    static constexpr auto EXPECTED_NFA_PROPERTIES =
+      fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
+
+    IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
+               nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+#endif
+
+    automaton dfa;
+    fst::DeterminizeStar(nfa, &dfa);
+    std::cout << "number of states (dfa) = " << nfa.NumStates() << std::endl;
+
+    fst::Minimize(&dfa);
+
+    std::cout << "number of states = " << dfa.NumStates() << std::endl;
+
+    auto matcher = make_automaton_matcher(dfa);
+    auto result = match(matcher, std::string_view{"foobar"});
+  }
 
   bool next() override { return false; }
-
-  options options_;
 };
 
 class multi_delimited_token_stream_single final
@@ -312,7 +423,6 @@ bool normalize_vpack_config(std::string_view args, std::string& definition) {
   }
   return res;
 }
-
 
 REGISTER_ANALYZER_VPACK(irs::analysis::multi_delimited_token_stream, make_vpack,
                         normalize_vpack_config);

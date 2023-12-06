@@ -55,116 +55,138 @@ TEST_F(multi_delimited_token_stream_tests, consts) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter) {
-  // test delimiter std::string_view{}
-  {
-    auto stream =
-      irs::analysis::multi_delimited_token_stream::make({.delimiters = {"a"_b}});
-    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
-              stream->type());
+  auto stream =
+    irs::analysis::multi_delimited_token_stream::make({.delimiters = {"a"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
 
-    ASSERT_TRUE(stream->reset("baccaad"));
+  ASSERT_TRUE(stream->reset("baccaad"));
 
-    auto* payload = irs::get<irs::payload>(*stream);
-    ASSERT_EQ(nullptr, payload);
-    auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("b", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("cc", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("d", irs::ViewCast<char>(term->value));
-    ASSERT_FALSE(stream->next());
-  }
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("b", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("cc", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("d", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_empty_match) {
-  // test delimiter std::string_view{}
-  {
-    auto stream =
-      irs::analysis::multi_delimited_token_stream::make({.delimiters = {"."_b}});
-    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
-              stream->type());
+  auto stream =
+    irs::analysis::multi_delimited_token_stream::make({.delimiters = {"."_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
 
-    ASSERT_TRUE(stream->reset(".."));
+  ASSERT_TRUE(stream->reset(".."));
 
-    auto* payload = irs::get<irs::payload>(*stream);
-    ASSERT_EQ(nullptr, payload);
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
 
-    ASSERT_FALSE(stream->next());
-  }
+  ASSERT_FALSE(stream->next());
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
-  // test delimiter std::string_view{}
-  {
-    auto stream = irs::analysis::multi_delimited_token_stream::make(
-      {.delimiters = {";"_b, ","_b, "|"_b, "."_b, ":"_b}});
-    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
-              stream->type());
+  auto stream = irs::analysis::multi_delimited_token_stream::make(
+    {.delimiters = {";"_b, ","_b, "|"_b, "."_b, ":"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
 
-    ASSERT_TRUE(stream->reset("a:b||c.d,ff."));
+  ASSERT_TRUE(stream->reset("a:b||c.d,ff."));
 
-    auto* payload = irs::get<irs::payload>(*stream);
-    ASSERT_EQ(nullptr, payload);
-    auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("a", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("b", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("c", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("d", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("ff", irs::ViewCast<char>(term->value));
-    ASSERT_FALSE(stream->next());
-  }
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("a", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("b", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("c", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("d", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("ff", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_single_long) {
-  // test delimiter std::string_view{}
-  {
-    auto stream = irs::analysis::multi_delimited_token_stream::make(
-      {.delimiters = {"foo"_b}});
-    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
-              stream->type());
+  auto stream = irs::analysis::multi_delimited_token_stream::make(
+    {.delimiters = {"foo"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
 
-    ASSERT_TRUE(stream->reset("foobarfoobazbarfoobar"));
+  ASSERT_TRUE(stream->reset("foobarfoobazbarfoobar"));
 
-    auto* payload = irs::get<irs::payload>(*stream);
-    ASSERT_EQ(nullptr, payload);
-    auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("bazbar", irs::ViewCast<char>(term->value));
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
-    ASSERT_FALSE(stream->next());
-  }
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("bazbar", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
 }
 
 TEST_F(multi_delimited_token_stream_tests, no_delimiter) {
-  // test delimiter std::string_view{}
-  {
-    auto stream = irs::analysis::multi_delimited_token_stream::make(
-      {.delimiters = {}});
-    ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
-              stream->type());
+  auto stream =
+    irs::analysis::multi_delimited_token_stream::make({.delimiters = {}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
 
-    ASSERT_TRUE(stream->reset("foobar"));
+  ASSERT_TRUE(stream->reset("foobar"));
 
-    auto* payload = irs::get<irs::payload>(*stream);
-    ASSERT_EQ(nullptr, payload);
-    auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ("foobar", irs::ViewCast<char>(term->value));
-    ASSERT_FALSE(stream->next());
-  }
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("foobar", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
+}
+
+TEST_F(multi_delimited_token_stream_tests, multi_words) {
+  auto stream = irs::analysis::multi_delimited_token_stream::make(
+    //{.delimiters = {"foo"_b, "bar"_b, "baz"_b}});
+    {.delimiters = {"fab1"_b, "goo2"_b, "puh3"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
+
+  ASSERT_TRUE(stream->reset("fooxyzbarbazz"));
+
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
+
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("foobar", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
+}
+
+TEST_F(multi_delimited_token_stream_tests, trick_matching_1) {
+  auto stream = irs::analysis::multi_delimited_token_stream::make(
+    {.delimiters = {"foo"_b, "ffa"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
+
+  ASSERT_TRUE(stream->reset("abcffoobar"));
+
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
+
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("abcf", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
 }
 
 #endif
