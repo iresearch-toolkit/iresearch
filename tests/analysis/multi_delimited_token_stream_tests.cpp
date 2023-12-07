@@ -165,7 +165,25 @@ TEST_F(multi_delimited_token_stream_tests, multi_words) {
   auto* term = irs::get<irs::term_attribute>(*stream);
 
   ASSERT_TRUE(stream->next());
-  ASSERT_EQ("foobar", irs::ViewCast<char>(term->value));
+  ASSERT_EQ("xyz", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("z", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
+}
+
+
+TEST_F(multi_delimited_token_stream_tests, multi_words_2) {
+  auto stream = irs::analysis::multi_delimited_token_stream::make(
+    {.delimiters = {"foo"_b, "bar"_b, "baz"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
+
+  ASSERT_TRUE(stream->reset("foobarbaz"));
+
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
+
   ASSERT_FALSE(stream->next());
 }
 

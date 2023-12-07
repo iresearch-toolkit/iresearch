@@ -235,10 +235,13 @@ automaton make_strings(const std::vector<bstring>& strings) {
 }
 
 struct TrieNode {
-  explicit TrieNode(int32_t stateId) : state_id(stateId) {}
-  int32_t state_id{0};
+  explicit TrieNode(int32_t stateId, int32_t depth)
+    : state_id(stateId), depth(depth) {}
+  int32_t state_id;
+  int32_t depth;
   bool is_leaf{false};
-  std::array<TrieNode*, 256> outgoing;
+  std::array<TrieNode*, 256> simple_outgoing{};
+  std::array<TrieNode*, 256> real_outgoing{};
 };
 
 bytes_view find_longest_prefix_that_is_suffix(bytes_view s, bytes_view str) {
@@ -252,10 +255,12 @@ bytes_view find_longest_prefix_that_is_suffix(bytes_view s, bytes_view str) {
   return {};
 }
 
-bytes_view find_longest_prefix_that_is_suffix(const std::vector<bstring>& strings, std::string_view str) {
+bytes_view find_longest_prefix_that_is_suffix(
+  const std::vector<bstring>& strings, std::string_view str) {
   bytes_view result = {};
-  for (auto const& s : strings) {
-    auto other = find_longest_prefix_that_is_suffix(s, ViewCast<byte_type>(str));
+  for (const auto& s : strings) {
+    auto other =
+      find_longest_prefix_that_is_suffix(s, ViewCast<byte_type>(str));
     if (other.length() > result.length()) {
       result = other;
     }
@@ -263,16 +268,19 @@ bytes_view find_longest_prefix_that_is_suffix(const std::vector<bstring>& string
   return result;
 }
 
-void insert_error_conditions(const std::vector<bstring>& strings, std::string& matched_word, TrieNode* node,
+void insert_error_conditions(const std::vector<bstring>& strings,
+                             std::string& matched_word, TrieNode* node,
                              TrieNode* root) {
   if (node->is_leaf) {
     return;
   }
 
   for (size_t k = 0; k < 256; k++) {
-    if (node->outgoing[k] != nullptr) {
+    if (node->simple_outgoing[k] != nullptr) {
+      node->real_outgoing[k] = node->simple_outgoing[k];
       matched_word.push_back(k);
-      insert_error_conditions(strings, matched_word, node->outgoing[k], root);
+      insert_error_conditions(strings, matched_word, node->simple_outgoing[k],
+                              root);
       matched_word.pop_back();
     } else {
       // if we find a character c that we don't expect, we have to find
@@ -283,10 +291,10 @@ void insert_error_conditions(const std::vector<bstring>& strings, std::string& m
 
       auto* dest = root;
       for (auto c : prefix) {
-        dest = dest->outgoing[c];
+        dest = dest->simple_outgoing[c];
         IRS_ASSERT(dest != nullptr);
       }
-      node->outgoing[k] = dest;
+      node->real_outgoing[k] = dest;
       matched_word.pop_back();
     }
   }
@@ -294,24 +302,25 @@ void insert_error_conditions(const std::vector<bstring>& strings, std::string& m
 
 automaton make_string_trie(const std::vector<bstring>& strings) {
   std::vector<std::unique_ptr<TrieNode>> nodes;
-  nodes.emplace_back(std::make_unique<TrieNode>(0));
+  nodes.emplace_back(std::make_unique<TrieNode>(0, 0));
 
   for (const auto& str : strings) {
     TrieNode* current = nodes.front().get();
 
-    for (auto c : str) {
+    for (size_t k = 0; k < str.length(); k++) {
+      auto c = str[k];
       if (current->is_leaf) {
         break;
       }
 
-      if (current->outgoing[c] != nullptr) {
-        current = current->outgoing[c];
+      if (current->simple_outgoing[c] != nullptr) {
+        current = current->simple_outgoing[c];
         continue;
       }
 
       auto& new_node =
-        nodes.emplace_back(std::make_unique<TrieNode>(nodes.size()));
-      current->outgoing[c] = new_node.get();
+        nodes.emplace_back(std::make_unique<TrieNode>(nodes.size(), k));
+      current->simple_outgoing[c] = new_node.get();
       current = new_node.get();
     }
 
@@ -331,12 +340,12 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
     size_t last_char = 0;
 
     if (n->is_leaf) {
-      a.SetFinal(n->state_id);
+      a.SetFinal(n->state_id, {1, static_cast<byte_type>(n->depth)});
       continue;
     }
 
     for (size_t k = 0; k < 256; k++) {
-      size_t next_state = n->outgoing[k]->state_id;
+      size_t next_state = n->real_outgoing[k]->state_id;
       if (last_state == -1) {
         last_state = next_state;
         last_char = k;
@@ -352,16 +361,16 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
                  last_state);
   }
 
-  fst::drawFst(a, std::cout);
   return a;
 }
 
 class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
-  explicit multi_delimited_token_stream_generic(options&& opts) {
-    automaton nfa = make_string_trie(opts.delimiters);
-    fst::drawFst(nfa, std::cout);
+  explicit multi_delimited_token_stream_generic(options&& opts)
+    : automaton_(make_string_trie(opts.delimiters)),
+      matcher_(make_automaton_matcher(automaton_)) {
+    // fst::drawFst(nfa, std::cout);
 
 #ifdef IRESEARCH_DEBUG
     // ensure nfa is sorted
@@ -370,14 +379,61 @@ class multi_delimited_token_stream_generic final
       fst::kUnweighted;
 
     IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
-               nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+               automaton_.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
-
-    auto matcher = make_automaton_matcher(nfa);
-    auto result = match(matcher, std::string_view{"foobar"});
   }
 
-  bool next() override { return false; }
+  auto find_next_delim() {
+    auto state = matcher_.GetFst().Start();
+    matcher_.SetState(state);
+    for (size_t k = 0; k < data_.length(); k++) {
+      matcher_.Find(data_[k]);
+
+      state = matcher_.Value().nextstate;
+
+      if (matcher_.Final(state)) {
+        auto length = matcher_.Final(state).Payload();
+        IRS_ASSERT(length <= k);
+
+        return std::make_pair(data_.begin() + (k - length),
+                              static_cast<size_t>(length + 1));
+      }
+
+      matcher_.SetState(state);
+    }
+
+    return std::make_pair(data_.end(), size_t{0});
+  }
+
+  bool next() override {
+    while (true) {
+      if (data_.begin() == data_.end()) {
+        return false;
+      }
+
+      auto [next, skip] = find_next_delim();
+
+      if (next == data_.begin()) {
+        // skip empty terms
+        data_ = bytes_view{next + skip, data_.end()};
+        continue;
+      }
+
+      auto& term = std::get<term_attribute>(attrs_);
+      term.value = bytes_view{data_.begin(), next};
+
+      if (next == data_.end()) {
+        data_ = {};
+      } else {
+        data_ = bytes_view{next + skip, data_.end()};
+      }
+
+      return true;
+    }
+  }
+
+  automaton automaton_;
+  automaton_table_matcher matcher_;
 };
 
 class multi_delimited_token_stream_single final
@@ -433,8 +489,6 @@ irs::analysis::analyzer::ptr make_single_char(
 
 irs::analysis::analyzer::ptr make(
   multi_delimited_token_stream::options&& opts) {
-  return std::make_unique<multi_delimited_token_stream_generic>(
-    std::move(opts));
   const bool single_character_case =
     std::all_of(opts.delimiters.begin(), opts.delimiters.end(),
                 [](const auto& delim) { return delim.size() == 1; });
@@ -444,6 +498,8 @@ irs::analysis::analyzer::ptr make(
     return std::make_unique<multi_delimited_token_stream_single>(
       std::move(opts));
   } else {
+    return std::make_unique<multi_delimited_token_stream_generic>(
+      std::move(opts));
   }
 }
 
