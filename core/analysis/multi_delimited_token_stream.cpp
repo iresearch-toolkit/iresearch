@@ -155,102 +155,90 @@ class multi_delimited_token_stream_generic_single_chars final
 };
 
 // TODO move to automaton_utils
-void make_string(automaton& a, bytes_view str) {
+automaton make_strings(const std::vector<bstring>& strings) {
   // if we find a character c that we don't expect, we have to find
   // the longest prefix of `str` that is a suffix of the already matched text
   // including c. then go to that state.
+  automaton a;
+  a.SetStart(a.AddState());
+  a.SetFinal(a.AddState(), true);
 
-  std::unordered_multimap<byte_type, int> positions;
+  for (const auto& str : strings) {
+    std::unordered_multimap<byte_type, int> positions;
 
-  for (int i = 0; i < str.length(); i++) {
-    positions.emplace(str[i], i);
-  }
+    for (int i = 0; i < str.length(); i++) {
+      positions.emplace(str[i], i);
+    }
 
-  auto first_state = a.NumStates();
-  a.AddStates(str.length());
+    auto first_state = a.NumStates();
+    a.AddStates(str.length());
 
-  for (int i = 0; i < str.length(); i++) {
-    auto expected = str[i];
-    int last_no_match = -1;
+    for (int i = 0; i < str.length(); i++) {
+      auto expected = str[i];
+      int last_no_match = -1;
 
-    auto current_state = int32_t{i + first_state};
+      auto current_state = int32_t{i + first_state};
 
-    for (int c = 1; c <= UCHAR_MAX; c++) {
-      if (c == expected) {
-        // add reset edges
-        if (last_no_match != -1) {
-          a.EmplaceArc(current_state,
-                       range_label::fromRange(last_no_match, c - 1), 0);
-          last_no_match = -1;
-        }
-        // add forward edge
-        a.EmplaceArc(current_state, range_label::fromRange(c),
-                     i == str.length() - 1 ? 1 : (current_state + 1));
-
-      } else if (auto iter = positions.find(c); iter != positions.end()) {
-        // add reset edges
-        if (last_no_match != -1) {
-          a.EmplaceArc(current_state,
-                       range_label::fromRange(last_no_match, c - 1), 0);
-          last_no_match = -1;
-        }
-
-        // find the biggest prefix of `str`
-        // TODO pull this out of the loop
-        bstring matched;
-        matched.reserve(i + 1);
-        matched.assign(str.begin(), str.begin() + i);
-        matched.push_back(c);
-
-        size_t best = 0;
-        while (iter != positions.end() && iter->first == c) {
-          auto view = bytes_view{str.begin(), str.begin() + iter->second};
-          if (matched.ends_with(view) && iter->second > best) {
-            best = iter->second;
+      for (int c = 1; c <= UCHAR_MAX; c++) {
+        if (c == expected) {
+          // add reset edges
+          if (last_no_match != -1) {
+            a.EmplaceArc(current_state,
+                         range_label::fromRange(last_no_match, c - 1), 0);
+            last_no_match = -1;
           }
-          ++iter;
+          // add forward edge
+          a.EmplaceArc(current_state, range_label::fromRange(c),
+                       i == str.length() - 1 ? 1 : (current_state + 1));
+
+        } else if (auto iter = positions.find(c); iter != positions.end()) {
+          // add reset edges
+          if (last_no_match != -1) {
+            a.EmplaceArc(current_state,
+                         range_label::fromRange(last_no_match, c - 1), 0);
+            last_no_match = -1;
+          }
+
+          // find the biggest prefix of `str`
+          // TODO pull this out of the loop
+          bstring matched;
+          matched.reserve(i + 1);
+          matched.assign(str.begin(), str.begin() + i);
+          matched.push_back(c);
+
+          size_t best = 0;
+          while (iter != positions.end() && iter->first == c) {
+            auto view = bytes_view{str.begin(), str.begin() + iter->second};
+            if (matched.ends_with(view) && iter->second > best) {
+              best = iter->second;
+            }
+            ++iter;
+          }
+
+          a.EmplaceArc(current_state, range_label::fromRange(c),
+                       first_state + best);
+
+        } else if (last_no_match == -1) {
+          last_no_match = c;
         }
+      }
 
-        a.EmplaceArc(current_state, range_label::fromRange(c),
-                     first_state + best);
-
-      } else if (last_no_match == -1) {
-        last_no_match = c;
+      if (last_no_match != -1) {
+        a.EmplaceArc(current_state,
+                     range_label::fromRange(last_no_match, UCHAR_MAX), 0);
+        last_no_match = -1;
       }
     }
-
-    if (last_no_match != -1) {
-      a.EmplaceArc(current_state,
-                   range_label::fromRange(last_no_match, UCHAR_MAX), 0);
-      last_no_match = -1;
-    }
+    a.EmplaceArc(0, range_label::fromRange(0), first_state);
   }
-
-  // a.EmplaceArc(first_state + str.length(), range_label::fromRange(0), 1);
-
-  a.EmplaceArc(0, range_label::fromRange(0), first_state);
+  return a;
 }
 
 class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
   explicit multi_delimited_token_stream_generic(options&& opts) {
-    automaton nfa;
-    nfa.SetStart(nfa.AddState());
-    nfa.SetFinal(nfa.AddState(), true);
-
-    std::vector<irs::automaton> parts;
-    parts.reserve(opts.delimiters.size());
-
-    for (const auto& str : opts.delimiters) {
-      make_string(nfa, str);
-      std::cout << "Automaton for " << ViewCast<char>(bytes_view{str})
-                << std::endl;
-
-      std::cout << "number of states (union) = " << nfa.NumStates()
-                << std::endl;
-    }
-
+    automaton nfa = make_strings(opts.delimiters);
     fst::drawFst(nfa, std::cout);
 
 #ifdef IRESEARCH_DEBUG
@@ -265,14 +253,9 @@ class multi_delimited_token_stream_generic final
 
     automaton dfa;
     fst::DeterminizeStar(nfa, &dfa);
-    std::cout << "number of states (dfa) = " << dfa.NumStates() << std::endl;
-
-    // fst::Minimize(&dfa);
-    std::cout << "HUI\n";
     fst::drawFst(dfa, std::cout);
-    std::cout << "HUI\n";
 
-    std::cout << "number of states = " << dfa.NumStates() << std::endl;
+    //fst::Minimize(&dfa);
 
     auto matcher = make_automaton_matcher(dfa);
     auto result = match(matcher, std::string_view{"foobar"});
