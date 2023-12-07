@@ -269,13 +269,14 @@ template<class F> class DeterminizerStar {
   };
 
   struct RangeElement {
-    explicit RangeElement(Label min, Label max, const Element& element)
-      : bound{min}, max{max}, element{element} {}
-    explicit RangeElement(Label max, Element&& element)
-      : bound{max}, max{fst::kNoLabel}, element{std::move(element)} {}
+    explicit RangeElement(Label min, Label max, const Element& element, std::size_t unique_id)
+      : bound{min}, max{max}, unique_id(unique_id), element{element} {}
+    explicit RangeElement(Label max, Element&& element, std::size_t unique_id)
+      : bound{max}, max{fst::kNoLabel}, unique_id(unique_id), element{std::move(element)} {}
 
     Label bound;
     Label max;
+    std::size_t unique_id;
 
     bool IsMax() const noexcept { return max == fst::kNoLabel; }
 
@@ -529,6 +530,7 @@ template<class F> class DeterminizerStar {
     { 
       // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
+      std::size_t unique_id = 0;
       for (const auto& elem : closed_subset_) {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
@@ -546,8 +548,8 @@ template<class F> class DeterminizerStar {
               seq_.push_back(arc.olabel);
               element.string = repository_.IdOfSeq(seq_);
             }
-            all_elems_.emplace_back(arc.min, arc.max, element);
-            all_elems_.emplace_back(arc.max, std::move(element));
+            all_elems_.emplace_back(arc.min, arc.max, element, unique_id);
+            all_elems_.emplace_back(arc.max, std::move(element), unique_id++);
           }
         }
       }
@@ -584,7 +586,7 @@ template<class F> class DeterminizerStar {
     fsa::RangeLabel label;
 
     std::cout << "ALL ELEMS SIZE = " << all_elems_.size() << std::endl;
-    std::vector<bool> brackets;
+    std::vector<std::size_t> brackets;
     for (auto& e : all_elems_) {
       const auto& bound = e.bound;
       const bool is_max = e.IsMax();
@@ -593,6 +595,7 @@ template<class F> class DeterminizerStar {
         brackets.push_back(true);
       } else {
         assert(!brackets.empty());
+        assert(brackets.back() == e.unique_id);
         brackets.pop_back();
       }
 

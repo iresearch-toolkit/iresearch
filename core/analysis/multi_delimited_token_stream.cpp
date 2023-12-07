@@ -167,7 +167,7 @@ void make_string(automaton& a, bytes_view str) {
   }
 
   auto first_state = a.NumStates();
-  a.AddStates(str.length() + 1);
+  a.AddStates(str.length());
 
   for (int i = 0; i < str.length(); i++) {
     auto expected = str[i];
@@ -175,25 +175,25 @@ void make_string(automaton& a, bytes_view str) {
 
     auto current_state = int32_t{i + first_state};
 
-    for (int c = 0; c <= UCHAR_MAX; c++) {
+    for (int c = 1; c <= UCHAR_MAX; c++) {
       if (c == expected) {
         // add reset edges
         if (last_no_match != -1) {
           a.EmplaceArc(current_state,
                        range_label::fromRange(last_no_match, c - 1),
-                       first_state);
+                       0);
           last_no_match = -1;
         }
         // add forward edge
         a.EmplaceArc(current_state, range_label::fromRange(c),
-                     current_state + 1);
+                     i == str.length() - 1 ? 1 : (current_state + 1));
 
       } else if (auto iter = positions.find(c); iter != positions.end()) {
         // add reset edges
         if (last_no_match != -1) {
           a.EmplaceArc(current_state,
                        range_label::fromRange(last_no_match, c - 1),
-                       first_state);
+                       0);
           last_no_match = -1;
         }
 
@@ -224,12 +224,13 @@ void make_string(automaton& a, bytes_view str) {
     if (last_no_match != -1) {
       a.EmplaceArc(current_state,
                    range_label::fromRange(last_no_match, UCHAR_MAX),
-                   first_state);
+                   0);
       last_no_match = -1;
     }
   }
 
-  a.EmplaceArc(first_state + str.length(), range_label::fromRange(0), 1);
+  //a.EmplaceArc(first_state + str.length(), range_label::fromRange(0), 1);
+
   a.EmplaceArc(0, range_label::fromRange(0), first_state);
 }
 
@@ -267,9 +268,9 @@ class multi_delimited_token_stream_generic final
 
     automaton dfa;
     fst::DeterminizeStar(nfa, &dfa);
-    std::cout << "number of states (dfa) = " << nfa.NumStates() << std::endl;
+    std::cout << "number of states (dfa) = " << dfa.NumStates() << std::endl;
 
-    fst::Minimize(&dfa);
+    //fst::Minimize(&dfa);
     fst::drawFst(dfa, std::cout);
 
     std::cout << "number of states = " << dfa.NumStates() << std::endl;
