@@ -26,6 +26,7 @@
 #include "index/index_reader.hpp"
 #include "search/collectors.hpp"
 #include "search/ngram_similarity_query.hpp"
+#include "search/phrase_filter.hpp"
 #include "search/terms_filter.hpp"
 #include "shared.hpp"
 
@@ -36,25 +37,37 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
   const std::vector<irs::bstring>& ngrams, float_t threshold) {
   if (ngrams.empty() || field_name.empty()) {
     // empty field or terms or invalid threshold
-    return filter::prepared::empty();
+    return prepared::empty();
   }
+  const auto terms_count = ngrams.size();
 
   threshold = std::clamp(threshold, 0.f, 1.f);
   const auto min_match_count =
-    std::clamp(static_cast<size_t>(std::ceil(ngrams.size() * threshold)),
-               size_t{1}, ngrams.size());
+    std::clamp(static_cast<size_t>(std::ceil(terms_count * threshold)),
+               size_t{1}, terms_count);
   if (ctx.scorers.empty() && 1 == min_match_count) {
     irs::by_terms disj;
-    for (auto& terms = disj.mutable_options()->terms; auto& term : ngrams) {
+    auto& terms = disj.mutable_options()->terms;
+    for (const auto& term : ngrams) {
       terms.emplace(term, irs::kNoBoost);
     }
     *disj.mutable_field() = field_name;
     return disj.prepare(ctx);
   }
+
+  if (min_match_count == terms_count) {
+    irs::by_phrase phrase;
+    auto& options = *phrase.mutable_options();
+    for (size_t i = 0; const auto& ngram : ngrams) {
+      options.insert(by_term_options{ngram}, i++);
+    }
+    *phrase.mutable_field() = field_name;
+    return phrase.prepare(ctx);
+  }
+
   NGramStates query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states
-  const auto terms_count = ngrams.size();
   ManagedVector<seek_cookie::ptr> term_states{{ctx.memory}};
   term_states.reserve(terms_count);
 
@@ -81,10 +94,9 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
     field_stats.collect(segment, *field);
     size_t term_idx = 0;
     size_t count_terms = 0;
-    seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
+    auto term = field->iterator(SeekMode::NORMAL);
     for (const auto& ngram : ngrams) {
-      term_states.emplace_back();
-      auto& state = term_states.back();
+      auto& state = term_states.emplace_back();
       if (term->seek(ngram)) {
         // read term attributes
         term->read();
@@ -108,6 +120,10 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
     state.field = field;
 
     term_states.reserve(terms_count);
+  }
+
+  if (query_states.empty()) {
+    return prepared::empty();
   }
 
   bstring stats(ctx.scorers.stats_size(), 0);

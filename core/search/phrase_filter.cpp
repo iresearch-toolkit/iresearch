@@ -278,6 +278,10 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     phrase_terms.reserve(phrase_size);
   }
 
+  if (phrase_states.empty()) {
+    return prepared::empty();
+  }
+
   // offset of the first term in a phrase
   IRS_ASSERT(!options().empty());
   const size_t base_offset = options().begin()->first;
@@ -390,6 +394,10 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     phrase_terms.reserve(phrase_size);
     // reserve space for at least 1 term per part
     num_terms.resize(phrase_size);
+  }
+
+  if (phrase_states.empty()) {
+    return prepared::empty();
   }
 
   // offset of the first term in a phrase
