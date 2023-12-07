@@ -180,8 +180,7 @@ void make_string(automaton& a, bytes_view str) {
         // add reset edges
         if (last_no_match != -1) {
           a.EmplaceArc(current_state,
-                       range_label::fromRange(last_no_match, c - 1),
-                       0);
+                       range_label::fromRange(last_no_match, c - 1), 0);
           last_no_match = -1;
         }
         // add forward edge
@@ -192,8 +191,7 @@ void make_string(automaton& a, bytes_view str) {
         // add reset edges
         if (last_no_match != -1) {
           a.EmplaceArc(current_state,
-                       range_label::fromRange(last_no_match, c - 1),
-                       0);
+                       range_label::fromRange(last_no_match, c - 1), 0);
           last_no_match = -1;
         }
 
@@ -223,13 +221,12 @@ void make_string(automaton& a, bytes_view str) {
 
     if (last_no_match != -1) {
       a.EmplaceArc(current_state,
-                   range_label::fromRange(last_no_match, UCHAR_MAX),
-                   0);
+                   range_label::fromRange(last_no_match, UCHAR_MAX), 0);
       last_no_match = -1;
     }
   }
 
-  //a.EmplaceArc(first_state + str.length(), range_label::fromRange(0), 1);
+  // a.EmplaceArc(first_state + str.length(), range_label::fromRange(0), 1);
 
   a.EmplaceArc(0, range_label::fromRange(0), first_state);
 }
@@ -270,8 +267,10 @@ class multi_delimited_token_stream_generic final
     fst::DeterminizeStar(nfa, &dfa);
     std::cout << "number of states (dfa) = " << dfa.NumStates() << std::endl;
 
-    //fst::Minimize(&dfa);
+    // fst::Minimize(&dfa);
+    std::cout << "HUI\n";
     fst::drawFst(dfa, std::cout);
+    std::cout << "HUI\n";
 
     std::cout << "number of states = " << dfa.NumStates() << std::endl;
 
