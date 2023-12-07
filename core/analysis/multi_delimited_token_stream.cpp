@@ -155,7 +155,7 @@ class multi_delimited_token_stream_generic_single_chars final
 };
 
 // TODO move to automaton_utils
-automaton make_string(bytes_view str) {
+void make_string(automaton& a, bytes_view str) {
   // if we find a character c that we don't expect, we have to find
   // the longest prefix of `str` that is a suffix of the already matched text
   // including c. then go to that state.
@@ -166,29 +166,34 @@ automaton make_string(bytes_view str) {
     positions.emplace(str[i], i);
   }
 
-  automaton a;
+  auto first_state = a.NumStates();
   a.AddStates(str.length() + 1);
-  a.SetStart(0);
-  a.SetFinal(str.length());
 
   for (int i = 0; i < str.length(); i++) {
     auto expected = str[i];
     int last_no_match = -1;
 
+    auto current_state = int32_t{i + first_state};
+
     for (int c = 0; c <= UCHAR_MAX; c++) {
       if (c == expected) {
         // add reset edges
         if (last_no_match != -1) {
-          a.EmplaceArc(i, range_label::fromRange(last_no_match, c - 1), 0);
+          a.EmplaceArc(current_state,
+                       range_label::fromRange(last_no_match, c - 1),
+                       first_state);
           last_no_match = -1;
         }
         // add forward edge
-        a.EmplaceArc(i, range_label::fromRange(c), i + 1);
+        a.EmplaceArc(current_state, range_label::fromRange(c),
+                     current_state + 1);
 
       } else if (auto iter = positions.find(c); iter != positions.end()) {
         // add reset edges
         if (last_no_match != -1) {
-          a.EmplaceArc(i, range_label::fromRange(last_no_match, c - 1), 0);
+          a.EmplaceArc(current_state,
+                       range_label::fromRange(last_no_match, c - 1),
+                       first_state);
           last_no_match = -1;
         }
 
@@ -208,7 +213,8 @@ automaton make_string(bytes_view str) {
           ++iter;
         }
 
-        a.EmplaceArc(i, range_label::fromRange(c), best);
+        a.EmplaceArc(current_state, range_label::fromRange(c),
+                     first_state + best);
 
       } else if (last_no_match == -1) {
         last_no_match = c;
@@ -216,12 +222,15 @@ automaton make_string(bytes_view str) {
     }
 
     if (last_no_match != -1) {
-      a.EmplaceArc(i, range_label::fromRange(last_no_match, UCHAR_MAX), 0);
+      a.EmplaceArc(current_state,
+                   range_label::fromRange(last_no_match, UCHAR_MAX),
+                   first_state);
       last_no_match = -1;
     }
   }
 
-  return a;
+  a.EmplaceArc(first_state + str.length(), range_label::fromRange(0), 1);
+  a.EmplaceArc(0, range_label::fromRange(0), first_state);
 }
 
 class multi_delimited_token_stream_generic final
@@ -230,34 +239,32 @@ class multi_delimited_token_stream_generic final
   explicit multi_delimited_token_stream_generic(options&& opts) {
     automaton nfa;
     nfa.SetStart(nfa.AddState());
-    nfa.SetFinal(0, true);
+    nfa.SetFinal(nfa.AddState(), true);
 
     std::vector<irs::automaton> parts;
     parts.reserve(opts.delimiters.size());
 
     for (const auto& str : opts.delimiters) {
-      irs::automaton a = make_string(str);
-      std::cout << "Automaton for " << ViewCast<char>(bytes_view{str});
-      ///fst::drawFst(a, std::cout);
-      std::cout << "number of states = " << a.NumStates() << std::endl;
-      fst::Union(&nfa, a);
+      make_string(nfa, str);
+      std::cout << "Automaton for " << ViewCast<char>(bytes_view{str})
+                << std::endl;
 
       std::cout << "number of states (union) = " << nfa.NumStates()
                 << std::endl;
     }
 
-    ///fst::drawFst(nfa, std::cout);
+    fst::drawFst(nfa, std::cout);
 
 #ifdef IRESEARCH_DEBUG
     // ensure nfa is sorted
     static constexpr auto EXPECTED_NFA_PROPERTIES =
-      fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
+      fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor |
+      fst::kUnweighted;
 
     IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
                nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
 
-    fst::drawFst(nfa, std::cout);
     automaton dfa;
     fst::DeterminizeStar(nfa, &dfa);
     std::cout << "number of states (dfa) = " << nfa.NumStates() << std::endl;
@@ -338,7 +345,6 @@ irs::analysis::analyzer::ptr make(
     return std::make_unique<multi_delimited_token_stream_single>(
       std::move(opts));
   } else {
-
   }
 }
 
