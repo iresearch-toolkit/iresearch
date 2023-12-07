@@ -234,11 +234,133 @@ automaton make_strings(const std::vector<bstring>& strings) {
   return a;
 }
 
+struct TrieNode {
+  explicit TrieNode(int32_t stateId) : state_id(stateId) {}
+  int32_t state_id{0};
+  bool is_leaf{false};
+  std::array<TrieNode*, 256> outgoing;
+};
+
+bytes_view find_longest_prefix_that_is_suffix(bytes_view s, bytes_view str) {
+  // TODO this algorithm is quadratic. Probably OK for small strings.
+  for (std::size_t n = s.length() - 1; n > 0; n--) {
+    auto prefix = s.substr(0, n);
+    if (str.ends_with(prefix)) {
+      return prefix;
+    }
+  }
+  return {};
+}
+
+bytes_view find_longest_prefix_that_is_suffix(const std::vector<bstring>& strings, std::string_view str) {
+  bytes_view result = {};
+  for (auto const& s : strings) {
+    auto other = find_longest_prefix_that_is_suffix(s, ViewCast<byte_type>(str));
+    if (other.length() > result.length()) {
+      result = other;
+    }
+  }
+  return result;
+}
+
+void insert_error_conditions(const std::vector<bstring>& strings, std::string& matched_word, TrieNode* node,
+                             TrieNode* root) {
+  if (node->is_leaf) {
+    return;
+  }
+
+  for (size_t k = 0; k < 256; k++) {
+    if (node->outgoing[k] != nullptr) {
+      matched_word.push_back(k);
+      insert_error_conditions(strings, matched_word, node->outgoing[k], root);
+      matched_word.pop_back();
+    } else {
+      // if we find a character c that we don't expect, we have to find
+      // the longest prefix of `str` that is a suffix of the already matched
+      // text including c. then go to that state.
+      matched_word.push_back(k);
+      auto prefix = find_longest_prefix_that_is_suffix(strings, matched_word);
+
+      auto* dest = root;
+      for (auto c : prefix) {
+        dest = dest->outgoing[c];
+        IRS_ASSERT(dest != nullptr);
+      }
+      node->outgoing[k] = dest;
+      matched_word.pop_back();
+    }
+  }
+}
+
+automaton make_string_trie(const std::vector<bstring>& strings) {
+  std::vector<std::unique_ptr<TrieNode>> nodes;
+  nodes.emplace_back(std::make_unique<TrieNode>(0));
+
+  for (const auto& str : strings) {
+    TrieNode* current = nodes.front().get();
+
+    for (auto c : str) {
+      if (current->is_leaf) {
+        break;
+      }
+
+      if (current->outgoing[c] != nullptr) {
+        current = current->outgoing[c];
+        continue;
+      }
+
+      auto& new_node =
+        nodes.emplace_back(std::make_unique<TrieNode>(nodes.size()));
+      current->outgoing[c] = new_node.get();
+      current = new_node.get();
+    }
+
+    current->is_leaf = true;
+  }
+
+  std::string matched_word;
+  auto* root = nodes.front().get();
+  insert_error_conditions(strings, matched_word, root, root);
+
+  automaton a;
+  a.AddStates(nodes.size());
+  a.SetStart(0);
+
+  for (auto& n : nodes) {
+    size_t last_state = -1;
+    size_t last_char = 0;
+
+    if (n->is_leaf) {
+      a.SetFinal(n->state_id);
+      continue;
+    }
+
+    for (size_t k = 0; k < 256; k++) {
+      size_t next_state = n->outgoing[k]->state_id;
+      if (last_state == -1) {
+        last_state = next_state;
+        last_char = k;
+      } else if (last_state != next_state) {
+        a.EmplaceArc(n->state_id, range_label::fromRange(last_char, k - 1),
+                     last_state);
+        last_state = next_state;
+        last_char = k;
+      }
+    }
+
+    a.EmplaceArc(n->state_id, range_label::fromRange(last_char, 255),
+                 last_state);
+  }
+
+  fst::drawFst(a, std::cout);
+  return a;
+}
+
 class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
   explicit multi_delimited_token_stream_generic(options&& opts) {
-    automaton nfa = make_strings(opts.delimiters);
+    automaton nfa = make_string_trie(opts.delimiters);
     fst::drawFst(nfa, std::cout);
 
 #ifdef IRESEARCH_DEBUG
@@ -251,13 +373,7 @@ class multi_delimited_token_stream_generic final
                nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
 
-    automaton dfa;
-    fst::DeterminizeStar(nfa, &dfa);
-    fst::drawFst(dfa, std::cout);
-
-    //fst::Minimize(&dfa);
-
-    auto matcher = make_automaton_matcher(dfa);
+    auto matcher = make_automaton_matcher(nfa);
     auto result = match(matcher, std::string_view{"foobar"});
   }
 
