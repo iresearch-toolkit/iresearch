@@ -47,13 +47,11 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
     std::clamp(static_cast<size_t>(std::ceil(terms_count * threshold)),
                size_t{1}, terms_count);
   if (ctx.scorers.empty() && 1 == min_match_count) {
-    irs::by_terms disj;
-    auto& terms = disj.mutable_options()->terms;
+    irs::by_terms_options options;
     for (const auto& term : ngrams) {
-      terms.emplace(term, irs::kNoBoost);
+      options.terms.emplace(term, irs::kNoBoost);
     }
-    *disj.mutable_field() = field_name;
-    return disj.prepare(ctx);
+    return by_terms::Prepare(ctx, field_name, options);
   }
 
   if (allow_phrase && min_match_count == terms_count) {

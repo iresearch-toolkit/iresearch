@@ -106,8 +106,8 @@ struct PrepareVisitor : util::noncopyable {
                                      part.with_transpositions, part.prefix);
   }
 
-  result_type operator()(const by_terms_options& /*part*/) const {
-    return nullptr;  // FIXME
+  result_type operator()(const by_terms_options& part) const {
+    return by_terms::Prepare(ctx, field, part);
   }
 
   result_type operator()(const by_range_options& part) const {
