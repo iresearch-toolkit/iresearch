@@ -127,9 +127,10 @@ filter::prepared::ptr by_terms::Prepare(const PrepareContext& ctx,
     // Don't contribute to the score
     disj.add(provider.MakeAllDocsFilter(0.));
     // Reset min_match to 1
-    auto& new_options = *disj.add<by_terms>().mutable_options();
-    new_options = options;
-    new_options.min_match = 1;
+    auto& terms = disj.add<by_terms>();
+    *terms.mutable_field() = field;
+    *terms.mutable_options() = options;
+    terms.mutable_options()->min_match = 1;
     return disj.prepare({
       .index = ctx.index,
       .memory = ctx.memory,
