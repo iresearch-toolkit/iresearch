@@ -95,7 +95,7 @@ class by_terms final : public filter_base<by_terms_options>,
                                const AllDocsProvider& provider = {});
 
   prepared::ptr prepare(const PrepareContext& ctx) const final {
-    return Prepare(ctx, field(), options(), *this);
+    return Prepare(ctx.Boost(boost()), field(), options(), *this);
   }
 };
 
