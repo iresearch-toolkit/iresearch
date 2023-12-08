@@ -1253,6 +1253,22 @@ TEST(ngram_token_stream_test, next) {
   }
 
   {
+    SCOPED_TRACE("4-gram invalid utf8");
+    irs::analysis::ngram_token_stream<
+      irs::analysis::ngram_token_stream_base::InputType::Binary>
+      stream(irs::analysis::ngram_token_stream_base::Options(4, 4, false));
+
+    const std::vector<token> expected{
+      {"\xFFqui", 0, 4},
+      {"quic", 1, 5},
+      {"uick", 2, 6},
+      {"ick\xFF", 3, 7},
+    };
+
+    assert_tokens(expected, "\xFFquick\xFF", stream);
+  }
+
+  {
     SCOPED_TRACE("4-gram");
     irs::analysis::ngram_token_stream<
       irs::analysis::ngram_token_stream_base::InputType::Binary>
