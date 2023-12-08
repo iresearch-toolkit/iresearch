@@ -469,17 +469,6 @@ bool ngram_token_stream<StreamType>::next_symbol(
       ++it;
     } else if constexpr (StreamType == InputType::UTF8) {
       it = irs::utf8_utils::next(it, data_end_);
-      // const uint32_t cp_start = *it++;
-      // if (IRS_UNLIKELY(cp_start >= 0b1000'0000)) {
-      //   if (cp_start < 0b1110'0000) {
-      //     ++it;
-      //   } else if (cp_start < 0b1111'0000) {
-      //     it += 2;
-      //   } else if (cp_start < 0b1111'1000) {
-      //     it += 3;
-      //   }
-      // }
-      // return it <= data_end_ ? it : data_end_;
     }
     return true;
   }
