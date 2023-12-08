@@ -28,8 +28,6 @@
 #include "utils/bitset.hpp"
 #include "utils/singleton.hpp"
 
-#ifndef IRESEARCH_DLL
-
 TEST(bitset_iterator_test, next) {
   {
     irs::bitset_doc_iterator it(nullptr, nullptr);
@@ -874,5 +872,3 @@ TEST(bitset_iterator_test, seek_next) {
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 }
-
-#endif

@@ -35,7 +35,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#ifndef IRESEARCH_DLL
 namespace {
 
 class pipeline_test_analyzer
@@ -864,5 +863,3 @@ TEST(pipeline_token_stream_test, members_visitor) {
   irs::analysis::pipeline_token_stream pipe3(std::move(pipeline_options3));
   assert_pipeline_members(pipe3, expected_nested);
 }
-
-#endif

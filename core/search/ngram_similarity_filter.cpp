@@ -34,7 +34,8 @@ namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::Prepare(
   const PrepareContext& ctx, std::string_view field_name,
-  const std::vector<irs::bstring>& ngrams, float_t threshold) {
+  const std::vector<irs::bstring>& ngrams, float_t threshold,
+  bool allow_phrase) {
   if (ngrams.empty() || field_name.empty()) {
     // empty field or terms or invalid threshold
     return prepared::empty();
@@ -55,14 +56,12 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
     return disj.prepare(ctx);
   }
 
-  if (min_match_count == terms_count) {
-    irs::by_phrase phrase;
-    auto& options = *phrase.mutable_options();
+  if (allow_phrase && min_match_count == terms_count) {
+    irs::by_phrase_options options;
     for (size_t i = 0; const auto& ngram : ngrams) {
       options.insert(by_term_options{ngram}, i++);
     }
-    *phrase.mutable_field() = field_name;
-    return phrase.prepare(ctx);
+    return by_phrase::Prepare(ctx, field_name, options);
   }
 
   NGramStates query_states{ctx.memory, ctx.index.size()};

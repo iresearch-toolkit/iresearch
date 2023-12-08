@@ -26,12 +26,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-#ifndef IRESEARCH_DLL
-
 TEST(token_stopwords_stream_tests, consts) {
   static_assert("stopwords" ==
                 irs::type<irs::analysis::token_stopwords_stream>::name());
@@ -86,8 +80,6 @@ TEST(token_stopwords_stream_tests, test_masking) {
     ASSERT_FALSE(stream.next());
   }
 }
-
-#endif  // IRESEARCH_DLL
 
 TEST(token_stopwords_stream_tests, test_load) {
   // load jSON array (mask string)

@@ -32,8 +32,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#ifndef IRESEARCH_DLL
-
 TEST(ngram_token_stream_test, consts) {
   static_assert(
     "ngram" ==
@@ -1619,8 +1617,6 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //  }
 //  ASSERT_FALSE(stream.next());
 //}
-
-#endif  // IRESEARCH_DLL
 
 TEST(ngram_token_stream_test, test_load) {
   {

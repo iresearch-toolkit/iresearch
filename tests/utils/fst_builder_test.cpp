@@ -20,8 +20,6 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DLL
-
 // clang-format off
 
 #include "tests_shared.hpp"
@@ -380,5 +378,3 @@ TEST(fst_builder_test, test_read_write) {
 }
 
 }  // namespace
-
-#endif  // IRESEARCH_DLL

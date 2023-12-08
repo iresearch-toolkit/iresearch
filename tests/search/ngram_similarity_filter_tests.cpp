@@ -36,7 +36,7 @@ namespace {
 
 irs::by_ngram_similarity make_filter(
   const std::string_view& field, const std::vector<std::string_view>& ngrams,
-  float_t threshold = 1.f) {
+  float_t threshold = 1.f, bool allow_phrase = true) {
   irs::by_ngram_similarity filter;
   *filter.mutable_field() = field;
   auto* opts = filter.mutable_options();
@@ -44,6 +44,7 @@ irs::by_ngram_similarity make_filter(
     opts->ngrams.emplace_back(irs::ViewCast<irs::byte_type>(ngram));
   }
   opts->threshold = threshold;
+  opts->allow_phrase = allow_phrase;
   return filter;
 }
 
@@ -1294,8 +1295,6 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count);
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
     irs::IndexWriterOptions opts;
@@ -1317,6 +1316,42 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   irs::Scorer::ptr scorer{std::make_unique<irs::TFIDF>(true)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
+}
+
+TEST_P(ngram_similarity_filter_test_case, all_match_ngram_score_test) {
+  {
+    irs::IndexWriterOptions opts;
+    opts.features = features_with_norms();
+
+    tests::json_doc_generator gen(resource("ngram_similarity.json"),
+                                  &tests::normalized_string_json_field_factory);
+
+    add_segment(gen, irs::OM_CREATE, opts);
+  }
+
+  auto rdr = open_reader();
+
+  irs::Scorer::ptr scorers[] = {
+    std::make_unique<irs::TFIDF>(false),
+    std::make_unique<irs::TFIDF>(true),
+    std::make_unique<irs::BM25>(),
+    std::make_unique<irs::BM25>(0.F),                  // BM1
+    std::make_unique<irs::BM25>(irs::BM25::K(), 1.F),  // BM11
+    std::make_unique<irs::BM25>(irs::BM25::K(), 0.F),  // BM15
+  };
+
+  std::vector<irs::doc_id_t> ngram;
+  std::vector<irs::doc_id_t> phrase;
+  for (auto& scorer : scorers) {
+    irs::by_ngram_similarity ngram_filter =
+      make_filter("field", {"at", "tl", "la", "as"}, 1.F, false);
+    irs::by_ngram_similarity phrase_filter =
+      make_filter("field", {"at", "tl", "la", "as"}, 1.F, true);
+
+    MakeResult(ngram_filter, std::span{&scorer, 1}, rdr, ngram);
+    MakeResult(phrase_filter, std::span{&scorer, 1}, rdr, phrase);
+    EXPECT_EQ(ngram, phrase);
+  }
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
@@ -1490,8 +1525,6 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
   EXPECT_GT(counter.max, 0);
   counter.Reset();
 }
-
-#endif
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 

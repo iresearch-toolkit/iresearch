@@ -4331,7 +4331,6 @@ namespace irs {
 namespace version10 {
 
 void init() {
-#ifndef IRESEARCH_DLL
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
@@ -4344,7 +4343,6 @@ void init() {
   REGISTER_FORMAT(::format14simd);
   REGISTER_FORMAT(::format15simd);
 #endif  // IRESEARCH_SSE2
-#endif  // IRESEARCH_DLL
 }
 
 }  // namespace version10

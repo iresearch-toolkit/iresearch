@@ -23,14 +23,11 @@
 #include "search/wildcard_filter.hpp"
 
 #include "filter_test_case_base.hpp"
-#include "tests_shared.hpp"
-
-#ifndef IRESEARCH_DLL
 #include "search/all_filter.hpp"
 #include "search/multiterm_query.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
-#endif
+#include "tests_shared.hpp"
 
 namespace {
 
@@ -104,8 +101,6 @@ TEST(by_wildcard_test, boost) {
   EXPECT_GT(counter.max, 0);
   counter.Reset();
 }
-
-#ifndef IRESEARCH_DLL
 
 #ifdef __clang__
 #pragma GCC diagnostic push
@@ -277,8 +272,6 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 #ifdef __clang__
 #pragma GCC diagnostic pop
 #endif  // __clang__
-
-#endif  // IRESEARCH_DLL
 
 class wildcard_filter_test_case : public tests::FilterTestCaseBase {};
 

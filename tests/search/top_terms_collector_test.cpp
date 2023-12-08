@@ -20,8 +20,6 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DLL
-
 #include "search/top_terms_collector.hpp"
 
 #include "formats/empty_term_reader.hpp"
@@ -395,5 +393,3 @@ TEST(top_terms_collector_test, test_top_0) {
 
   collector.visit(visitor);
 }
-
-#endif  // IRESEARCH_DLL
