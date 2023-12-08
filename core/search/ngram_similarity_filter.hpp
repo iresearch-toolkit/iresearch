@@ -59,7 +59,7 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field_name,
                                const std::vector<irs::bstring>& ngrams,
-                               float_t threshold, bool allow_phrase);
+                               float_t threshold, bool allow_phrase = true);
 
   prepared::ptr prepare(const PrepareContext& ctx) const final {
     return Prepare(ctx.Boost(boost()), field(), options().ngrams,
