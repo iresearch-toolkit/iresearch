@@ -157,7 +157,7 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
     }
   }
 
-  irs::IndexFeatures index_features() const final {
+  irs::IndexFeatures index_features() const override {
     return irs::IndexFeatures::NONE;
   }
 
