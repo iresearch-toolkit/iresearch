@@ -108,8 +108,6 @@ struct by_edit_distance_options : by_edit_distance_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class by_edit_distance final : public filter_base<by_edit_distance_options> {
  public:
-  static ptr make();
-
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
                                size_t terms_limit, uint8_t max_distance,

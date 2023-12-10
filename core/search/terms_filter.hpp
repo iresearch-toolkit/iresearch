@@ -85,13 +85,18 @@ struct by_terms_options {
 class by_terms final : public filter_base<by_terms_options>,
                        public AllDocsProvider {
  public:
-  static ptr make();
-
   static void visit(const SubReader& segment, const term_reader& field,
                     const by_terms_options::search_terms& terms,
                     filter_visitor& visitor);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  static prepared::ptr Prepare(const PrepareContext& ctx,
+                               std::string_view field,
+                               const by_terms_options& options,
+                               const AllDocsProvider& provider = {});
+
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return Prepare(ctx.Boost(boost()), field(), options(), *this);
+  }
 };
 
 }  // namespace irs

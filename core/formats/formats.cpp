@@ -23,11 +23,8 @@
 #include "formats.hpp"
 
 // list of statically loaded formats via init()
-#ifndef IRESEARCH_DLL
-#include "formats_10.hpp"
-#endif
-
 #include "analysis/token_attributes.hpp"
+#include "formats_10.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/register.hpp"
 #include "utils/type_limits.hpp"
@@ -96,11 +93,7 @@ format::ptr formats::get(std::string_view name,
   return nullptr;
 }
 
-void formats::init() {
-#ifndef IRESEARCH_DLL
-  irs::version10::init();
-#endif
-}
+void formats::init() { irs::version10::init(); }
 
 void formats::load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");

@@ -157,7 +157,7 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
     }
   }
 
-  irs::IndexFeatures index_features() const final {
+  irs::IndexFeatures index_features() const override {
     return irs::IndexFeatures::NONE;
   }
 
@@ -357,6 +357,13 @@ class FilterTestCaseBase : public index_test_base {
                          const std::vector<Tests>& tests,
                          const irs::IndexReader& index,
                          std::string_view source_location = {});
+
+  static void MakeResult(const irs::filter& filter,
+                         std::span<const irs::Scorer::ptr> order,
+                         const irs::IndexReader& rdr,
+                         std::vector<irs::doc_id_t>& result,
+                         bool score_must_be_present = true,
+                         bool reverse = false);
 
   // Validate document order
   static void CheckQuery(const irs::filter& filter,
