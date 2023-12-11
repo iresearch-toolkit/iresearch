@@ -84,7 +84,7 @@ struct GetVisitor {
   }
 };
 
-struct Prepare : util::noncopyable {
+struct PrepareVisitor : util::noncopyable {
   using result_type = filter::prepared::ptr;
 
   result_type operator()(const by_term_options& opts) const {
@@ -106,28 +106,20 @@ struct Prepare : util::noncopyable {
                                      part.with_transpositions, part.prefix);
   }
 
-  result_type operator()(const by_terms_options& /*part*/) const {
-    return nullptr;  // FIXME
+  result_type operator()(const by_terms_options&) const {
+    return nullptr;  // TODO(MBkkt) Some tests doesn't work for by_terms :(
   }
 
   result_type operator()(const by_range_options& part) const {
     return by_range::prepare(ctx, field, part.range, part.scored_terms_limit);
   }
 
-  template<typename T>
-  result_type operator()(const T&) const {
-    IRS_ASSERT(false);
-    return filter::prepared::empty();
-  }
-
-  Prepare(const PrepareContext& ctx, std::string_view field) noexcept
+  PrepareVisitor(const PrepareContext& ctx, std::string_view field) noexcept
     : ctx{ctx}, field{field} {}
 
   const PrepareContext& ctx;
   const std::string_view field;
 };
-
-}  // namespace
 
 // Filter visitor for phrase queries
 template<typename PhraseStates>
@@ -189,33 +181,10 @@ class phrase_term_visitor final : public filter_visitor,
   bool volatile_boost_ = false;
 };
 
-filter::prepared::ptr by_phrase::prepare(const PrepareContext& ctx) const {
-  if (field().empty() || options().empty()) {
-    // empty field or phrase
-    return filter::prepared::empty();
-  }
-
-  if (1 == options().size()) {
-    auto sub_ctx = ctx.Boost(boost());
-    auto query =
-      std::visit(Prepare{sub_ctx, field()}, options().begin()->second);
-
-    if (query) {
-      return query;
-    }
-  }
-
-  // prepare phrase stats (collector for each term)
-  if (options().simple()) {
-    return fixed_prepare_collect(ctx);
-  }
-
-  return variadic_prepare_collect(ctx);
-}
-
-filter::prepared::ptr by_phrase::fixed_prepare_collect(
-  const PrepareContext& ctx) const {
-  const auto phrase_size = options().size();
+filter::prepared::ptr FixedPrepareCollect(const PrepareContext& ctx,
+                                          std::string_view field,
+                                          const by_phrase_options& options) {
+  const auto phrase_size = options.size();
   const auto is_ord_empty = ctx.scorers.empty();
 
   // stats collectors
@@ -230,15 +199,13 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
-  const std::string_view field = this->field();
-
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
   for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
 
-    if (!reader) {
+    if (reader == nullptr) {
       continue;
     }
 
@@ -252,7 +219,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
                         *reader);  // collect field statistics once per segment
     ptv.reset(term_stats);
 
-    for (const auto& word : options()) {
+    for (const auto& word : options) {
       IRS_ASSERT(std::get_if<by_term_options>(&word.second));
       by_term::visit(segment, *reader,
                      std::get<by_term_options>(word.second).term, ptv);
@@ -278,9 +245,15 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     phrase_terms.reserve(phrase_size);
   }
 
+#ifndef IRESEARCH_TEST  // TODO(MBkkt) adjust tests
+  if (phrase_states.empty()) {
+    return filter::prepared::empty();
+  }
+#endif
+
   // offset of the first term in a phrase
-  IRS_ASSERT(!options().empty());
-  const size_t base_offset = options().begin()->first;
+  IRS_ASSERT(!options.empty());
+  const size_t base_offset = options.begin()->first;
 
   // finish stats
   bstring stats(ctx.scorers.stats_size(), 0);  // aggregated phrase stats
@@ -290,8 +263,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   auto pos_itr = positions.begin();
 
   size_t term_idx = 0;
-  for (const auto& term : options()) {
-    *pos_itr = position::value_t(term.first - base_offset);
+  for (const auto& term : options) {
+    *pos_itr = static_cast<position::value_t>(term.first - base_offset);
     term_stats.finish(stats_buf, term_idx, field_stats, ctx.index);
     ++pos_itr;
     ++term_idx;
@@ -299,12 +272,13 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
   return memory::make_tracked<FixedPhraseQuery>(
     ctx.memory, std::move(phrase_states), std::move(positions),
-    std::move(stats), ctx.boost * boost());
+    std::move(stats), ctx.boost);
 }
 
-filter::prepared::ptr by_phrase::variadic_prepare_collect(
-  const PrepareContext& ctx) const {
-  const auto phrase_size = options().size();
+filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
+                                             std::string_view field,
+                                             const by_phrase_options& options) {
+  const auto phrase_size = options.size();
 
   // stats collectors
   field_collectors field_stats{ctx.scorers};
@@ -313,7 +287,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   phrase_part_visitors.reserve(phrase_size);
   std::vector<term_collectors> phrase_part_stats;
   phrase_part_stats.reserve(phrase_size);
-  for (const auto& word : options()) {
+  for (const auto& word : options) {
     phrase_part_stats.emplace_back(ctx.scorers, 0);
     phrase_part_visitors.emplace_back(std::visit(GetVisitor{}, word.second));
   }
@@ -328,7 +302,6 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
-  const std::string_view field = this->field();
   const auto is_ord_empty = ctx.scorers.empty();
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
@@ -337,7 +310,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     // get term dictionary for field
     const auto* reader = segment.field(field);
 
-    if (!reader) {
+    if (reader == nullptr) {
       continue;
     }
 
@@ -348,8 +321,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     ptv.reset();  // reset boost volaitility mark
-    field_stats.collect(segment,
-                        *reader);  // collect field statistics once per segment
+    field_stats.collect(segment, *reader);
+    // collect field statistics once per segment
 
     size_t part_offset = 0;
     size_t found_words_count = 0;
@@ -392,9 +365,15 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     num_terms.resize(phrase_size);
   }
 
+#ifndef IRESEARCH_TEST  // TODO(MBkkt) adjust tests
+  if (phrase_states.empty()) {
+    return filter::prepared::empty();
+  }
+#endif
+
   // offset of the first term in a phrase
-  IRS_ASSERT(!options().empty());
-  const size_t base_offset = options().begin()->first;
+  IRS_ASSERT(!options.empty());
+  const size_t base_offset = options.begin()->first;
 
   // finish stats
   IRS_ASSERT(phrase_size == phrase_part_stats.size());
@@ -405,8 +384,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   VariadicPhraseQuery::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
 
-  for (const auto& term : options()) {
-    *pos_itr = position::value_t(term.first - base_offset);
+  for (const auto& term : options) {
+    *pos_itr = static_cast<position::value_t>(term.first - base_offset);
     for (size_t term_idx = 0, size = collector->size(); term_idx < size;
          ++term_idx) {
       collector->finish(stats_buf, term_idx, field_stats, ctx.index);
@@ -417,7 +396,33 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   return memory::make_tracked<VariadicPhraseQuery>(
     ctx.memory, std::move(phrase_states), std::move(positions),
-    std::move(stats), ctx.boost * boost());
+    std::move(stats), ctx.boost);
+}
+
+}  // namespace
+
+filter::prepared::ptr by_phrase::Prepare(const PrepareContext& ctx,
+                                         std::string_view field,
+                                         const by_phrase_options& options) {
+  if (field.empty() || options.empty()) {
+    // empty field or phrase
+    return prepared::empty();
+  }
+
+  if (1 == options.size()) {
+    auto query =
+      std::visit(PrepareVisitor{ctx, field}, options.begin()->second);
+    if (query) {
+      return query;
+    }
+  }
+
+  // prepare phrase stats (collector for each term)
+  if (options.simple()) {
+    return FixedPrepareCollect(ctx, field, options);
+  }
+
+  return VariadicPrepareCollect(ctx, field, options);
 }
 
 }  // namespace irs

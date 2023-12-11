@@ -239,10 +239,10 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   ASSERT_EQ(expected, result);
 }
 
-void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
+void FilterTestCaseBase::MakeResult(const irs::filter& filter,
                                     std::span<const irs::Scorer::ptr> order,
-                                    const std::vector<irs::doc_id_t>& expected,
                                     const irs::IndexReader& rdr,
+                                    std::vector<irs::doc_id_t>& result,
                                     bool score_must_be_present, bool reverse) {
   auto prepared_order = irs::Scorers::Prepare(order);
   auto prepared_filter =
@@ -306,12 +306,19 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
     ASSERT_FALSE(docs->next());
   }
 
-  std::vector<irs::doc_id_t> result;
-
+  result.clear();
   for (auto& entry : scored_result) {
     result.emplace_back(entry.second);
   }
+}
 
+void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
+                                    std::span<const irs::Scorer::ptr> order,
+                                    const std::vector<irs::doc_id_t>& expected,
+                                    const irs::IndexReader& rdr,
+                                    bool score_must_be_present, bool reverse) {
+  std::vector<irs::doc_id_t> result;
+  MakeResult(filter, order, rdr, result, score_must_be_present, reverse);
   ASSERT_EQ(expected, result);
 }
 

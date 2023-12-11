@@ -37,37 +37,34 @@ namespace analysis {
 class ngram_token_stream_base : public TypedAnalyzer<ngram_token_stream_base>,
                                 private util::noncopyable {
  public:
-  enum class InputType {
+  enum class InputType : uint8_t {
     Binary,  // input is treaten as generic bytes
     UTF8,    // input is treaten as ut8-encoded symbols
   };
 
   struct Options {
-    Options() noexcept
-      : min_gram(0),
-        max_gram(0),
-        stream_bytes_type(InputType::Binary),
-        preserve_original(true) {}
-    Options(size_t min, size_t max, bool original)
-      : min_gram(min),
-        max_gram(max),
-        stream_bytes_type(InputType::Binary),
-        preserve_original(original) {}
+    Options() noexcept = default;
+    Options(size_t min, size_t max, bool original,
+            InputType stream_type = InputType::Binary) noexcept
+      : min_gram{min},
+        max_gram{max},
+        preserve_original{original},
+        stream_bytes_type{stream_type} {}
     Options(size_t min, size_t max, bool original, InputType stream_type,
             irs::bytes_view start, irs::bytes_view end)
-      : start_marker(start),
-        end_marker(end),
-        min_gram(min),
-        max_gram(max),
-        stream_bytes_type(stream_type),
-        preserve_original(original) {}
+      : min_gram{min},
+        max_gram{max},
+        preserve_original{original},
+        stream_bytes_type{stream_type},
+        start_marker{start},
+        end_marker{end} {}
 
+    size_t min_gram{0};
+    size_t max_gram{0};
+    bool preserve_original{true};  // emit input data as a token
+    InputType stream_bytes_type{InputType::Binary};
     irs::bstring start_marker;  // marker of ngrams at the beginning of stream
     irs::bstring end_marker;    // marker of ngrams at the end of strem
-    size_t min_gram;
-    size_t max_gram;
-    InputType stream_bytes_type;
-    bool preserve_original;  // emit input data as a token
   };
 
   static constexpr std::string_view type_name() noexcept { return "ngram"; }

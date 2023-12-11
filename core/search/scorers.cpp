@@ -25,11 +25,9 @@
 
 #include "shared.hpp"
 // list of statically loaded scorers via init()
-#ifndef IRESEARCH_DLL
 #include "bm25.hpp"
 #include "boost_scorer.hpp"
 #include "tfidf.hpp"
-#endif
 #include "utils/hash_utils.hpp"
 #include "utils/register.hpp"
 
@@ -111,11 +109,9 @@ Scorer::ptr scorers::get(std::string_view name, const type_info& args_format,
 }
 
 void scorers::init() {
-#ifndef IRESEARCH_DLL
   irs::BM25::init();
   irs::TFIDF::init();
   irs::BoostScore::init();
-#endif
 }
 
 void scorers::load_all(std::string_view path) {

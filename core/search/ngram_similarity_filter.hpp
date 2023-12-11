@@ -34,7 +34,12 @@ struct by_ngram_similarity_options {
   using filter_type = by_ngram_similarity;
 
   std::vector<bstring> ngrams;
-  float_t threshold{1.f};
+  float_t threshold{1.F};
+#ifdef IRESEARCH_TEST
+  bool allow_phrase{true};
+#else
+  static constexpr bool allow_phrase{true};
+#endif
 
   bool operator==(const by_ngram_similarity_options& rhs) const noexcept {
     return ngrams == rhs.ngrams && threshold == rhs.threshold;
@@ -54,11 +59,11 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field_name,
                                const std::vector<irs::bstring>& ngrams,
-                               float_t threshold);
+                               float_t threshold, bool allow_phrase = true);
 
   prepared::ptr prepare(const PrepareContext& ctx) const final {
     return Prepare(ctx.Boost(boost()), field(), options().ngrams,
-                   options().threshold);
+                   options().threshold, options().allow_phrase);
   }
 };
 

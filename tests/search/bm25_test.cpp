@@ -240,8 +240,6 @@ TEST_P(bm25_test_case, test_load) {
   ASSERT_NE(nullptr, scorer);
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST_P(bm25_test_case, make_from_array) {
   // default args
   {
@@ -337,8 +335,6 @@ TEST_P(bm25_test_case, make_from_array) {
             irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                               "[ 1.5, [] ]"));
 }
-
-#endif  // IRESEARCH_DLL
 
 TEST_P(bm25_test_case, test_normalize_features) {
   // default norms
@@ -1381,8 +1377,6 @@ TEST_P(bm25_test_case, test_query_norms) {
   test_query_norms(irs::type<irs::Norm>::id(), &irs::Norm::MakeWriter);
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST_P(bm25_test_case, test_collector_serialization) {
   // initialize test data
   {
@@ -1723,8 +1717,6 @@ TEST_P(bm25_test_case, test_order) {
     }
   }
 }
-
-#endif  // IRESEARCH_DLL
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 

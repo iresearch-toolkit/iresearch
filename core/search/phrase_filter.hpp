@@ -143,16 +143,15 @@ class by_phrase_options {
   bool is_simple_term_only_{true};
 };
 
-// Phrase filter
 class by_phrase : public filter_base<by_phrase_options> {
  public:
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  static prepared::ptr Prepare(const PrepareContext& ctx,
+                               std::string_view field,
+                               const by_phrase_options& options);
 
- private:
-  filter::prepared::ptr fixed_prepare_collect(const PrepareContext& ctx) const;
-
-  filter::prepared::ptr variadic_prepare_collect(
-    const PrepareContext& ctx) const;
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return Prepare(ctx.Boost(boost()), field(), options());
+  }
 };
 
 }  // namespace irs

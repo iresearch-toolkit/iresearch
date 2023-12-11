@@ -32,12 +32,6 @@ class stemming_token_stream_tests : public ::testing::Test {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-#ifndef IRESEARCH_DLL
-
 TEST_F(stemming_token_stream_tests, consts) {
   static_assert("stem" ==
                 irs::type<irs::analysis::stemming_token_stream>::name());
@@ -116,8 +110,6 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
     ASSERT_FALSE(stream.next());
   }
 }
-
-#endif  // IRESEARCH_DLL
 
 TEST_F(stemming_token_stream_tests, test_load) {
   // load jSON object
