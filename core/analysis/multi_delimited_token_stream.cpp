@@ -41,7 +41,7 @@ using namespace irs::analysis;
 namespace {
 
 template<typename Derived>
-class multi_delimited_token_stream_single_chars_base
+class MultiDelimitedTokenStreamSingleCharsBase
   : public multi_delimited_token_stream {
  public:
   bool next() override {
@@ -50,7 +50,7 @@ class multi_delimited_token_stream_single_chars_base
         return false;
       }
 
-      auto next = static_cast<Derived*>(this)->find_next_delim();
+      auto next = static_cast<Derived*>(this)->FindNextDelim();
 
       if (next == data_.begin()) {
         // skip empty terms
@@ -73,76 +73,75 @@ class multi_delimited_token_stream_single_chars_base
 };
 
 template<std::size_t N>
-class multi_delimited_token_stream_single_chars final
-  : public multi_delimited_token_stream_single_chars_base<
-      multi_delimited_token_stream_single_chars<N>> {
+class MultiDelimitedTokenStreamSingleChars final
+  : public MultiDelimitedTokenStreamSingleCharsBase<
+      MultiDelimitedTokenStreamSingleChars<N>> {
  public:
-  explicit multi_delimited_token_stream_single_chars(
+  explicit MultiDelimitedTokenStreamSingleChars(
     const multi_delimited_token_stream::options& opts) {
     IRS_ASSERT(opts.delimiters.size() == N);
     std::size_t k = 0;
     for (const auto& delim : opts.delimiters) {
       IRS_ASSERT(delim.size() == 1);
-      bytes_[k++] = delim[0];
+      bytes[k++] = delim[0];
     }
   }
 
-  auto find_next_delim() {
-    return std::search(this->data_.begin(), this->data_.end(), bytes_.begin(),
-                       bytes_.end());
+  auto FindNextDelim() {
+    return std::search(this->data_.begin(), this->data_.end(), bytes.begin(),
+                       bytes.end());
   }
 
-  std::array<byte_type, N> bytes_;
+  std::array<byte_type, N> bytes;
 };
 
 template<>
-class multi_delimited_token_stream_single_chars<1> final
-  : public multi_delimited_token_stream_single_chars_base<
-      multi_delimited_token_stream_single_chars<1>> {
+class MultiDelimitedTokenStreamSingleChars<1> final
+  : public MultiDelimitedTokenStreamSingleCharsBase<
+      MultiDelimitedTokenStreamSingleChars<1>> {
  public:
-  explicit multi_delimited_token_stream_single_chars(
+  explicit MultiDelimitedTokenStreamSingleChars(
     const multi_delimited_token_stream::options& opts) {
     IRS_ASSERT(opts.delimiters.size() == 1);
     IRS_ASSERT(opts.delimiters[0].size() == 1);
-    delim_ = opts.delimiters[0][0];
+    delim = opts.delimiters[0][0];
   }
 
-  auto find_next_delim() {
-    if (auto pos = this->data_.find(delim_); pos != bstring::npos) {
+  auto FindNextDelim() {
+    if (auto pos = this->data_.find(delim); pos != bstring::npos) {
       return this->data_.begin() + pos;
     }
     return this->data_.end();
   }
 
-  byte_type delim_;
+  byte_type delim;
 };
 
 template<>
-class multi_delimited_token_stream_single_chars<0> final
-  : public multi_delimited_token_stream_single_chars_base<
-      multi_delimited_token_stream_single_chars<0>> {
+class MultiDelimitedTokenStreamSingleChars<0> final
+  : public MultiDelimitedTokenStreamSingleCharsBase<
+      MultiDelimitedTokenStreamSingleChars<0>> {
  public:
-  explicit multi_delimited_token_stream_single_chars(
+  explicit MultiDelimitedTokenStreamSingleChars(
     const multi_delimited_token_stream::options& opts) {
-    IRS_ASSERT(opts.delimiters.size() == 0);
+    IRS_ASSERT(opts.delimiters.empty());
   }
 
-  auto find_next_delim() { return this->data_.end(); }
+  auto FindNextDelim() { return this->data_.end(); }
 };
 
-class multi_delimited_token_stream_generic_single_chars final
-  : public multi_delimited_token_stream_single_chars_base<
-      multi_delimited_token_stream_generic_single_chars> {
+class MultiDelimitedTokenStreamGenericSingleChars final
+  : public MultiDelimitedTokenStreamSingleCharsBase<
+      MultiDelimitedTokenStreamGenericSingleChars> {
  public:
-  explicit multi_delimited_token_stream_generic_single_chars(
-    const options& opts) {
+  explicit MultiDelimitedTokenStreamGenericSingleChars(const options& opts) {
     for (const auto& delim : opts.delimiters) {
       IRS_ASSERT(delim.size() == 1);
       bytes_[delim[0]] = true;
     }
   }
 
-  auto find_next_delim() {
+  auto FindNextDelim() {
     return std::find_if(data_.begin(), data_.end(), [&](auto c) {
       if (c > CHAR_MAX) {
         return false;
@@ -165,7 +164,7 @@ struct TrieNode {
   absl::flat_hash_map<byte_type, TrieNode*> real_trie;
 };
 
-bytes_view find_longest_prefix_that_is_suffix(bytes_view s, bytes_view str) {
+bytes_view FindLongestPrefixThatIsSuffix(bytes_view s, bytes_view str) {
   // TODO this algorithm is quadratic. Probably OK for small strings.
   for (std::size_t n = s.length() - 1; n > 0; n--) {
     auto prefix = s.substr(0, n);
@@ -176,12 +175,11 @@ bytes_view find_longest_prefix_that_is_suffix(bytes_view s, bytes_view str) {
   return {};
 }
 
-bytes_view find_longest_prefix_that_is_suffix(
-  const std::vector<bstring>& strings, std::string_view str) {
+bytes_view FindLongestPrefixThatIsSuffix(const std::vector<bstring>& strings,
+                                         std::string_view str) {
   bytes_view result = {};
   for (const auto& s : strings) {
-    auto other =
-      find_longest_prefix_that_is_suffix(s, ViewCast<byte_type>(str));
+    auto other = FindLongestPrefixThatIsSuffix(s, ViewCast<byte_type>(str));
     if (other.length() > result.length()) {
       result = other;
     }
@@ -189,9 +187,9 @@ bytes_view find_longest_prefix_that_is_suffix(
   return result;
 }
 
-void insert_error_transitions(const std::vector<bstring>& strings,
-                              std::string& matched_word, TrieNode* node,
-                              TrieNode* root) {
+void InsertErrorTransitions(const std::vector<bstring>& strings,
+                            std::string& matched_word, TrieNode* node,
+                            TrieNode* root) {
   if (node->is_leaf) {
     return;
   }
@@ -200,14 +198,14 @@ void insert_error_transitions(const std::vector<bstring>& strings,
     if (auto it = node->simple_trie.find(k); it != node->simple_trie.end()) {
       node->real_trie.emplace(k, it->second);
       matched_word.push_back(k);
-      insert_error_transitions(strings, matched_word, it->second, root);
+      InsertErrorTransitions(strings, matched_word, it->second, root);
       matched_word.pop_back();
     } else {
       // if we find a character c that we don't expect, we have to find
       // the longest prefix of `str` that is a suffix of the already matched
       // text including c. then go to that state.
       matched_word.push_back(k);
-      auto prefix = find_longest_prefix_that_is_suffix(strings, matched_word);
+      auto prefix = FindLongestPrefixThatIsSuffix(strings, matched_word);
       if (prefix.empty()) {
         matched_word.pop_back();
         continue;  // no prefix found implies going to the initial state
@@ -225,7 +223,7 @@ void insert_error_transitions(const std::vector<bstring>& strings,
   }
 }
 
-automaton make_string_trie(const std::vector<bstring>& strings) {
+automaton MakeStringTrie(const std::vector<bstring>& strings) {
   std::vector<std::unique_ptr<TrieNode>> nodes;
   nodes.emplace_back(std::make_unique<TrieNode>(0, 0));
 
@@ -255,7 +253,7 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
 
   std::string matched_word;
   auto* root = nodes.front().get();
-  insert_error_transitions(strings, matched_word, root, root);
+  InsertErrorTransitions(strings, matched_word, root, root);
 
   automaton a;
   a.AddStates(nodes.size());
@@ -297,9 +295,9 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
 class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
-  explicit multi_delimited_token_stream_generic(options&& opts)
-    : automaton_(make_string_trie(opts.delimiters)),
-      matcher_(make_automaton_matcher(automaton_)) {
+  explicit multi_delimited_token_stream_generic(const options& opts)
+    : automaton(MakeStringTrie(opts.delimiters)),
+      matcher(make_automaton_matcher(automaton)) {
     // fst::drawFst(automaton_, std::cout);
 
 #ifdef IRESEARCH_DEBUG
@@ -309,27 +307,27 @@ class multi_delimited_token_stream_generic final
       fst::kUnweighted;
 
     IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
-               automaton_.Properties(EXPECTED_NFA_PROPERTIES, true));
+               automaton.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
   }
 
-  auto find_next_delim() {
-    auto state = matcher_.GetFst().Start();
-    matcher_.SetState(state);
+  auto FindNextDelim() {
+    auto state = matcher.GetFst().Start();
+    matcher.SetState(state);
     for (size_t k = 0; k < data_.length(); k++) {
-      matcher_.Find(data_[k]);
+      matcher.Find(data_[k]);
 
-      state = matcher_.Value().nextstate;
+      state = matcher.Value().nextstate;
 
-      if (matcher_.Final(state)) {
-        auto length = matcher_.Final(state).Payload();
+      if (matcher.Final(state)) {
+        auto length = matcher.Final(state).Payload();
         IRS_ASSERT(length <= k);
 
         return std::make_pair(data_.begin() + (k - length),
                               static_cast<size_t>(length + 1));
       }
 
-      matcher_.SetState(state);
+      matcher.SetState(state);
     }
 
     return std::make_pair(data_.end(), size_t{0});
@@ -341,7 +339,7 @@ class multi_delimited_token_stream_generic final
         return false;
       }
 
-      auto [next, skip] = find_next_delim();
+      auto [next, skip] = FindNextDelim();
 
       if (next == data_.begin()) {
         // skip empty terms
@@ -362,16 +360,16 @@ class multi_delimited_token_stream_generic final
     }
   }
 
-  automaton automaton_;
-  automaton_table_matcher matcher_;
+  automaton automaton;
+  automaton_table_matcher matcher;
 };
 
-class multi_delimited_token_stream_single final
+class MultiDelimitedTokenStreamSingle final
   : public multi_delimited_token_stream {
  public:
-  explicit multi_delimited_token_stream_single(options&& opts)
-    : delim_(std::move(opts.delimiters[0])),
-      searcher_(delim_.begin(), delim_.end()) {}
+  explicit MultiDelimitedTokenStreamSingle(options& opts)
+    : delim(std::move(opts.delimiters[0])),
+      searcher(delim.begin(), delim.end()) {}
 
   bool next() override {
     while (true) {
@@ -379,10 +377,10 @@ class multi_delimited_token_stream_single final
         return false;
       }
 
-      auto next = std::search(data_.begin(), data_.end(), searcher_);
+      auto next = std::search(data_.begin(), data_.end(), searcher);
       if (next == data_.begin()) {
         // skip empty terms
-        data_ = bytes_view{next + delim_.size(), data_.end()};
+        data_ = bytes_view{next + delim.size(), data_.end()};
         continue;
       }
 
@@ -392,62 +390,60 @@ class multi_delimited_token_stream_single final
       if (next == data_.end()) {
         data_ = {};
       } else {
-        data_ = bytes_view{next + delim_.size(), data_.end()};
+        data_ = bytes_view{next + delim.size(), data_.end()};
       }
 
       return true;
     }
   }
 
-  bstring delim_;
-  std::boyer_moore_searcher<bstring::iterator> searcher_;
+  bstring delim;
+  std::boyer_moore_searcher<bstring::iterator> searcher;
 };
 
 template<std::size_t N>
-irs::analysis::analyzer::ptr make_single_char(
+irs::analysis::analyzer::ptr MakeSingleChar(
   multi_delimited_token_stream::options&& opts) {
   if constexpr (N >= 4) {
-    return std::make_unique<multi_delimited_token_stream_generic_single_chars>(
+    return std::make_unique<MultiDelimitedTokenStreamGenericSingleChars>(
       std::move(opts));
   } else if (opts.delimiters.size() == N) {
-    return std::make_unique<multi_delimited_token_stream_single_chars<N>>(
+    return std::make_unique<MultiDelimitedTokenStreamSingleChars<N>>(
       std::move(opts));
   } else {
-    return make_single_char<N + 1>(std::move(opts));
+    return MakeSingleChar<N + 1>(std::move(opts));
   }
 }
 
-irs::analysis::analyzer::ptr make(
+irs::analysis::analyzer::ptr Make(
   multi_delimited_token_stream::options&& opts) {
   const bool single_character_case =
     std::all_of(opts.delimiters.begin(), opts.delimiters.end(),
                 [](const auto& delim) { return delim.size() == 1; });
   if (single_character_case) {
-    return make_single_char<0>(std::move(opts));
+    return MakeSingleChar<0>(std::move(opts));
   } else if (opts.delimiters.size() == 1) {
-    return std::make_unique<multi_delimited_token_stream_single>(
-      std::move(opts));
-  } else {
-    return std::make_unique<multi_delimited_token_stream_generic>(
-      std::move(opts));
+    return std::make_unique<MultiDelimitedTokenStreamSingle>(opts);
   }
+  return std::make_unique<multi_delimited_token_stream_generic>(
+    std::move(opts));
 }
 
-constexpr std::string_view DELIMITER_PARAM_NAME{"delimiter"};
+constexpr std::string_view kDelimiterParamName{"delimiter"};
 
-bool parse_vpack_options(VPackSlice slice,
-                         multi_delimited_token_stream::options& options) {
+bool ParseVpackOptions(VPackSlice slice,
+                       multi_delimited_token_stream::options& options) {
   if (!slice.isObject()) {
     IRS_LOG_ERROR(
       "Slice for multi_delimited_token_stream is not an object or string");
     return false;
   }
 
-  if (auto delim_array_slice = slice.get(DELIMITER_PARAM_NAME);
+  if (auto delim_array_slice = slice.get(kDelimiterParamName);
       !delim_array_slice.isNone()) {
     if (!delim_array_slice.isArray()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid type '", DELIMITER_PARAM_NAME,
+        absl::StrCat("Invalid type '", kDelimiterParamName,
                      "' (array expected) for multi_delimited_token_stream from "
                      "VPack arguments"));
       return false;
@@ -456,7 +452,7 @@ bool parse_vpack_options(VPackSlice slice,
     for (auto delim : VPackArrayIterator(delim_array_slice)) {
       if (!delim.isString()) {
         IRS_LOG_WARN(absl::StrCat(
-          "Invalid type in '", DELIMITER_PARAM_NAME,
+          "Invalid type in '", kDelimiterParamName,
           "' (string expected) for multi_delimited_token_stream from "
           "VPack arguments"));
         return false;
@@ -469,11 +465,11 @@ bool parse_vpack_options(VPackSlice slice,
   return true;
 }
 
-bool make_vpack_config(const multi_delimited_token_stream::options& options,
-                       VPackBuilder* vpack_builder) {
+bool MakeVpackConfig(const multi_delimited_token_stream::options& options,
+                     VPackBuilder* vpack_builder) {
   VPackObjectBuilder object(vpack_builder);
   {
-    VPackArrayBuilder array(vpack_builder, DELIMITER_PARAM_NAME);
+    VPackArrayBuilder array(vpack_builder, kDelimiterParamName);
     for (const auto& delim : options.delimiters) {
       auto view = ViewCast<char>(bytes_view{delim});
       vpack_builder->add(VPackValue(view));
@@ -483,34 +479,32 @@ bool make_vpack_config(const multi_delimited_token_stream::options& options,
   return true;
 }
 
-irs::analysis::analyzer::ptr make_vpack(VPackSlice slice) {
+irs::analysis::analyzer::ptr MakeVpack(VPackSlice slice) {
   multi_delimited_token_stream::options options;
-  if (parse_vpack_options(slice, options)) {
+  if (ParseVpackOptions(slice, options)) {
     return irs::analysis::multi_delimited_token_stream::make(
       std::move(options));
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
+irs::analysis::analyzer::ptr MakeVpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
-  return make_vpack(slice);
+  return MakeVpack(slice);
 }
 
-bool normalize_vpack_config(VPackSlice slice, VPackBuilder* vpack_builder) {
+bool NormalizeVpackConfig(VPackSlice slice, VPackBuilder* vpack_builder) {
   multi_delimited_token_stream::options options;
-  if (parse_vpack_options(slice, options)) {
-    return make_vpack_config(options, vpack_builder);
-  } else {
-    return false;
+  if (ParseVpackOptions(slice, options)) {
+    return MakeVpackConfig(options, vpack_builder);
   }
+  return false;
 }
 
-bool normalize_vpack_config(std::string_view args, std::string& definition) {
+bool NormalizeVpackConfig(std::string_view args, std::string& definition) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
-  bool res = normalize_vpack_config(slice, &builder);
+  bool res = NormalizeVpackConfig(slice, &builder);
   if (res) {
     definition.assign(builder.slice().startAs<char>(),
                       builder.slice().byteSize());
@@ -518,28 +512,26 @@ bool normalize_vpack_config(std::string_view args, std::string& definition) {
   return res;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::multi_delimited_token_stream, make_vpack,
-                        normalize_vpack_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::multi_delimited_token_stream, MakeVpack,
+                        NormalizeVpackConfig);
 /*
 REGISTER_ANALYZER_JSON(irs::analysis::multi_delimited_token_stream, make_json,
                        normalize_json_config);
 */
 }  // namespace
 
-namespace irs {
-namespace analysis {
+namespace irs::analysis {
 
 void multi_delimited_token_stream::init() {
-  REGISTER_ANALYZER_VPACK(multi_delimited_token_stream, make_vpack,
-                          normalize_vpack_config);  // match registration above
+  REGISTER_ANALYZER_VPACK(multi_delimited_token_stream, MakeVpack,
+                          NormalizeVpackConfig);  // match registration above
   // REGISTER_ANALYZER_JSON(multi_delimited_token_stream, make_json,
   //                        normalize_json_config);  // match registration above
 }
 
 analyzer::ptr multi_delimited_token_stream::make(
   multi_delimited_token_stream::options&& opts) {
-  return ::make(std::move(opts));
+  return ::Make(std::move(opts));
 }
 
-}  // namespace analysis
-}  // namespace irs
+}  // namespace irs::analysis
