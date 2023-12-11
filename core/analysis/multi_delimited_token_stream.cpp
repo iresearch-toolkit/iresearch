@@ -210,7 +210,7 @@ void insert_error_transitions(const std::vector<bstring>& strings,
       auto prefix = find_longest_prefix_that_is_suffix(strings, matched_word);
       if (prefix.empty()) {
         matched_word.pop_back();
-        continue; // no prefix found implies going to the initial state
+        continue;  // no prefix found implies going to the initial state
       }
 
       auto* dest = root;

@@ -171,7 +171,6 @@ TEST_F(multi_delimited_token_stream_tests, multi_words) {
   ASSERT_FALSE(stream->next());
 }
 
-
 TEST_F(multi_delimited_token_stream_tests, multi_words_2) {
   auto stream = irs::analysis::multi_delimited_token_stream::make(
     {.delimiters = {"foo"_b, "bar"_b, "baz"_b}});

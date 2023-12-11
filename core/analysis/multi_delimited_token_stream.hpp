@@ -39,7 +39,9 @@ class multi_delimited_token_stream
     std::vector<bstring> delimiters;
   };
 
-  static constexpr std::string_view type_name() noexcept { return "multi-delimiter"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "multi-delimiter";
+  }
   static void init();
 
   static analyzer::ptr make(options&&);
