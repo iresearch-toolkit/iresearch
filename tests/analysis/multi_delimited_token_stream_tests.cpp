@@ -205,5 +205,26 @@ TEST_F(multi_delimited_token_stream_tests, trick_matching_1) {
   ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
   ASSERT_FALSE(stream->next());
 }
+/*
+TEST_F(multi_delimited_token_stream_tests, trick_matching_2) {
+  auto stream = irs::analysis::multi_delimited_token_stream::make(
+    {.delimiters = {"foo"_b, "foobar"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::multi_delimited_token_stream>::id(),
+            stream->type());
 
+  ASSERT_TRUE(stream->reset("xfooyfoobarz"));
+
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
+
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("x", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("y", irs::ViewCast<char>(term->value));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("z", irs::ViewCast<char>(term->value));
+  ASSERT_FALSE(stream->next());
+}
+*/
 #endif

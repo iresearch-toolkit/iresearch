@@ -26,6 +26,7 @@
 
 #include <string_view>
 
+#include "absl/container/flat_hash_map.h"
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_draw.hpp"
 #include "utils/vpack_utils.hpp"
@@ -160,8 +161,8 @@ struct TrieNode {
   int32_t state_id;
   int32_t depth;
   bool is_leaf{false};
-  std::array<TrieNode*, 256> simple_outgoing{};
-  std::array<TrieNode*, 256> real_outgoing{};
+  absl::flat_hash_map<byte_type, TrieNode*> simple_trie;
+  absl::flat_hash_map<byte_type, TrieNode*> real_trie;
 };
 
 bytes_view find_longest_prefix_that_is_suffix(bytes_view s, bytes_view str) {
@@ -188,19 +189,18 @@ bytes_view find_longest_prefix_that_is_suffix(
   return result;
 }
 
-void insert_error_conditions(const std::vector<bstring>& strings,
-                             std::string& matched_word, TrieNode* node,
-                             TrieNode* root) {
+void insert_error_transitions(const std::vector<bstring>& strings,
+                              std::string& matched_word, TrieNode* node,
+                              TrieNode* root) {
   if (node->is_leaf) {
     return;
   }
 
   for (size_t k = 0; k < 256; k++) {
-    if (node->simple_outgoing[k] != nullptr) {
-      node->real_outgoing[k] = node->simple_outgoing[k];
+    if (auto it = node->simple_trie.find(k); it != node->simple_trie.end()) {
+      node->real_trie.emplace(k, it->second);
       matched_word.push_back(k);
-      insert_error_conditions(strings, matched_word, node->simple_outgoing[k],
-                              root);
+      insert_error_transitions(strings, matched_word, it->second, root);
       matched_word.pop_back();
     } else {
       // if we find a character c that we don't expect, we have to find
@@ -208,13 +208,18 @@ void insert_error_conditions(const std::vector<bstring>& strings,
       // text including c. then go to that state.
       matched_word.push_back(k);
       auto prefix = find_longest_prefix_that_is_suffix(strings, matched_word);
+      if (prefix.empty()) {
+        matched_word.pop_back();
+        continue; // no prefix found implies going to the initial state
+      }
 
       auto* dest = root;
       for (auto c : prefix) {
-        dest = dest->simple_outgoing[c];
-        IRS_ASSERT(dest != nullptr);
+        auto it = dest->simple_trie.find(c);
+        IRS_ASSERT(it != dest->simple_trie.end());
+        dest = it->second;
       }
-      node->real_outgoing[k] = dest;
+      node->real_trie.emplace(k, dest);
       matched_word.pop_back();
     }
   }
@@ -233,14 +238,15 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
         break;
       }
 
-      if (current->simple_outgoing[c] != nullptr) {
-        current = current->simple_outgoing[c];
+      if (auto it = current->simple_trie.find(c);
+          it != current->simple_trie.end()) {
+        current = it->second;
         continue;
       }
 
       auto& new_node =
         nodes.emplace_back(std::make_unique<TrieNode>(nodes.size(), k));
-      current->simple_outgoing[c] = new_node.get();
+      current->simple_trie.emplace(c, new_node.get());
       current = new_node.get();
     }
 
@@ -249,7 +255,7 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
 
   std::string matched_word;
   auto* root = nodes.front().get();
-  insert_error_conditions(strings, matched_word, root, root);
+  insert_error_transitions(strings, matched_word, root, root);
 
   automaton a;
   a.AddStates(nodes.size());
@@ -265,7 +271,11 @@ automaton make_string_trie(const std::vector<bstring>& strings) {
     }
 
     for (size_t k = 0; k < 256; k++) {
-      size_t next_state = n->real_outgoing[k]->state_id;
+      size_t next_state = root->state_id;
+      if (auto it = n->real_trie.find(k); it != n->real_trie.end()) {
+        next_state = it->second->state_id;
+      }
+
       if (last_state == -1) {
         last_state = next_state;
         last_char = k;
@@ -290,7 +300,7 @@ class multi_delimited_token_stream_generic final
   explicit multi_delimited_token_stream_generic(options&& opts)
     : automaton_(make_string_trie(opts.delimiters)),
       matcher_(make_automaton_matcher(automaton_)) {
-    // fst::drawFst(nfa, std::cout);
+    // fst::drawFst(automaton_, std::cout);
 
 #ifdef IRESEARCH_DEBUG
     // ensure nfa is sorted
