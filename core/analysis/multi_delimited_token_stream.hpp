@@ -40,7 +40,7 @@ class multi_delimited_token_stream
   };
 
   static constexpr std::string_view type_name() noexcept {
-    return "multi-delimiter";
+    return "multi_delimiter";
   }
   static void init();
 
@@ -57,7 +57,7 @@ class multi_delimited_token_stream
 
  protected:
   using attributes = std::tuple<increment,
-                                offset,  // token value with evaluated quotes
+                                offset,
                                 term_attribute>;
   bytes_view data_;
   attributes attrs_;

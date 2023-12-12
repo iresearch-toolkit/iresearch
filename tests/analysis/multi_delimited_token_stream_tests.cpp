@@ -50,7 +50,7 @@ class multi_delimited_token_stream_tests : public ::testing::Test {
 #ifndef IRESEARCH_DLL
 
 TEST_F(multi_delimited_token_stream_tests, consts) {
-  static_assert("multi-delimiter" ==
+  static_assert("multi_delimiter" ==
                 irs::type<irs::analysis::multi_delimited_token_stream>::name());
 }
 

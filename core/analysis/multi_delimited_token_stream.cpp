@@ -46,7 +46,7 @@ class MultiDelimitedTokenStreamSingleCharsBase
  public:
   bool next() override {
     while (true) {
-      if (data_.begin() == data_.end()) {
+      if (data_.empty()) {
         return false;
       }
 
@@ -143,15 +143,15 @@ class MultiDelimitedTokenStreamGenericSingleChars final
 
   auto FindNextDelim() {
     return std::find_if(data_.begin(), data_.end(), [&](auto c) {
-      if (c > CHAR_MAX) {
+      if (c > SCHAR_MAX) {
         return false;
       }
-      IRS_ASSERT(c <= CHAR_MAX);
+      IRS_ASSERT(c <= SCHAR_MAX);
       return bytes_[c];
     });
   }
   // TODO maybe use a bitset instead?
-  std::array<bool, CHAR_MAX + 1> bytes_;
+  std::array<bool, SCHAR_MAX + 1> bytes_;
 };
 
 struct TrieNode {
@@ -296,8 +296,8 @@ class multi_delimited_token_stream_generic final
   : public multi_delimited_token_stream {
  public:
   explicit multi_delimited_token_stream_generic(const options& opts)
-    : automaton(MakeStringTrie(opts.delimiters)),
-      matcher(make_automaton_matcher(automaton)) {
+    : autom(MakeStringTrie(opts.delimiters)),
+      matcher(make_automaton_matcher(autom)) {
     // fst::drawFst(automaton_, std::cout);
 
 #ifdef IRESEARCH_DEBUG
@@ -307,7 +307,7 @@ class multi_delimited_token_stream_generic final
       fst::kUnweighted;
 
     IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
-               automaton.Properties(EXPECTED_NFA_PROPERTIES, true));
+               autom.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
   }
 
@@ -360,7 +360,7 @@ class multi_delimited_token_stream_generic final
     }
   }
 
-  automaton automaton;
+  automaton autom;
   automaton_table_matcher matcher;
 };
 
