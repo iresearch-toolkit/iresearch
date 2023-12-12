@@ -52,13 +52,13 @@ class multi_delimited_token_stream
 
   bool reset(std::string_view data) final {
     data_ = ViewCast<byte_type>(data);
+    start_ = data_.data();
     return true;
   }
 
  protected:
-  using attributes = std::tuple<increment,
-                                offset,
-                                term_attribute>;
+  using attributes = std::tuple<increment, offset, term_attribute>;
+  const byte_type* start_;
   bytes_view data_;
   attributes attrs_;
 };
