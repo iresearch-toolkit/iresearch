@@ -22,231 +22,160 @@
 
 #pragma once
 
-#include <vector>
-
-#include "log.hpp"
 #include "shared.hpp"
-#include "string.hpp"
+#include "utils/assert.hpp"
+#include "utils/string.hpp"
 
-namespace irs {
-namespace utf8_utils {
+namespace irs::utf8_utils {
 
-// max number of bytes to represent single UTF8 code point
-constexpr size_t MAX_CODE_POINT_SIZE = 4;
-constexpr uint32_t MIN_CODE_POINT = 0;
-constexpr uint32_t MIN_2BYTES_CODE_POINT = 0x80;
-constexpr uint32_t MIN_3BYTES_CODE_POINT = 0x800;
-constexpr uint32_t MIN_4BYTES_CODE_POINT = 0x10000;
-constexpr uint32_t MAX_CODE_POINT = 0x10FFFF;
-constexpr uint32_t INVALID_CODE_POINT = std::numeric_limits<uint32_t>::max();
+// We don't account 4 special cases:
+// E0 A0..BF 80..BF
+// ED 80..9F 80..BF
+// F0 90..BF 80..BF 80..BF
+// F4 80..8F 80..BF 80..BF
 
-IRS_FORCE_INLINE const byte_type* next(const byte_type* begin,
-                                       const byte_type* end) noexcept {
-  IRS_ASSERT(begin);
+inline constexpr uint8_t kMaxCharSize = 4;
+
+// TODO(MBkkt) Find out is alignas specified correct and really align this data
+alignas(16 * 4) inline constexpr uint8_t kNextTable[16 * 4] = {
+  // 1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // C
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // D
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  // E
+  3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // F
+};
+
+inline constexpr uint8_t kNextTableBegin = 0xC0;
+
+// icu::UnicodeString::kInvalidUChar is private
+inline constexpr uint32_t kInvalidChar32 = 0xFFFF;
+
+IRS_FORCE_INLINE constexpr const byte_type* Next(
+  const byte_type* it, const byte_type* end) noexcept {
+  IRS_ASSERT(it);
   IRS_ASSERT(end);
-
-  if (begin < end) {
-    const uint32_t cp_start = *begin++;
-    if ((cp_start >> 5) == 0x06) {
-      ++begin;
-    } else if ((cp_start >> 4) == 0x0E) {
-      begin += 2;
-    } else if ((cp_start >> 3) == 0x1E) {
-      begin += 3;
-    } else if (cp_start >= 0x80) {
-      begin = end;
-    }
+  IRS_ASSERT(it < end);
+  const uint8_t cp_first = *it++;
+  if (IRS_LIKELY(cp_first < kNextTableBegin)) {
+    return it;  // ascii(0***'****) or invalid(10**'****)
   }
-
-  return begin > end ? end : begin;
+  // multi byte or invalid
+  it += kNextTable[cp_first - kNextTableBegin];
+  return it <= end ? it : end;
 }
 
-// Return Unicode code point length in bytes given the most significant code
-// point byte
-IRS_FORCE_INLINE constexpr uint32_t cp_length_msb(
-  const uint32_t cp_start) noexcept {
-  if (cp_start < 0x80) {
-    return 1;
-  } else if ((cp_start >> 5) == 0x06) {
-    return 2;
-  } else if ((cp_start >> 4) == 0x0E) {
-    return 3;
-  } else if ((cp_start >> 3) == 0x1E) {
-    return 4;
+inline size_t Length(bytes_view str) {
+  auto* it = str.data();
+  auto* end = str.data() + str.size();
+  size_t length = 0;
+  for (; it != end; it = Next(it, end)) {
+    ++length;
   }
-
-  return 0;
+  return length;
 }
 
-// Return Unicode code point length in bytes given the most significant code
-// point byte
-IRS_FORCE_INLINE constexpr uint32_t cp_length(const uint32_t cp) noexcept {
+IRS_FORCE_INLINE constexpr uint32_t LengthFromChar32(uint32_t cp) {
   if (cp < 0x80) {
     return 1;
   }
-
   if (cp < 0x800) {
     return 2;
   }
-
   if (cp < 0x10000) {
     return 3;
   }
-
   return 4;
 }
 
-inline uint32_t next_checked(const byte_type*& begin,
+template<bool Checked>
+inline uint32_t ToChar32Impl(const byte_type*& it,
                              const byte_type* end) noexcept {
-  IRS_ASSERT(begin);
-  IRS_ASSERT(end);
-
-  if (begin >= end) {
-    return INVALID_CODE_POINT;
+  IRS_ASSERT(it);
+  IRS_ASSERT(!Checked || end);
+  IRS_ASSERT(!Checked || it < end);
+  uint32_t cp = *it++;
+  if (IRS_LIKELY(cp < kNextTableBegin)) {
+    // ascii(0***'****) or invalid(10**'****)
+    return !Checked || cp < 0x80 ? cp : kInvalidChar32;
   }
-
-  uint32_t cp = *begin;
-  const size_t size = cp_length_msb(cp);
-
-  begin += size;
-
-  if (begin <= end) {
-    switch (size) {
-      case 1:
-        return cp;
-
-      case 2:
-        return ((cp << 6) & 0x7FF) + (uint32_t(begin[-1]) & 0x3F);
-
-      case 3:
-        return ((cp << 12) & 0xFFFF) + ((uint32_t(begin[-2]) << 6) & 0xFFF) +
-               (uint32_t(begin[-1]) & 0x3F);
-
-      case 4:
-        return ((cp << 18) & 0x1FFFFF) +
-               ((uint32_t(begin[-3]) << 12) & 0x3FFFF) +
-               ((uint32_t(begin[-2]) << 6) & 0xFFF) +
-               (uint32_t(begin[-1]) & 0x3F);
+  auto length = kNextTable[cp - kNextTableBegin];
+  if constexpr (Checked) {
+    if (IRS_UNLIKELY(length == 0 || it + length > end)) {
+      return kInvalidChar32;
     }
   }
-
-  begin = end;
-  return INVALID_CODE_POINT;
-}
-
-inline uint32_t next(const byte_type*& it) noexcept {
-  IRS_ASSERT(it);
-
-  uint32_t cp = *it;
-
-  if ((cp >> 5) == 0x06) {
-    cp = ((cp << 6) & 0x7FF) + (uint32_t(*++it) & 0x3F);
-  } else if ((cp >> 4) == 0x0E) {
-    cp = ((cp << 12) & 0xFFFF) + ((uint32_t(*++it) << 6) & 0xFFF);
-    cp += (*++it) & 0x3F;
-  } else if ((cp >> 3) == 0x1E) {
-    cp = ((cp << 18) & 0x1FFFFF) + ((uint32_t(*++it) << 12) & 0x3FFFF);
-    cp += (uint32_t(*++it) << 6) & 0xFFF;
-    cp += uint32_t(*++it) & 0x3F;
+  auto next = [&] { return static_cast<uint32_t>(*it++) & 0x3F; };
+  switch (length) {
+    case 1:
+      cp = (cp & 0x1F) << 6;
+      break;
+    case 2:
+      cp = (cp & 0xF) << 12;
+      cp |= next() << 6;
+      break;
+    case 3:
+      cp = (cp & 0x7) << 18;
+      cp |= next() << 12;
+      cp |= next() << 6;
+      break;
+    default:
+      ABSL_UNREACHABLE();
   }
-
-  ++it;
-
+  cp |= next();
   return cp;
 }
 
-IRS_FORCE_INLINE constexpr uint32_t utf32_to_utf8(uint32_t cp,
-                                                  byte_type* begin) noexcept {
+IRS_FORCE_INLINE uint32_t ToChar32(const byte_type*& it,
+                                   const byte_type* end) noexcept {
+  return ToChar32Impl<true>(it, end);
+}
+
+IRS_FORCE_INLINE uint32_t ToChar32(const byte_type*& it) noexcept {
+  return ToChar32Impl<false>(it, nullptr);
+}
+
+inline constexpr uint32_t FromChar32(uint32_t cp, byte_type* begin) noexcept {
   if (cp < 0x80) {
     begin[0] = static_cast<byte_type>(cp);
     return 1;
   }
+  auto convert = [](uint32_t cp, uint32_t mask = 0x3F, uint32_t header = 0x80) {
+    return static_cast<byte_type>((cp & mask) | header);
+  };
 
   if (cp < 0x800) {
-    begin[0] = static_cast<byte_type>((cp >> 6) | 0xC0);
-    begin[1] = static_cast<byte_type>((cp & 0x3F) | 0x80);
+    begin[0] = convert(cp >> 6, 0x1F, 0xC0);
+    begin[1] = convert(cp);
     return 2;
   }
 
   if (cp < 0x10000) {
-    begin[0] = static_cast<byte_type>((cp >> 12) | 0xE0);
-    begin[1] = static_cast<byte_type>(((cp >> 6) & 0x3F) | 0x80);
-    begin[2] = static_cast<byte_type>((cp & 0x3F) | 0x80);
+    begin[0] = convert(cp >> 12, 0xF, 0xE0);
+    begin[1] = convert(cp >> 6);
+    begin[2] = convert(cp);
     return 3;
   }
 
-  begin[0] = static_cast<byte_type>((cp >> 18) | 0xF0);
-  begin[1] = static_cast<byte_type>(((cp >> 12) & 0x3F) | 0x80);
-  begin[2] = static_cast<byte_type>(((cp >> 6) & 0x3F) | 0x80);
-  begin[3] = static_cast<byte_type>((cp & 0x3F) | 0x80);
+  begin[0] = convert(cp >> 18, 0x7, 0xF0);
+  begin[1] = convert(cp >> 12);
+  begin[2] = convert(cp >> 6);
+  begin[3] = convert(cp);
   return 4;
 }
 
-template<bool Checked = true>
-inline const byte_type* find(const byte_type* begin, const byte_type* end,
-                             uint32_t ch) noexcept {
-  for (const byte_type* char_begin = begin; begin < end; char_begin = begin) {
-    const auto cp = Checked ? next_checked(begin, end) : next(begin);
-
-    if (cp == ch) {
-      return char_begin;
-    }
-  }
-
-  return end;
-}
-
-template<bool Checked = true>
-inline size_t find(const byte_type* begin, const size_t size,
-                   uint32_t ch) noexcept {
-  size_t pos = 0;
-  for (auto end = begin + size; begin < end; ++pos) {
-    const auto cp = Checked ? next_checked(begin, end) : next(begin);
-
-    if (cp == ch) {
-      return pos;
-    }
-  }
-
-  return bstring::npos;
-}
-
 template<bool Checked, typename OutputIterator>
-inline bool utf8_to_utf32(const byte_type* begin, size_t size,
-                          OutputIterator out) {
-  for (auto end = begin + size; begin < end;) {
-    const auto cp = Checked ? next_checked(begin, end) : next(begin);
-
+inline bool ToUTF32(bytes_view data, OutputIterator&& out) {
+  const auto* begin = data.data();
+  for (const auto* end = begin + data.size(); begin != end;) {
+    const auto cp = ToChar32Impl<Checked>(begin, end);
     if constexpr (Checked) {
-      if (cp == INVALID_CODE_POINT) {
+      if (cp == kInvalidChar32) {
         return false;
       }
     }
-
     *out = cp;
   }
-
   return true;
 }
 
-template<bool Checked = true, typename OutputIterator>
-IRS_FORCE_INLINE bool utf8_to_utf32(bytes_view in, OutputIterator out) {
-  return utf8_to_utf32<Checked>(in.data(), in.size(), out);
-}
-
-inline size_t utf8_length(const byte_type* begin, size_t size) noexcept {
-  size_t length = 0;
-
-  for (auto end = begin + size; begin < end; begin = next(begin, end)) {
-    ++length;
-  }
-
-  return length;
-}
-
-IRS_FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
-  return utf8_length(in.data(), in.size());
-}
-
-}  // namespace utf8_utils
-}  // namespace irs
+}  // namespace irs::utf8_utils

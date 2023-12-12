@@ -436,7 +436,7 @@ class postings_writer_base : public irs::postings_writer {
     }
 
     void reset(attribute_provider& attrs) noexcept {
-      pos_ = irs::position::empty();
+      pos_ = &irs::position::empty();
       offs_ = nullptr;
       pay_ = nullptr;
 

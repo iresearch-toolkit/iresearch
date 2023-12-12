@@ -39,8 +39,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
     irs::automaton_table_matcher matcher(acceptor, true);
 
     irs::SmallVector<uint32_t, 16> target_chars;
-    irs::utf8_utils::utf8_to_utf32<false>(target.data(), target.size(),
-                                          std::back_inserter(target_chars));
+    irs::utf8_utils::ToUTF32<false>(target, std::back_inserter(target_chars));
 
     for (auto& segment : *reader) {
       auto fields = segment.fields();
@@ -60,9 +59,10 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
           auto expected_term = expected_terms->value();
 
           irs::SmallVector<uint32_t, 16> expected_chars;
-          irs::utf8_utils::utf8_to_utf32<false>(
-            expected_term.data(), expected_term.size(),
-            std::back_inserter(expected_chars));
+          if (!irs::utf8_utils::ToUTF32<true>(
+                expected_term, std::back_inserter(expected_chars))) {
+            continue;
+          }
 
           auto edit_distance =
             irs::edit_distance(expected_chars.data(), expected_chars.size(),

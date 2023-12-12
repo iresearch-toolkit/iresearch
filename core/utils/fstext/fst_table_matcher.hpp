@@ -344,6 +344,6 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   const StateId* state_end_{};    // Matcher state end
   const StateId* state_{};        // Matcher current state
   bool error_;                    // Matcher validity
-};                                // TableMatcher
+};
 
 }  // namespace fst

@@ -37,20 +37,32 @@
 namespace irs {
 
 #ifdef IRESEARCH_DEBUG
-constexpr bool TEST_AUTOMATON_PROPS = true;
+inline constexpr bool kTestAutomatonProps = true;
 #else
-constexpr bool TEST_AUTOMATON_PROPS = false;
+inline constexpr bool kTestAutomatonProps = false;
 #endif
+inline constexpr auto kRhoLabel = RangeLabel::From(0x80, 0xBF);
+// C0..C1 -- not allowed
+// F5..FF -- not allowed
+// It doesn't account 4 special cases:
+// E0 A0..BF 80..BF
+// ED 80..9F 80..BF
+// F0 90..BF 80..BF 80..BF
+// F4 80..8F 80..BF 80..BF
+inline constexpr auto kUTF8Byte1 = RangeLabel::From(0x00, 0x7F);
+inline constexpr auto kUTF8Byte2 = RangeLabel::From(0xC2, 0xDF);
+inline constexpr auto kUTF8Byte3 = RangeLabel::From(0xE0, 0xEF);
+inline constexpr auto kUTF8Byte4 = RangeLabel::From(0xF0, 0xF4);
 
 struct filter_visitor;
 
-inline automaton_table_matcher make_automaton_matcher(
-  const automaton& a, bool test_props = TEST_AUTOMATON_PROPS) {
-  return automaton_table_matcher(a, test_props);
+inline auto MakeAutomatonMatcher(const automaton& a,
+                                 bool test_props = kTestAutomatonProps) {
+  return automaton_table_matcher{a, test_props};
 }
 
 template<typename Char, typename Matcher>
-inline automaton::Weight match(Matcher& matcher,
+inline automaton::Weight Match(Matcher& matcher,
                                basic_string_view<Char> target) {
   auto state = matcher.GetFst().Start();
   matcher.SetState(state);
@@ -67,21 +79,21 @@ inline automaton::Weight match(Matcher& matcher,
 }
 
 template<typename Char>
-inline automaton::Weight accept(const automaton& a,
+inline automaton::Weight Accept(const automaton& a,
                                 basic_string_view<Char> target) {
-  using matcher_t =
+  using Matcher =
     fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 
-  matcher_t matcher(&a);
-  return match(matcher, target);
+  Matcher matcher{&a};
+  return Match(matcher, target);
 }
 
-class automaton_term_iterator : public seek_term_iterator {
+class AutomatonTermIterator : public seek_term_iterator {
  public:
-  automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
+  AutomatonTermIterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {
     IRS_ASSERT(it_);
-    auto* term = irs::get<term_attribute>(*it_);
+    const auto* term = irs::get<term_attribute>(*it_);
     IRS_ASSERT(term);
     value_ = &term->value;
   }
@@ -97,7 +109,7 @@ class automaton_term_iterator : public seek_term_iterator {
   bool next() final {
     bool next = it_->next();
 
-    while (next && !accept()) {
+    while (next && !Accept()) {
       next = it_->next();
     }
 
@@ -111,7 +123,7 @@ class automaton_term_iterator : public seek_term_iterator {
   SeekResult seek_ge(bytes_view target) final {
     it_->seek_ge(target);
 
-    if (accept()) {
+    if (Accept()) {
       return SeekResult::FOUND;
     }
 
@@ -125,7 +137,7 @@ class automaton_term_iterator : public seek_term_iterator {
   seek_cookie::ptr cookie() const final { return it_->cookie(); }
 
  private:
-  bool accept() { return irs::match(matcher_, *value_); }
+  bool Accept() { return Match(matcher_, *value_); }
 
   const automaton* a_;
   fst::SortedRangeExplicitMatcher<automaton> matcher_;
@@ -137,8 +149,8 @@ class automaton_term_iterator : public seek_term_iterator {
 /// @brief add a new transition to "to" state denoted by "label" or expands
 ///        the last already existing one
 //////////////////////////////////////////////////////////////////////////////
-inline void add_or_expand_arc(automaton& a, automaton::StateId from,
-                              range_label label, automaton::StateId to) {
+inline void AddOrExpandArc(automaton& a, automaton::StateId from,
+                           RangeLabel label, automaton::StateId to) {
   IRS_ASSERT(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
 
   fst::ArcIteratorData<automaton::Arc> data;
@@ -148,7 +160,7 @@ inline void add_or_expand_arc(automaton& a, automaton::StateId from,
     auto& prev = const_cast<automaton::Arc&>(data.arcs[data.narcs - 1]);
     IRS_ASSERT(prev < label);
     if (prev.nextstate == to && label.min - prev.max <= 1) {
-      prev.ilabel = range_label{prev.min, label.max};
+      prev.ilabel = RangeLabel::From(prev.min, label.max);
       return;
     }
   }
@@ -156,18 +168,14 @@ inline void add_or_expand_arc(automaton& a, automaton::StateId from,
   a.EmplaceArc(from, label, to);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class utf8_transitions_builder
-/// @brief helper class for building minimal acyclic binary automaton from
-///        a specified root, a default (rho) state and a set of arcs with
-///        UTF-8 encoded labels
-//////////////////////////////////////////////////////////////////////////////
-class utf8_transitions_builder {
+/// helper class for building minimal acyclic binary automaton from a specified
+/// root, a default (rho) state and a set of arcs with UTF-8 encoded labels
+class Utf8TransitionsBuilder {
  public:
-  utf8_transitions_builder() : states_map_(16, state_emplace(weight_)) {}
+  Utf8TransitionsBuilder() : states_map_{16, StateEmplace{weight_}} {}
 
   template<typename Iterator>
-  void insert(automaton& a, automaton::StateId from,
+  void Insert(automaton& a, automaton::StateId from,
               automaton::StateId rho_state, Iterator begin, Iterator end) {
     last_ = kEmptyStringView<irs::byte_type>;
     states_map_.reset();
@@ -193,40 +201,40 @@ class utf8_transitions_builder {
       IRS_ASSERT(last_ <= static_cast<bytes_view>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
-      insert(a, label.data(), label.size(), std::get<1>(*begin));
+      Insert(a, label.data(), label.size(), std::get<1>(*begin));
       last_ = static_cast<bytes_view>(label);
     }
 
-    finish(a, from);
+    Finish(a, from);
   }
 
  private:
-  struct state;
+  struct State;
 
-  struct arc : public range_label, private util::noncopyable {
-    arc(automaton::Arc::Label label, state* target) noexcept
-      : range_label{label}, target{target} {}
+  struct Arc : public RangeLabel, private util::noncopyable {
+    Arc(automaton::Arc::Label label, State* target) noexcept
+      : RangeLabel{label}, target{target} {}
 
-    arc(automaton::Arc::Label label, automaton::StateId target) noexcept
-      : range_label{label}, id{target} {}
+    Arc(automaton::Arc::Label label, automaton::StateId target) noexcept
+      : RangeLabel{label}, id{target} {}
 
     bool operator==(const automaton::Arc& rhs) const noexcept {
       return ilabel == rhs.ilabel && id == rhs.nextstate;
     }
 
     union {
-      state* target;
+      State* target;
       automaton::StateId id;
     };
   };
 
-  struct state : private util::noncopyable {
-    void clear() noexcept {
+  struct State : private util::noncopyable {
+    void Clear() noexcept {
       id = fst::kNoStateId;
       arcs.clear();
     }
 
-    void add_rho_arc(uint32_t min, uint32_t max, automaton::StateId rho) {
+    void AddRhoArc(uint32_t min, uint32_t max, automaton::StateId rho) {
       if (fst::kNoStateId == rho) {
         return;
       }
@@ -236,26 +244,26 @@ class utf8_transitions_builder {
       }
 
       if (min < max) {
-        arcs.emplace_back(range_label{min, max - 1}, rho);
+        arcs.emplace_back(RangeLabel::From(min, max - 1), rho);
       }
     }
 
     automaton::StateId id{fst::kNoStateId};
-    std::vector<arc> arcs;
+    std::vector<Arc> arcs;
   };
 
-  static_assert(std::is_nothrow_move_constructible_v<state>);
+  static_assert(std::is_nothrow_move_constructible_v<State>);
 
-  struct state_hash {
-    size_t operator()(const state& s, const automaton& fst) const noexcept {
+  struct StateHash {
+    size_t operator()(const State& s, const automaton& fst) const noexcept {
       if (fst::kNoStateId != s.id) {
         return operator()(s.id, fst);
       }
 
       size_t hash = 0;
-      auto& arcs = s.arcs;
+      const auto& arcs = s.arcs;
 
-      for (auto& arc : arcs) {
+      for (const auto& arc : arcs) {
         hash = hash_combine(hash, arc.ilabel);
         // cppcheck-suppress redundantAssignment
         hash = hash_combine(hash, arc.id);
@@ -283,8 +291,8 @@ class utf8_transitions_builder {
     }
   };
 
-  struct state_equal {
-    bool operator()(const state& lhs, automaton::StateId rhs,
+  struct StateEqual {
+    bool operator()(const State& lhs, automaton::StateId rhs,
                     const automaton& fst) const noexcept {
       if (lhs.id != fst::kNoStateId) {
         // already a part of automaton
@@ -310,12 +318,12 @@ class utf8_transitions_builder {
     }
   };
 
-  class state_emplace {
+  class StateEmplace {
    public:
-    explicit state_emplace(const automaton::Weight& weight) noexcept
+    explicit StateEmplace(const automaton::Weight& weight) noexcept
       : weight_(&weight) {}
 
-    automaton::StateId operator()(const state& s, automaton& fst) const {
+    automaton::StateId operator()(const State& s, automaton& fst) const {
       auto id = s.id;
 
       if (id == fst::kNoStateId) {
@@ -334,41 +342,39 @@ class utf8_transitions_builder {
     const automaton::Weight* weight_;
   };
 
-  using automaton_states_map =
-    fst_states_map<automaton, state, state_emplace, state_hash, state_equal,
+  using AutomatonStatesMap =
+    fst_states_map<automaton, State, StateEmplace, StateHash, StateEqual,
                    fst::kNoStateId>;
 
-  void minimize(automaton& a, size_t prefix);
+  void Minimize(automaton& a, size_t prefix);
 
-  void insert(automaton& a, const byte_type* label_data,
-              const size_t label_size, automaton::StateId target);
+  void Insert(automaton& a, const byte_type* label, size_t size,
+              automaton::StateId to);
 
-  void finish(automaton& a, automaton::StateId from);
+  void Finish(automaton& a, automaton::StateId from);
 
   // FIXME use a memory pool for arcs
   automaton::Weight weight_;
   automaton::StateId rho_states_[4];
-  state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1];  // +1 for root state
-  automaton_states_map states_map_;
+  State states_[utf8_utils::kMaxCharSize + 1];  // +1 for root state
+  AutomatonStatesMap states_map_;
   bytes_view last_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief validate a specified automaton and print message on error
 //////////////////////////////////////////////////////////////////////////////
-inline bool validate(const automaton& a,
-                     bool test_props = TEST_AUTOMATON_PROPS) {
-  if (fst::kError ==
-      a.Properties(automaton_table_matcher::FST_PROPERTIES, test_props)) {
-    IRS_LOG_ERROR(absl::StrCat(
-      "Expected deterministic, epsilon-free acceptor, got the following "
-      "properties ",
-      a.Properties(automaton_table_matcher::FST_PROPERTIES, false)));
-
-    return false;
+inline bool Validate(const automaton& a,
+                     bool test_props = kTestAutomatonProps) {
+  if (a.Properties(automaton_table_matcher::FST_PROPERTIES, test_props) !=
+      fst::kError) {
+    return true;
   }
-
-  return true;
+  IRS_LOG_ERROR(absl::StrCat(
+    "Expected deterministic, epsilon-free acceptor, got the following "
+    "properties ",
+    a.Properties(automaton_table_matcher::FST_PROPERTIES, false)));
+  return false;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -379,7 +385,7 @@ inline bool validate(const automaton& a,
 /// @param visitor visitor
 //////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit(const SubReader& segment, const term_reader& reader,
+void Visit(const SubReader& segment, const term_reader& reader,
            automaton_table_matcher& matcher, Visitor& visitor) {
   IRS_ASSERT(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
@@ -403,63 +409,39 @@ void visit(const SubReader& segment, const term_reader& reader,
 /// @brief establish UTF-8 labeled connection between specified source and
 ///        target states
 //////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_view label,
-                      automaton::StateId to);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief establish UTF-8 labeled connection between specified source (from)
-///        and target (to) states with the fallback to default (rho_state)
-///        state
-//////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_arc(automaton& a, automaton::StateId from,
-                      automaton::StateId rho_state, bytes_view label,
-                      automaton::StateId to);
+void Utf8EmplaceArc(automaton& a, automaton::StateId from, bytes_view label,
+                    automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish default connnection between specified source (from) and
 ///        and target (to)
 //////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_rho_arc(automaton& a, automaton::StateId from,
-                          automaton::StateId to);
+void Utf8EmplaceRhoArc(automaton& a, automaton::StateId from,
+                       automaton::StateId to);
 
-/*
-//////////////////////////////////////////////////////////////////////////////
-/// @brief modifies a specified UTF-8 automaton to an equivalent one that is
-///        defined over the alphabet of { [0..255], fst::fsa::kRho }
-/// @returns fst::kNoStateId on success, otherwise first failed state id
-//////////////////////////////////////////////////////////////////////////////
-automaton::StateId utf8_expand_labels(automaton& a);
-*/
-
-inline automaton make_char(const uint32_t c) {
+inline automaton MakeChar(bytes_view c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  a.EmplaceArc(0, range_label::fromRange(c), 1);
+  Utf8EmplaceArc(a, 0, c, 1);
   return a;
 }
 
-inline automaton make_char(bytes_view c) {
+inline automaton MakeAny() {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_arc(a, 0, c, 1);
+  Utf8EmplaceRhoArc(a, 0, 1);
   return a;
 }
 
-inline automaton make_any() {
-  automaton a;
-  a.AddStates(2);
-  a.SetStart(0);
-  a.SetFinal(1);
-  utf8_emplace_rho_arc(a, 0, 1);
-  return a;
-}
-
-inline automaton make_all() {
-  automaton a = make_any();
+inline automaton MakeAll() {
+  // TODO(MBkkt) speedup: We can just make such automaton
+  // S ->  0..FF -> F
+  // F -> epsilon -> S
+  auto a = MakeAny();
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };
@@ -475,9 +457,9 @@ inline automaton make_all() {
 /// @param bool query boost
 /// @returns compiled filter
 //////////////////////////////////////////////////////////////////////////////
-filter::prepared::ptr prepare_automaton_filter(const PrepareContext& ctx,
-                                               std::string_view field,
-                                               const automaton& acceptor,
-                                               size_t scored_terms_limit);
+filter::prepared::ptr PrepareAutomatonFilter(const PrepareContext& ctx,
+                                             std::string_view field,
+                                             const automaton& acceptor,
+                                             size_t scored_terms_limit);
 
 }  // namespace irs

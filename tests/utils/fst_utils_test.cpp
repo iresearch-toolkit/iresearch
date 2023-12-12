@@ -66,8 +66,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1), 0);
     ASSERT_EQ(fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
@@ -79,8 +79,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 21), 0);
     ASSERT_EQ(fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
@@ -92,8 +92,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(21, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(21, 22), 0);
     ASSERT_EQ(fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
@@ -105,8 +105,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(19, 22), 0);
     ASSERT_EQ(fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
@@ -118,8 +118,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(19, 22), 0);
     ASSERT_EQ(fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
@@ -131,8 +131,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(19, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 21), 0);
     ASSERT_EQ(0, a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
@@ -143,8 +143,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 18), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(19, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 18), 0);
     ASSERT_EQ(fst::kIDeterministic,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
@@ -156,8 +156,8 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState();  // 0
     a.AddState();  // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 1), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(2, 4), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(1, 1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(2, 4), 0);
     ASSERT_EQ(fst::kIDeterministic | fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::ArcIteratorData<decltype(a)::Arc> data;
@@ -198,7 +198,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.SetFinal(a.AddState());
     a.AddState();
-    a.EmplaceArc(1, fst::fsa::RangeLabel(42, 42), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(42, 42), 0);
 
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
@@ -260,8 +260,8 @@ TEST(fst_table_matcher_test, test_matcher) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.SetFinal(a.AddState());  // 0
     a.AddState();              // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(42), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(43, 255), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(42), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel::From(43, 255), 0);
 
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
@@ -347,7 +347,7 @@ TEST(fst_table_matcher_test, test_matcher) {
         auto to = a.AddState();
 
         for (; min < max; min += step) {
-          a.EmplaceArc(from, fst::fsa::RangeLabel::fromRange(min), to);
+          a.EmplaceArc(from, fst::fsa::RangeLabel::From(min), to);
         }
 
         from = to;
@@ -359,9 +359,9 @@ TEST(fst_table_matcher_test, test_matcher) {
       add_state(152, 512, 11);  // state: 3
       {                         // state: 4
         auto to = a.AddState();
-        a.EmplaceArc(from, fst::fsa::RangeLabel(1, 2), to);
-        a.EmplaceArc(from, fst::fsa::RangeLabel(17, 167), to);
-        a.EmplaceArc(from, fst::fsa::RangeLabel(178, 1023), to);
+        a.EmplaceArc(from, fst::fsa::RangeLabel::From(1, 2), to);
+        a.EmplaceArc(from, fst::fsa::RangeLabel::From(17, 167), to);
+        a.EmplaceArc(from, fst::fsa::RangeLabel::From(178, 1023), to);
         from = to;
       }
 

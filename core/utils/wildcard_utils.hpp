@@ -23,43 +23,38 @@
 #pragma once
 
 #include "automaton.hpp"
+#include "string.hpp"
 
 namespace irs {
 
 enum class WildcardType {
-  INVALID = 0,     // invalid input sequence
-  TERM_ESCAPED,    // f\*o
-  TERM,            // foo
-  MATCH_ALL,       // *
-  PREFIX_ESCAPED,  // fo\*
-  PREFIX,          // foo*
-  WILDCARD         // f_o*
+  kTermEscaped = 0,  // f\%o
+  kTerm,             // foo
+  kPrefixEscaped,    // fo\%
+  kPrefix,           // foo%
+  kWildcard,         // f_o%
 };
 
-WildcardType wildcard_type(bytes_view pattern) noexcept;
+WildcardType ComputeWildcardType(bytes_view pattern) noexcept;
 
 enum WildcardMatch : uint8_t {
-  ANY_STRING = '%',
-  ANY_CHAR = '_',
-  ESCAPE = '\\'
+  kAnyStr = '%',   // match any number of arbitrary characters
+  kAnyChr = '_',   // match a single arbitrary character
+  kEscape = '\\',  // escape control symbol, e.g. "\%" issues literal "%"
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates minimal DFA from a specified UTF-8 encoded wildcard
 ///        sequence
-/// @param expr valid UTF-8 encoded string
 /// @returns DFA accpeting a specified wildcard expression
-/// @note control symbols are
-///       '%' - match any number of arbitrary characters
-///       '_' - match a single arbitrary character
-///       '\' - escape control symbol, e.g. '\%' issues literal '%'
-/// @note if an input expression is incorrect UTF-8 sequence, function returns
-///       empty automaton
+/// @note control symbols are WildcardMatch
+/// @note non UTF-8 bytes transition instatiated as bytes
+/// @note invalid last escape, instatiate transition as byte
 ////////////////////////////////////////////////////////////////////////////////
-automaton from_wildcard(bytes_view expr);
+automaton FromWildcard(bytes_view expr);
 
-inline automaton from_wildcard(std::string_view expr) {
-  return from_wildcard(ViewCast<byte_type>(expr));
+inline automaton FromWildcard(std::string_view expr) {
+  return FromWildcard(ViewCast<byte_type>(expr));
 }
 
 }  // namespace irs

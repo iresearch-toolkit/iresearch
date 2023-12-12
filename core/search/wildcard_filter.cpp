@@ -32,17 +32,16 @@
 #include "utils/hash_utils.hpp"
 #include "utils/wildcard_utils.hpp"
 
+namespace irs {
 namespace {
 
-using namespace irs;
-
-bytes_view unescape(bytes_view in, bstring& out) {
+bytes_view Unescape(bytes_view in, bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
   std::copy_if(in.begin(), in.end(), std::back_inserter(out),
                [&copy](byte_type c) {
-                 if (c == WildcardMatch::ESCAPE) {
+                 if (c == WildcardMatch::kEscape) {
                    copy = !copy;
                  } else {
                    copy = true;
@@ -53,55 +52,38 @@ bytes_view unescape(bytes_view in, bstring& out) {
   return out;
 }
 
-template<typename Invalid, typename Term, typename Prefix, typename WildCard>
-auto executeWildcard(bstring& buf, bytes_view term, Invalid&& inv, Term&& t,
-                     Prefix&& p, WildCard&& w) {
-  switch (wildcard_type(term)) {
-    case WildcardType::INVALID:
-      return inv();
-    case WildcardType::TERM_ESCAPED:
-      term = unescape(term, buf);
+template<typename Term, typename Prefix, typename WildCard>
+auto ExecuteWildcard(bstring& buf, bytes_view term, Term&& t, Prefix&& p,
+                     WildCard&& w) {
+  switch (ComputeWildcardType(term)) {
+    case WildcardType::kTermEscaped:
+      term = Unescape(term, buf);
       [[fallthrough]];
-    case WildcardType::TERM:
+    case WildcardType::kTerm:
       return t(term);
-    case WildcardType::MATCH_ALL:
-      term = kEmptyStringView<irs::byte_type>;
-      return p(term);
-    case WildcardType::PREFIX_ESCAPED:
-      term = unescape(term, buf);
+    case WildcardType::kPrefixEscaped:
+      term = Unescape(term, buf);
       [[fallthrough]];
-    case WildcardType::PREFIX: {
+    case WildcardType::kPrefix: {
       IRS_ASSERT(!term.empty());
       const auto* begin = term.data();
       const auto* end = begin + term.size();
-
-      // term is already checked to be a valid UTF-8 sequence
-      const auto* pos =
-        utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+      const auto* pos = std::find(begin, end, WildcardMatch::kAnyStr);
       IRS_ASSERT(pos != end);
-
-      term = bytes_view(begin, size_t(pos - begin));  // remove trailing '%'
+      term = bytes_view{begin, pos};  // remove trailing '%'
       return p(term);
     }
-    case WildcardType::WILDCARD:
+    case WildcardType::kWildcard:
       return w(term);
-    default:
-      IRS_ASSERT(false);
-      return inv();
   }
 }
 
 }  // namespace
 
-namespace irs {
-
 field_visitor by_wildcard::visitor(bytes_view term) {
   bstring buf;
-  return executeWildcard(
+  return ExecuteWildcard(
     buf, term,
-    []() -> field_visitor {
-      return [](const SubReader&, const term_reader&, filter_visitor&) {};
-    },
     [](bytes_view term) -> field_visitor {
       // must copy term as it may point to temporary string
       return [term = bstring(term)](const SubReader& segment,
@@ -119,25 +101,25 @@ field_visitor by_wildcard::visitor(bytes_view term) {
       };
     },
     [](bytes_view term) -> field_visitor {
-      struct automaton_context : util::noncopyable {
-        automaton_context(bytes_view term)
-          : acceptor(from_wildcard(term)),
-            matcher(make_automaton_matcher(acceptor)) {}
+      struct AutomatonContext : util::noncopyable {
+        explicit AutomatonContext(bytes_view term)
+          : acceptor{FromWildcard(term)},
+            matcher{MakeAutomatonMatcher(acceptor)} {}
 
         automaton acceptor;
         automaton_table_matcher matcher;
       };
 
-      auto ctx = std::make_shared<automaton_context>(term);
+      auto ctx = std::make_shared<AutomatonContext>(term);
 
-      if (!validate(ctx->acceptor)) {
+      if (!Validate(ctx->acceptor)) {
         return [](const SubReader&, const term_reader&, filter_visitor&) {};
       }
 
       return [ctx = std::move(ctx)](const SubReader& segment,
                                     const term_reader& field,
                                     filter_visitor& visitor) mutable {
-        return irs::visit(segment, field, ctx->matcher, visitor);
+        return irs::Visit(segment, field, ctx->matcher, visitor);
       };
     });
 }
@@ -147,8 +129,8 @@ filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
                                            bytes_view term,
                                            size_t scored_terms_limit) {
   bstring buf;
-  return executeWildcard(
-    buf, term, []() -> filter::prepared::ptr { return prepared::empty(); },
+  return ExecuteWildcard(
+    buf, term,
     [&](bytes_view term) -> filter::prepared::ptr {
       return by_term::prepare(ctx, field, term);
     },
@@ -156,8 +138,8 @@ filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
       return by_prefix::prepare(ctx, field, term, scored_terms_limit);
     },
     [&, scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
-      return prepare_automaton_filter(ctx, field, from_wildcard(term),
-                                      scored_terms_limit);
+      return PrepareAutomatonFilter(ctx, field, FromWildcard(term),
+                                    scored_terms_limit);
     });
 }
 

@@ -33,13 +33,11 @@
 #define IRESEARCH_VERSION 0
 #endif
 
-namespace irs {
-namespace version_utils {
+namespace irs::version_utils {
 
 const std::string_view build_date();
 const std::string_view build_id();
 const std::string_view build_time();
 const std::string_view build_version();
 
-}  // namespace version_utils
-}  // namespace irs
+}  // namespace irs::version_utils

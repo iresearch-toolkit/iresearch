@@ -33,15 +33,11 @@ class PhrasePosition final : public position, public Frequency {
   explicit PhrasePosition(
     std::vector<typename Frequency::TermPosition>&& pos) noexcept
     : Frequency{std::move(pos)} {
-    std::tie(start_, end_) = self().GetOffsets();
+    std::tie(start_, end_) = this->GetOffsets();
   }
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    if (irs::type<offset>::id() == type) {
-      return &offset_;
-    }
-
-    return nullptr;
+    return type == irs::type<offset>::id() ? &offset_ : nullptr;
   }
 
   bool next() final {
@@ -55,15 +51,11 @@ class PhrasePosition final : public position, public Frequency {
     ++value_;
     offset_.start = *start_;
     offset_.end = *end_;
-    left_ += self().NextPosition() - 1;
+    left_ += this->NextPosition() - 1;
     return true;
   }
 
-  void reset() final { throw not_impl_error{}; }
-
  private:
-  Frequency& self() noexcept { return static_cast<Frequency&>(*this); }
-
   offset offset_;
   const uint32_t* start_{};
   const uint32_t* end_{};

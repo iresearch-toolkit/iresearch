@@ -2665,21 +2665,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
 
   // prefix
   {
-    auto acceptor = irs::from_wildcard("forb%");
+    auto acceptor = irs::FromWildcard("forb%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
-    auto acceptor = irs::from_wildcard("%ende%");
+    auto acceptor = irs::FromWildcard("%ende%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
-    auto acceptor = irs::from_wildcard("%ione");
+    auto acceptor = irs::FromWildcard("%ione");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
@@ -2710,21 +2710,21 @@ TEST_P(index_test_case, europarl_docs_big_automaton) {
 
   // prefix
   {
-    auto acceptor = irs::from_wildcard("forb%");
+    auto acceptor = irs::FromWildcard("forb%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
-    auto acceptor = irs::from_wildcard("%ende%");
+    auto acceptor = irs::FromWildcard("%ende%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
-    auto acceptor = irs::from_wildcard("%ione");
+    auto acceptor = irs::FromWildcard("%ione");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }

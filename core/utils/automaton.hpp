@@ -43,7 +43,6 @@
 
 #include "utils/automaton_decl.hpp"
 #include "utils/fstext/fst_utils.hpp"
-#include "utils/string.hpp"
 
 namespace fst {
 namespace fsa {
@@ -161,7 +160,7 @@ class BooleanWeight {
 
 struct RangeLabelLE {
   constexpr RangeLabelLE(int64_t ilabel) noexcept : ilabel{ilabel} {}
-  constexpr RangeLabelLE(uint32_t min, uint32_t max) noexcept
+  constexpr explicit RangeLabelLE(uint32_t min, uint32_t max) noexcept
     : max{max}, min{min} {}
 
   union {
@@ -175,7 +174,7 @@ struct RangeLabelLE {
 
 struct RangeLabelBE {
   constexpr RangeLabelBE(int64_t ilabel) noexcept : ilabel{ilabel} {}
-  constexpr RangeLabelBE(uint32_t min, uint32_t max) noexcept
+  constexpr explicit RangeLabelBE(uint32_t min, uint32_t max) noexcept
     : min{min}, max{max} {}
 
   union {
@@ -192,23 +191,15 @@ using RangeLabelType =
 
 // We inherit from annonymous union to be OpenFST compliant.
 struct RangeLabel : RangeLabelType {
-  static constexpr RangeLabel fromRange(uint32_t min, uint32_t max) noexcept {
-    return RangeLabel{min, max};
-  }
-  static constexpr RangeLabel fromRange(uint32_t min) noexcept {
-    return fromRange(min, min);
-  }
-  static constexpr RangeLabel fromLabel(int64_t label) noexcept {
-    return RangeLabel{label};
-  }
+  constexpr RangeLabel() noexcept : RangeLabelType{fst::kNoLabel} {}
+  constexpr RangeLabel(RangeLabelType&& type) : RangeLabelType{type} {}
 
-  constexpr RangeLabel() noexcept : RangeLabel{fst::kNoLabel} {}
-
-  constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
-    : RangeLabelType{min, max} {}
-
-  constexpr explicit RangeLabel(int64_t ilabel) noexcept
-    : RangeLabelType{ilabel} {}
+  static constexpr RangeLabel From(uint32_t min, uint32_t max) noexcept {
+    return RangeLabelType{min, max};
+  }
+  static constexpr RangeLabel From(uint32_t point) noexcept {
+    return From(point, point);
+  }
 
   // TODO(MBkkt) should use std::bit_cast
   constexpr operator int64_t() const noexcept { return ilabel; }
