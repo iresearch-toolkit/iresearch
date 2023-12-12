@@ -41,20 +41,19 @@ using namespace irs::analysis;
 namespace {
 
 template<typename Derived>
-class MultiDelimitedTokenStreamSingleCharsBase
-  : public multi_delimited_token_stream {
+class MultiDelimitedTokenStreamBase : public multi_delimited_token_stream {
  public:
   bool next() override {
     while (true) {
-      if (data_.empty()) {
+      if (data_.begin() == data_.end()) {
         return false;
       }
 
-      auto next = static_cast<Derived*>(this)->FindNextDelim();
+      auto [next, skip] = static_cast<Derived*>(this)->FindNextDelim();
 
       if (next == data_.begin()) {
         // skip empty terms
-        data_ = bytes_view{next + 1, data_.end()};
+        data_ = bytes_view{next + skip, data_.end()};
         continue;
       }
 
@@ -64,11 +63,22 @@ class MultiDelimitedTokenStreamSingleCharsBase
       if (next == data_.end()) {
         data_ = {};
       } else {
-        data_ = bytes_view{next + 1, data_.end()};
+        data_ = bytes_view{next + skip, data_.end()};
       }
 
       return true;
     }
+  }
+};
+
+template<typename Derived>
+class MultiDelimitedTokenStreamSingleCharsBase
+  : public MultiDelimitedTokenStreamBase<
+      MultiDelimitedTokenStreamSingleCharsBase<Derived>> {
+ public:
+  auto FindNextDelim() {
+    auto where = static_cast<Derived*>(this)->FindNextDelim();
+    return std::make_pair(where, 1);
   }
 };
 
@@ -260,7 +270,7 @@ automaton MakeStringTrie(const std::vector<bstring>& strings) {
   a.SetStart(0);
 
   for (auto& n : nodes) {
-    size_t last_state = -1;
+    int64_t last_state = -1;
     size_t last_char = 0;
 
     if (n->is_leaf) {
@@ -269,7 +279,7 @@ automaton MakeStringTrie(const std::vector<bstring>& strings) {
     }
 
     for (size_t k = 0; k < 256; k++) {
-      size_t next_state = root->state_id;
+      int64_t next_state = root->state_id;
       if (auto it = n->real_trie.find(k); it != n->real_trie.end()) {
         next_state = it->second->state_id;
       }
@@ -292,10 +302,10 @@ automaton MakeStringTrie(const std::vector<bstring>& strings) {
   return a;
 }
 
-class multi_delimited_token_stream_generic final
-  : public multi_delimited_token_stream {
+class MultiDelimitedTokenStreamGeneric final
+  : public MultiDelimitedTokenStreamBase<MultiDelimitedTokenStreamGeneric> {
  public:
-  explicit multi_delimited_token_stream_generic(const options& opts)
+  explicit MultiDelimitedTokenStreamGeneric(const options& opts)
     : autom(MakeStringTrie(opts.delimiters)),
       matcher(make_automaton_matcher(autom)) {
     // fst::drawFst(automaton_, std::cout);
@@ -333,68 +343,20 @@ class multi_delimited_token_stream_generic final
     return std::make_pair(data_.end(), size_t{0});
   }
 
-  bool next() override {
-    while (true) {
-      if (data_.begin() == data_.end()) {
-        return false;
-      }
-
-      auto [next, skip] = FindNextDelim();
-
-      if (next == data_.begin()) {
-        // skip empty terms
-        data_ = bytes_view{next + skip, data_.end()};
-        continue;
-      }
-
-      auto& term = std::get<term_attribute>(attrs_);
-      term.value = bytes_view{data_.begin(), next};
-
-      if (next == data_.end()) {
-        data_ = {};
-      } else {
-        data_ = bytes_view{next + skip, data_.end()};
-      }
-
-      return true;
-    }
-  }
-
   automaton autom;
   automaton_table_matcher matcher;
 };
 
 class MultiDelimitedTokenStreamSingle final
-  : public multi_delimited_token_stream {
+  : public MultiDelimitedTokenStreamBase<MultiDelimitedTokenStreamSingle> {
  public:
   explicit MultiDelimitedTokenStreamSingle(options& opts)
     : delim(std::move(opts.delimiters[0])),
       searcher(delim.begin(), delim.end()) {}
 
-  bool next() override {
-    while (true) {
-      if (data_.begin() == data_.end()) {
-        return false;
-      }
-
-      auto next = std::search(data_.begin(), data_.end(), searcher);
-      if (next == data_.begin()) {
-        // skip empty terms
-        data_ = bytes_view{next + delim.size(), data_.end()};
-        continue;
-      }
-
-      auto& term = std::get<term_attribute>(attrs_);
-      term.value = bytes_view{data_.begin(), next};
-
-      if (next == data_.end()) {
-        data_ = {};
-      } else {
-        data_ = bytes_view{next + delim.size(), data_.end()};
-      }
-
-      return true;
-    }
+  auto FindNextDelim() {
+    auto next = std::search(data_.begin(), data_.end(), searcher);
+    return std::make_pair(next, delim.size());
   }
 
   bstring delim;
@@ -425,8 +387,7 @@ irs::analysis::analyzer::ptr Make(
   } else if (opts.delimiters.size() == 1) {
     return std::make_unique<MultiDelimitedTokenStreamSingle>(opts);
   }
-  return std::make_unique<multi_delimited_token_stream_generic>(
-    std::move(opts));
+  return std::make_unique<MultiDelimitedTokenStreamGeneric>(std::move(opts));
 }
 
 constexpr std::string_view kDelimiterParamName{"delimiter"};
