@@ -41,7 +41,7 @@ using namespace irs::analysis;
 namespace {
 
 template<typename Derived>
-class MultiDelimitedTokenStreamBase : public multi_delimited_token_stream {
+class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
  public:
   bool next() override {
     while (true) {
@@ -91,7 +91,7 @@ class MultiDelimitedTokenStreamSingleChars final
       MultiDelimitedTokenStreamSingleChars<N>> {
  public:
   explicit MultiDelimitedTokenStreamSingleChars(
-    const multi_delimited_token_stream::options& opts) {
+    const MultiDelimitedAnalyser::Options& opts) {
     IRS_ASSERT(opts.delimiters.size() == N);
     std::size_t k = 0;
     for (const auto& delim : opts.delimiters) {
@@ -114,7 +114,7 @@ class MultiDelimitedTokenStreamSingleChars<1> final
       MultiDelimitedTokenStreamSingleChars<1>> {
  public:
   explicit MultiDelimitedTokenStreamSingleChars(
-    const multi_delimited_token_stream::options& opts) {
+    const MultiDelimitedAnalyser::Options& opts) {
     IRS_ASSERT(opts.delimiters.size() == 1);
     IRS_ASSERT(opts.delimiters[0].size() == 1);
     delim = opts.delimiters[0][0];
@@ -136,7 +136,7 @@ class MultiDelimitedTokenStreamSingleChars<0> final
       MultiDelimitedTokenStreamSingleChars<0>> {
  public:
   explicit MultiDelimitedTokenStreamSingleChars(
-    const multi_delimited_token_stream::options& opts) {
+    const MultiDelimitedAnalyser::Options& opts) {
     IRS_ASSERT(opts.delimiters.empty());
   }
 
@@ -147,7 +147,7 @@ class MultiDelimitedTokenStreamGenericSingleChars final
   : public MultiDelimitedTokenStreamSingleCharsBase<
       MultiDelimitedTokenStreamGenericSingleChars> {
  public:
-  explicit MultiDelimitedTokenStreamGenericSingleChars(const options& opts) {
+  explicit MultiDelimitedTokenStreamGenericSingleChars(const Options& opts) {
     for (const auto& delim : opts.delimiters) {
       IRS_ASSERT(delim.size() == 1);
       bytes_[delim[0]] = true;
@@ -308,7 +308,7 @@ automaton MakeStringTrie(const std::vector<bstring>& strings) {
 class MultiDelimitedTokenStreamGeneric final
   : public MultiDelimitedTokenStreamBase<MultiDelimitedTokenStreamGeneric> {
  public:
-  explicit MultiDelimitedTokenStreamGeneric(const options& opts)
+  explicit MultiDelimitedTokenStreamGeneric(const Options& opts)
     : autom(MakeStringTrie(opts.delimiters)),
       matcher(make_automaton_matcher(autom)) {
     // fst::drawFst(automaton_, std::cout);
@@ -353,7 +353,7 @@ class MultiDelimitedTokenStreamGeneric final
 class MultiDelimitedTokenStreamSingle final
   : public MultiDelimitedTokenStreamBase<MultiDelimitedTokenStreamSingle> {
  public:
-  explicit MultiDelimitedTokenStreamSingle(options& opts)
+  explicit MultiDelimitedTokenStreamSingle(Options& opts)
     : delim(std::move(opts.delimiters[0])),
       searcher(delim.begin(), delim.end()) {}
 
@@ -368,7 +368,7 @@ class MultiDelimitedTokenStreamSingle final
 
 template<std::size_t N>
 irs::analysis::analyzer::ptr MakeSingleChar(
-  multi_delimited_token_stream::options&& opts) {
+  MultiDelimitedAnalyser::Options&& opts) {
   if constexpr (N >= 4) {
     return std::make_unique<MultiDelimitedTokenStreamGenericSingleChars>(
       std::move(opts));
@@ -380,8 +380,7 @@ irs::analysis::analyzer::ptr MakeSingleChar(
   }
 }
 
-irs::analysis::analyzer::ptr Make(
-  multi_delimited_token_stream::options&& opts) {
+irs::analysis::analyzer::ptr Make(MultiDelimitedAnalyser::Options&& opts) {
   const bool single_character_case =
     std::all_of(opts.delimiters.begin(), opts.delimiters.end(),
                 [](const auto& delim) { return delim.size() == 1; });
@@ -396,7 +395,7 @@ irs::analysis::analyzer::ptr Make(
 constexpr std::string_view kDelimiterParamName{"delimiter"};
 
 bool ParseVpackOptions(VPackSlice slice,
-                       multi_delimited_token_stream::options& options) {
+                       MultiDelimitedAnalyser::Options& options) {
   if (!slice.isObject()) {
     IRS_LOG_ERROR(
       "Slice for multi_delimited_token_stream is not an object or string");
@@ -422,6 +421,22 @@ bool ParseVpackOptions(VPackSlice slice,
         return false;
       }
       auto view = ViewCast<byte_type>(delim.stringView());
+
+      if (view.empty()) {
+        IRS_LOG_ERROR("Delimiter list contains an empty string.");
+        return false;
+      }
+
+      for (const auto& known : options.delimiters) {
+        if (view.starts_with(known) || known.starts_with(view)) {
+          IRS_LOG_ERROR(
+            absl::StrCat("Some delimiters are a prefix of others. See `",
+                         ViewCast<char>(bytes_view{known}), "` and `",
+                         delim.stringView(), "`"));
+          return false;
+        }
+      }
+
       options.delimiters.emplace_back(view);
     }
   }
@@ -429,7 +444,7 @@ bool ParseVpackOptions(VPackSlice slice,
   return true;
 }
 
-bool MakeVpackConfig(const multi_delimited_token_stream::options& options,
+bool MakeVpackConfig(const MultiDelimitedAnalyser::Options& options,
                      VPackBuilder* vpack_builder) {
   VPackObjectBuilder object(vpack_builder);
   {
@@ -444,10 +459,9 @@ bool MakeVpackConfig(const multi_delimited_token_stream::options& options,
 }
 
 irs::analysis::analyzer::ptr MakeVpack(VPackSlice slice) {
-  multi_delimited_token_stream::options options;
+  MultiDelimitedAnalyser::Options options;
   if (ParseVpackOptions(slice, options)) {
-    return irs::analysis::multi_delimited_token_stream::make(
-      std::move(options));
+    return irs::analysis::MultiDelimitedAnalyser::make(std::move(options));
   }
   return nullptr;
 }
@@ -458,7 +472,7 @@ irs::analysis::analyzer::ptr MakeVpack(std::string_view args) {
 }
 
 bool NormalizeVpackConfig(VPackSlice slice, VPackBuilder* vpack_builder) {
-  multi_delimited_token_stream::options options;
+  MultiDelimitedAnalyser::Options options;
   if (ParseVpackOptions(slice, options)) {
     return MakeVpackConfig(options, vpack_builder);
   }
@@ -476,7 +490,7 @@ bool NormalizeVpackConfig(std::string_view args, std::string& definition) {
   return res;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::multi_delimited_token_stream, MakeVpack,
+REGISTER_ANALYZER_VPACK(irs::analysis::MultiDelimitedAnalyser, MakeVpack,
                         NormalizeVpackConfig);
 /*
 REGISTER_ANALYZER_JSON(irs::analysis::multi_delimited_token_stream, make_json,
@@ -486,15 +500,15 @@ REGISTER_ANALYZER_JSON(irs::analysis::multi_delimited_token_stream, make_json,
 
 namespace irs::analysis {
 
-void multi_delimited_token_stream::init() {
-  REGISTER_ANALYZER_VPACK(multi_delimited_token_stream, MakeVpack,
+void MultiDelimitedAnalyser::init() {
+  REGISTER_ANALYZER_VPACK(MultiDelimitedAnalyser, MakeVpack,
                           NormalizeVpackConfig);  // match registration above
   // REGISTER_ANALYZER_JSON(multi_delimited_token_stream, make_json,
   //                        normalize_json_config);  // match registration above
 }
 
-analyzer::ptr multi_delimited_token_stream::make(
-  multi_delimited_token_stream::options&& opts) {
+analyzer::ptr MultiDelimitedAnalyser::make(
+  MultiDelimitedAnalyser::Options&& opts) {
   return ::Make(std::move(opts));
 }
 

@@ -31,11 +31,10 @@ namespace analysis {
 /// @brief an analyzer capable of breaking up delimited text into tokens
 ///        separated by a set of strings.
 ////////////////////////////////////////////////////////////////////////////////
-class multi_delimited_token_stream
-  : public TypedAnalyzer<multi_delimited_token_stream>,
+class MultiDelimitedAnalyser : public TypedAnalyzer<MultiDelimitedAnalyser>,
     private util::noncopyable {
  public:
-  struct options {
+  struct Options {
     std::vector<bstring> delimiters;
   };
 
@@ -44,7 +43,7 @@ class multi_delimited_token_stream
   }
   static void init();
 
-  static analyzer::ptr make(options&&);
+  static analyzer::ptr make(Options&&);
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
