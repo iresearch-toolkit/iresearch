@@ -32,7 +32,7 @@ namespace analysis {
 ///        separated by a set of strings.
 ////////////////////////////////////////////////////////////////////////////////
 class MultiDelimitedAnalyser : public TypedAnalyzer<MultiDelimitedAnalyser>,
-    private util::noncopyable {
+                               private util::noncopyable {
  public:
   struct Options {
     std::vector<bstring> delimiters;
