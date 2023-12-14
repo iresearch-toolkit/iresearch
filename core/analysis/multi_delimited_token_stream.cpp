@@ -43,6 +43,10 @@ namespace {
 template<typename Derived>
 class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
  public:
+  MultiDelimitedTokenStreamBase() {
+    std::get<increment>(attrs_).value = 1;
+  }
+
   bool next() override {
     while (true) {
       if (data_.begin() == data_.end()) {

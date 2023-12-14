@@ -47,8 +47,6 @@ class multi_delimited_token_stream_tests : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-#ifndef IRESEARCH_DLL
-
 TEST_F(multi_delimited_token_stream_tests, consts) {
   static_assert("multi_delimiter" ==
                 irs::type<irs::analysis::MultiDelimitedAnalyser>::name());
@@ -65,13 +63,22 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter) {
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
   auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* inc = irs::get<irs::increment>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
+  ASSERT_EQ(inc->value, 1);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("b", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 0);
+  ASSERT_EQ(offset->end, 1);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("cc", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 2);
+  ASSERT_EQ(offset->end, 4);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("d", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 6);
+  ASSERT_EQ(offset->end, 7);
   ASSERT_FALSE(stream->next());
 }
 
@@ -100,17 +107,28 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
   auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("a", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 0);
+  ASSERT_EQ(offset->end, 1);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("b", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 2);
+  ASSERT_EQ(offset->end, 3);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("c", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 5);
+  ASSERT_EQ(offset->end, 6);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("d", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 7);
+  ASSERT_EQ(offset->end, 8);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("ff", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 9);
+  ASSERT_EQ(offset->end, 11);
   ASSERT_FALSE(stream->next());
 }
 
@@ -125,13 +143,20 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_single_long) {
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
   auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 3);
+  ASSERT_EQ(offset->end, 6);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("bazbar", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 9);
+  ASSERT_EQ(offset->end, 15);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 18);
+  ASSERT_EQ(offset->end, 21);
   ASSERT_FALSE(stream->next());
 }
 
@@ -145,9 +170,12 @@ TEST_F(multi_delimited_token_stream_tests, no_delimiter) {
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
   auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("foobar", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 0);
+  ASSERT_EQ(offset->end, 6);
   ASSERT_FALSE(stream->next());
 }
 
@@ -162,11 +190,16 @@ TEST_F(multi_delimited_token_stream_tests, multi_words) {
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
   auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("xyz", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 3);
+  ASSERT_EQ(offset->end, 6);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("z", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 12);
+  ASSERT_EQ(offset->end, 13);
   ASSERT_FALSE(stream->next());
 }
 
@@ -180,7 +213,6 @@ TEST_F(multi_delimited_token_stream_tests, multi_words_2) {
 
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
-  auto* term = irs::get<irs::term_attribute>(*stream);
 
   ASSERT_FALSE(stream->next());
 }
@@ -196,12 +228,15 @@ TEST_F(multi_delimited_token_stream_tests, trick_matching_1) {
   auto* payload = irs::get<irs::payload>(*stream);
   ASSERT_EQ(nullptr, payload);
   auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("abcf", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 0);
+  ASSERT_EQ(offset->end, 4);
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("bar", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 7);
+  ASSERT_EQ(offset->end, 10);
   ASSERT_FALSE(stream->next());
 }
-
-#endif
