@@ -35,13 +35,11 @@ struct EmptyPosition final : position {
   bool next() final { return false; }
 };
 
-constexpr EmptyPosition kNoPosition;
+EmptyPosition kNoPosition;
 
 }  // namespace
 
-position& position::empty() noexcept {
-  return const_cast<EmptyPosition&>(kNoPosition);
-}
+position& position::empty() noexcept { return kNoPosition; }
 
 REGISTER_ATTRIBUTE(frequency);
 REGISTER_ATTRIBUTE(position);
