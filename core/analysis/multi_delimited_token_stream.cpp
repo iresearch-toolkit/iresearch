@@ -62,8 +62,8 @@ class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
       auto& term = std::get<term_attribute>(attrs_);
       term.value = bytes_view{data_.begin(), next};
       auto& offset = std::get<irs::offset>(attrs_);
-      offset.start = std::distance(start_, data_.begin());
-      offset.end = std::distance(start_, next);
+      offset.start = std::distance(start_, std::addressof(*data_.begin()));
+      offset.end = std::distance(start_, std::addressof(*next));
 
       if (next == data_.end()) {
         data_ = {};

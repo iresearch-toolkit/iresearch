@@ -269,24 +269,22 @@ template<class F> class DeterminizerStar {
   };
 
   struct RangeElement {
-    explicit RangeElement(Label min, Label max, const Element& to_element, InputStateId from_id, size_t unique_id)
-      : bound{min}, max{max}, from_id{from_id}, unique_id{unique_id}, to_element{to_element} {}
-    explicit RangeElement(Label max, Element&& to_element, InputStateId from_id, size_t unique_id)
-      : bound{max}, max{fst::kNoLabel}, from_id{from_id}, unique_id{unique_id}, to_element{std::move(to_element)} {}
+    explicit RangeElement(Label min, Label max, const Element& element)
+      : bound{min}, max{max}, element{element} {}
+    explicit RangeElement(Label max, Element&& element)
+      : bound{max}, max{fst::kNoLabel}, element{std::move(element)} {}
 
     Label bound;
     Label max;
-    InputStateId from_id;
-    size_t unique_id;
 
     bool IsMax() const noexcept { return max == fst::kNoLabel; }
 
-    Element& Get() noexcept { return to_element; }
-    const Element& Get() const noexcept { return to_element; }
+    Element& Get() noexcept { return element; }
+    const Element& Get() const noexcept { return element; }
 
    private:
     // TODO(MBkkt) store element in separate array to avoid unnecessary copies
-    Element to_element;
+    Element element;
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -531,7 +529,6 @@ template<class F> class DeterminizerStar {
     { 
       // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
-      std::size_t unique_id = 0;
       for (const auto& elem : closed_subset_) {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
@@ -549,8 +546,8 @@ template<class F> class DeterminizerStar {
               seq_.push_back(arc.olabel);
               element.string = repository_.IdOfSeq(seq_);
             }
-            all_elems_.emplace_back(arc.min, arc.max, element,  elem.state, unique_id);
-            all_elems_.emplace_back(arc.max, std::move(element), elem.state, unique_id++);
+            all_elems_.emplace_back(arc.min, arc.max, element);
+            all_elems_.emplace_back(arc.max, std::move(element));
           }
         }
       }
@@ -558,10 +555,6 @@ template<class F> class DeterminizerStar {
     // now sorted first on input label bound, bound type, then read comparator
     if (!epsilon_closure_.FstSorted() || closed_subset_.size() > 1) {
       std::sort(all_elems_.begin(), all_elems_.end(), [](const auto& lhs, const auto& rhs) {
-        if (lhs.from_id != rhs.from_id) {
-          return lhs.from_id < rhs.from_id;
-        }
-        // TODO(MBkkt) We maybe want to move to_id here
         if (lhs.bound != rhs.bound) {
           return lhs.bound < rhs.bound;
         }
@@ -570,24 +563,19 @@ template<class F> class DeterminizerStar {
         if (lhs_max != rhs_max) {
           return lhs_max < rhs_max;
         }
-        const auto& lhs_to_id = lhs.Get().state;
-        const auto& rhs_to_id = rhs.Get().state;
-
+        const auto& lhs_e = lhs.Get();
+        const auto& rhs_e = rhs.Get();
         if (lhs_max) {
-          // same max elements just sorted by to_id and unique_id
-          if (lhs_to_id != rhs_to_id) {
-            return lhs_to_id > rhs_to_id;
-          }
-          return lhs.unique_id > rhs.unique_id;
+          // same max elements just sorted by state
+          IRS_ASSERT((&lhs != &rhs) == (lhs_e.state != rhs_e.state));
+          return lhs_e.state < rhs_e.state;
         }
         // same min elements sorted opposite to their max elements
         if (lhs.max != rhs.max) {
           return lhs.max > rhs.max;
         }
-          if (lhs_to_id != rhs_to_id) {
-            return lhs_to_id < rhs_to_id;
-          }
-          return lhs.unique_id < rhs.unique_id;
+        IRS_ASSERT((&lhs != &rhs) == (lhs_e.state != rhs_e.state));
+        return lhs_e.state > rhs_e.state;
       });
     }
 
@@ -595,28 +583,15 @@ template<class F> class DeterminizerStar {
     closed_subset_.clear();
     fsa::RangeLabel label;
 
-#ifdef IRESEARCH_DEBUG
-    std::vector<std::size_t> brackets;
-#endif
     for (auto& e : all_elems_) {
       const auto& bound = e.bound;
       const bool is_max = e.IsMax();
 
-#ifdef IRESEARCH_DEBUG
-      if (!is_max) {
-        brackets.push_back(e.unique_id);
-      } else {
-        IRS_ASSERT(!brackets.empty());
-        IRS_ASSERT(brackets.back() == e.unique_id);
-        brackets.pop_back();
-      }
-#endif
-
       if (!is_max) {
         if (label.ilabel != fst::kNoLabel && label.min != bound) {
           label.max = bound - 1;
-          IRS_ASSERT(!closed_subset_.empty());
-          IRS_ASSERT(label.min <= label.max);
+          assert(!closed_subset_.empty());
+          assert(label.min <= label.max);
           ProcessTransition(state, label.ilabel, &closed_subset_);
         }
 
@@ -625,13 +600,13 @@ template<class F> class DeterminizerStar {
       } else {
         if (label.max != bound) {
           label.max = bound;
-          IRS_ASSERT(!closed_subset_.empty());
-          IRS_ASSERT(label.min <= label.max);
+          assert(!closed_subset_.empty());
+          assert(label.min <= label.max);
           ProcessTransition(state, label.ilabel, &closed_subset_);
           label.min = bound + 1;
         }
 
-        IRS_ASSERT(!closed_subset_.empty());
+        assert(!closed_subset_.empty());
         closed_subset_.pop_back();
         if (closed_subset_.empty()) {
           label.ilabel = fst::kNoLabel;
