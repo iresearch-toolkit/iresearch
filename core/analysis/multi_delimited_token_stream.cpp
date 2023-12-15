@@ -352,6 +352,25 @@ class MultiDelimitedTokenStreamGeneric final
   automaton_table_matcher matcher;
 };
 
+#ifdef __APPLE__
+class MultiDelimitedTokenStreamSingle final
+  : public MultiDelimitedTokenStreamBase<MultiDelimitedTokenStreamSingle> {
+ public:
+  explicit MultiDelimitedTokenStreamSingle(Options& opts)
+    : delim(std::move(opts.delimiters[0])) {}
+
+  auto FindNextDelim() {
+    auto next = data_.end();
+    if (auto pos = this->data_.find(delim); pos != bstring::npos) {
+      next = this->data_.begin() + pos;
+    }
+    return std::make_pair(next, delim.size());
+  }
+
+  bstring delim;
+};
+#else
+
 class MultiDelimitedTokenStreamSingle final
   : public MultiDelimitedTokenStreamBase<MultiDelimitedTokenStreamSingle> {
  public:
@@ -367,6 +386,8 @@ class MultiDelimitedTokenStreamSingle final
   bstring delim;
   std::boyer_moore_searcher<bstring::iterator> searcher;
 };
+
+#endif
 
 template<std::size_t N>
 irs::analysis::analyzer::ptr MakeSingleChar(
