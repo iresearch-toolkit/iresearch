@@ -92,8 +92,8 @@ TEST(MinHashTokenStreamTest, NormalizeDefault) {
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
     out, "minhash", irs::type<irs::text_format::json>::get(),
     R"({"numHashes": 42})"));
-  const auto expected_out = arangodb::velocypack::Parser::fromJson(
-    R"({"analyzer": {}, "numHashes": 42})");
+  const auto expected_out =
+    arangodb::velocypack::Parser::fromJson(R"({"numHashes": 42})");
   ASSERT_EQ(expected_out->slice().toString(), out);
 
   // Failing cases
