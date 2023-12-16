@@ -97,7 +97,8 @@ automaton FromWildcard(bytes_view expr) {
   while (it != end) {
     const auto curr = *it;
     const auto* next = utf8_utils::Next(it, end);
-    bytes_view label{it, next};
+    // TODO(MBkkt) remove manual size compute, needed for some apple libc++
+    bytes_view label{it, static_cast<size_t>(next - it)};
     it = next;
 
     if (escaped) {
