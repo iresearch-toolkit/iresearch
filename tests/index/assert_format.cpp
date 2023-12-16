@@ -780,7 +780,7 @@ void assert_terms_next(const field& expected_field,
 
   auto expected_term = expected_field.iterator();
   if (matcher) {
-    expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
+    expected_term = irs::memory::make_managed<irs::AutomatonTermIterator>(
       matcher->GetFst(), std::move(expected_term));
   }
 
@@ -821,7 +821,7 @@ void assert_terms_seek(const field& expected_field,
                        size_t lookahead = 10) {
   auto expected_term = expected_field.iterator();
   if (matcher) {
-    expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
+    expected_term = irs::memory::make_managed<irs::AutomatonTermIterator>(
       matcher->GetFst(), std::move(expected_term));
   }
 

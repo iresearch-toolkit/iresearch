@@ -135,7 +135,7 @@ enum ColumnProperty : uint32_t {
   CP_MASK = 1 << 2,           // column contains no data
   CP_COLUMN_DENSE = 1 << 3,   // column index is dense
   CP_COLUMN_ENCRYPT = 1 << 4  // column contains encrypted data
-};                            // ColumnProperty
+};
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
@@ -577,7 +577,7 @@ class index_block {
   uint64_t* offset_{offsets_};
   doc_id_t* key_{keys_};
   uint32_t flushed_{};  // number of flushed items
-};                      // index_block
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer
@@ -976,7 +976,7 @@ class block_cache : irs::util::noncopyable {
 
  private:
   std::deque<Block, Allocator> cache_;  // pointers remain valid
-};                                      // block_cache
+};
 
 template<typename Block, typename Allocator>
 struct block_cache_traits {
@@ -1293,7 +1293,7 @@ class dense_fixed_offset_block : util::noncopyable {
     doc_id_t value_min_{};                        // min doc_id
     doc_id_t value_end_{};                        // after the last valid doc id
     doc_id_t value_back_{};                       // last valid doc id
-  };                                              // iterator
+  };
 
   void load(index_input& in, compression::decompressor* decomp,
             encryption::stream* cipher, bstring& buf) {
@@ -1409,7 +1409,7 @@ class sparse_mask_block : util::noncopyable {
   // in the worst case
   doc_id_t keys_[INDEX_BLOCK_SIZE];
   doc_id_t size_{};  // number of documents in a block
-};                   // sparse_mask_block
+};
 
 class dense_mask_block {
  public:
@@ -1723,7 +1723,7 @@ class column : public irs::column_reader, private util::noncopyable {
   field_id id_;
   std::optional<std::string> name_;
   bool encrypted_{false};  // cached encryption mark
-};                         // column
+};
 
 template<typename Column>
 class column_iterator : public irs::doc_iterator {
@@ -1944,7 +1944,7 @@ class sparse_column final : public column {
     doc_id_t key;                                // min key in a block
     uint64_t offset;                             // block offset
     mutable std::atomic<const block_t*> pblock;  // pointer to cached block
-  };                                             // block_ref
+  };
 
   typedef std::vector<block_ref> refs_t;
 
@@ -1990,7 +1990,7 @@ class sparse_column final : public column {
 
   const context_provider* ctxs_;
   refs_t refs_;  // blocks index
-};               // sparse_column
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class dense_fixed_offset_column
@@ -2130,7 +2130,7 @@ class dense_fixed_offset_column final : public column {
   const context_provider* ctxs_;
   refs_t refs_;
   doc_id_t min_{};  // min key
-};                  // dense_fixed_offset_column
+};
 
 template<>
 class dense_fixed_offset_column<dense_mask_block> final : public column {
@@ -2251,7 +2251,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   };
 
   doc_id_t min_{};  // min key (less than any key in column)
-};                  // dense_fixed_offset_column
+};
 
 irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(
   ColumnHint) const {

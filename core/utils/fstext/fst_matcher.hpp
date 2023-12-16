@@ -105,6 +105,6 @@ class explicit_matcher final
 
   MatcherImpl matcher_;
   MatchType match_type_;  // Type of match requested.
-};                        // explicit_matcher
+};
 
 }  // namespace fst

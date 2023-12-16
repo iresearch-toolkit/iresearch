@@ -128,11 +128,7 @@ struct Dummy {};
 class NGramPosition : public position {
  public:
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    if (irs::type<offset>::id() == type) {
-      return &offset_;
-    }
-
-    return nullptr;
+    return type == irs::type<offset>::id() ? &offset_ : nullptr;
   }
 
   bool next() final {
@@ -181,7 +177,7 @@ class NGramPosition : public position {
 template<typename Base>
 class SerialPositionsChecker : public Base {
  public:
-  static constexpr bool HasPosition = std::is_same_v<NGramPosition, Base>;
+  static constexpr bool kHasPosition = std::is_same_v<NGramPosition, Base>;
 
   template<typename Iterator>
   SerialPositionsChecker(Iterator begin, Iterator end, size_t total_terms_count,
@@ -204,7 +200,7 @@ class SerialPositionsChecker : public Base {
       return &filter_boost_;
     }
 
-    if constexpr (HasPosition) {
+    if constexpr (kHasPosition) {
       if (type == irs::type<irs::position>::id()) {
         return static_cast<Base*>(this);
       }
@@ -217,12 +213,12 @@ class SerialPositionsChecker : public Base {
   friend class NGramPosition;
 
   using SearchStates =
-    std::map<uint32_t, std::shared_ptr<SearchState>, std::greater<uint32_t>>;
+    std::map<uint32_t, std::shared_ptr<SearchState>, std::greater<>>;
   using PosTemp =
     std::vector<std::pair<uint32_t, std::shared_ptr<SearchState>>>;
 
   using PositionType =
-    std::conditional_t<HasPosition, PositionWithOffset, Position>;
+    std::conditional_t<kHasPosition, PositionWithOffset, Position>;
 
   std::vector<PositionType> pos_;
   std::set<size_t> used_pos_;  // longest sequence positions overlaping detector
@@ -360,7 +356,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
   }
 
   if (longest_sequence_len >= min_match_count_ && collect_all_states_) {
-    if constexpr (HasPosition) {
+    if constexpr (kHasPosition) {
       static_cast<NGramPosition&>(*this).ClearOffsets();
     }
 
@@ -373,7 +369,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
     for ([[maybe_unused]] auto& [_, state] : search_buf_) {
       if (state->len == longest_sequence_len) {
         ++count_longest;
-        if constexpr (HasPosition) {
+        if constexpr (kHasPosition) {
           last_state = state.get();
         }
         if (count_longest > 1) {
@@ -429,7 +425,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
             used_pos_.insert(std::begin(pos_sequence_),
                              std::end(pos_sequence_));
 
-            if constexpr (HasPosition) {
+            if constexpr (kHasPosition) {
               static_cast<NGramPosition&>(*this).PushOffset(*state);
             }
           }
@@ -438,7 +434,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
       }
     } else {
       freq = 1;
-      if constexpr (HasPosition) {
+      if constexpr (kHasPosition) {
         IRS_ASSERT(last_state);
         static_cast<NGramPosition&>(*this).PushOffset(*last_state);
       }
@@ -448,7 +444,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
     filter_boost_.value =
       static_cast<score_t>(longest_sequence_len) / total_terms_count_;
 
-    if constexpr (HasPosition) {
+    if constexpr (kHasPosition) {
       static_cast<NGramPosition&>(*this).reset();
     }
   }
