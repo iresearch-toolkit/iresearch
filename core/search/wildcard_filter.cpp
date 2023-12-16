@@ -66,11 +66,9 @@ auto ExecuteWildcard(bstring& buf, bytes_view term, Term&& t, Prefix&& p,
       [[fallthrough]];
     case WildcardType::kPrefix: {
       IRS_ASSERT(!term.empty());
-      const auto* begin = term.data();
-      const auto* end = begin + term.size();
-      const auto* pos = std::find(begin, end, WildcardMatch::kAnyStr);
-      IRS_ASSERT(pos != end);
-      term = bytes_view{begin, pos};  // remove trailing '%'
+      const auto idx = term.find_first_of(WildcardMatch::kAnyStr);
+      IRS_ASSERT(idx != bytes_view::npos);
+      term = bytes_view{term.data(), idx};  // remove trailing '%'
       return p(term);
     }
     case WildcardType::kWildcard:
