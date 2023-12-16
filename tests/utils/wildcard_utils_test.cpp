@@ -673,6 +673,26 @@ TEST_F(wildcard_utils_test, match_wildcard) {
       a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
   }
 
+  // '\0'
+  {
+    static constexpr auto kNull = std::string_view{"%\0%", 3};
+    auto a = irs::FromWildcard(kNull);
+    assert_properties(a);
+    EXPECT_FALSE(irs::Accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+    EXPECT_FALSE(irs::Accept<char>(a, std::string_view{}));
+    EXPECT_TRUE(
+      irs::Accept<irs::byte_type>(a, irs::ViewCast<irs::byte_type>(kNull)));
+    EXPECT_TRUE(irs::Accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a\0", 2))));
+    EXPECT_TRUE(irs::Accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\0a", 2))));
+    EXPECT_TRUE(irs::Accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a\0a", 3))));
+    EXPECT_FALSE(irs::Accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("aa", 2))));
+  }
+
   // escaped 'a'
   {
     auto a = irs::FromWildcard("\\a");

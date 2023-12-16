@@ -160,28 +160,30 @@ class BooleanWeight {
 
 struct RangeLabelLE {
   constexpr RangeLabelLE(int64_t ilabel) noexcept : ilabel{ilabel} {}
-  constexpr explicit RangeLabelLE(uint32_t min, uint32_t max) noexcept
-    : max{max}, min{min} {}
+  constexpr explicit RangeLabelLE(uint16_t min, uint16_t max) noexcept
+    : max{max}, min{min}, not_epsion{0xFFFF'FFFFU} {}
 
   union {
     int64_t ilabel;
     struct {
-      uint32_t max;
-      uint32_t min;
+      uint16_t max;
+      uint16_t min;
+      uint32_t not_epsion;
     };
   };
 };
 
 struct RangeLabelBE {
   constexpr RangeLabelBE(int64_t ilabel) noexcept : ilabel{ilabel} {}
-  constexpr explicit RangeLabelBE(uint32_t min, uint32_t max) noexcept
-    : min{min}, max{max} {}
+  constexpr explicit RangeLabelBE(uint16_t min, uint16_t max) noexcept
+    : not_epsion{0xFFFF'FFFFU}, min{min}, max{max} {}
 
   union {
     int64_t ilabel;
     struct {
-      uint32_t min;
-      uint32_t max;
+      uint32_t not_epsion;
+      uint16_t min;
+      uint16_t max;
     };
   };
 };
@@ -194,10 +196,10 @@ struct RangeLabel : RangeLabelType {
   constexpr RangeLabel() noexcept : RangeLabelType{fst::kNoLabel} {}
   constexpr RangeLabel(RangeLabelType&& type) : RangeLabelType{type} {}
 
-  static constexpr RangeLabel From(uint32_t min, uint32_t max) noexcept {
+  static constexpr RangeLabel From(uint16_t min, uint16_t max) noexcept {
     return RangeLabelType{min, max};
   }
-  static constexpr RangeLabel From(uint32_t point) noexcept {
+  static constexpr RangeLabel From(uint16_t point) noexcept {
     return From(point, point);
   }
 
