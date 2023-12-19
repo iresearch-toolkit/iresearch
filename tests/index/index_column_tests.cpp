@@ -71,8 +71,6 @@ TEST_P(index_column_test_case,
     struct stored {
       const std::string_view& name() { return column_name; }
 
-      irs::features_t features() const { return {}; }
-
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
         if (value % 3) {
@@ -978,7 +976,6 @@ TEST_P(index_column_test_case,
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
-      size_t docs = 0;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
         const auto actual_str_value =
@@ -993,7 +990,6 @@ TEST_P(index_column_test_case,
 
         expected_doc += 2;
         expected_value += 2;
-        ++docs;
       }
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
@@ -1103,7 +1099,7 @@ TEST_P(index_column_test_case,
       explicit stored(const std::string_view& name) noexcept
         : column_name(name) {}
       const std::string_view& name() { return column_name; }
-      irs::features_t features() const { return {}; }
+
       bool write(irs::data_output&) { return true; }
       const std::string_view column_name;
     } field(column_name), gap("gap");
@@ -1622,14 +1618,12 @@ TEST_P(index_column_test_case,
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
 
       irs::doc_id_t expected_doc = BLOCK_SIZE + 2;
-      size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       ASSERT_EQ(expected_doc, it->value());
 
       for (; it->next();) {
         ++expected_doc;
-        ++docs_count;
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(irs::bytes_view{},
@@ -1889,8 +1883,6 @@ TEST_P(index_column_test_case,
       explicit stored(const std::string_view& name) noexcept
         : column_name(name) {}
       const std::string_view& name() { return column_name; }
-
-      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -2947,7 +2939,6 @@ TEST_P(index_column_test_case,
   static const irs::doc_id_t BLOCK_SIZE = 1024;
   static const irs::doc_id_t MAX_DOCS = 1500;
   static const std::string_view column_name = "id";
-  size_t inserted = 0;
 
   // write documents
   {
@@ -2956,8 +2947,6 @@ TEST_P(index_column_test_case,
         : column_name(name) {}
 
       const std::string_view& name() noexcept { return column_name; }
-
-      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         if (value == BLOCK_SIZE - 1) {
@@ -2979,7 +2968,6 @@ TEST_P(index_column_test_case,
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
-      ++inserted;
     } while (++field.value < BLOCK_SIZE);  // insert BLOCK_SIZE documents
 
     ctx.Insert().Insert<irs::Action::STORE>(gap);  // gap
@@ -2987,7 +2975,6 @@ TEST_P(index_column_test_case,
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
-      ++inserted;
     } while (++field.value < (1 + MAX_DOCS));  // insert BLOCK_SIZE documents
 
     {
@@ -3176,8 +3163,6 @@ TEST_P(index_column_test_case,
     struct stored {
       const std::string_view& name() { return column_name; }
 
-      irs::features_t features() const { return {}; }
-
       bool write(irs::data_output& out) {
         if (value == BLOCK_SIZE - 1) {
           out.write_byte(0);
@@ -3353,7 +3338,6 @@ TEST_P(index_column_test_case,
   static const irs::doc_id_t BLOCK_SIZE = 1024;
   static const irs::doc_id_t MAX_DOCS = 1500;
   static const std::string_view column_name = "id";
-  size_t inserted = 0;
 
   // write documents
   {
@@ -3362,8 +3346,6 @@ TEST_P(index_column_test_case,
         : column_name(name) {}
 
       const std::string_view& name() noexcept { return column_name; }
-
-      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         irs::write_string(
@@ -3381,7 +3363,6 @@ TEST_P(index_column_test_case,
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
-      ++inserted;
     } while (++field.value < BLOCK_SIZE);  // insert BLOCK_SIZE documents
 
     ctx.Insert().Insert<irs::Action::STORE>(gap);  // gap
@@ -3389,7 +3370,6 @@ TEST_P(index_column_test_case,
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
-      ++inserted;
     } while (++field.value < (1 + MAX_DOCS));  // insert BLOCK_SIZE documents
 
     {
@@ -4330,7 +4310,7 @@ TEST_P(index_column_test_case,
   {
     struct stored {
       const std::string_view& name() { return column_name; }
-      irs::features_t features() const { return {}; }
+
       bool write(irs::data_output& /*out*/) { return true; }
     } field;
 
@@ -5134,7 +5114,7 @@ TEST_P(index_column_test_case,
   {
     struct stored {
       const std::string_view& name() { return column_name; }
-      irs::features_t features() const { return {}; }
+
       bool write(irs::data_output& /*out*/) { return true; }
     } field;
 
@@ -5751,8 +5731,6 @@ TEST_P(index_column_test_case,
   {
     struct stored {
       const std::string_view& name() { return column_name; }
-
-      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         irs::write_string(
@@ -6544,8 +6522,6 @@ TEST_P(index_column_test_case,
   {
     struct stored {
       const std::string_view& name() { return column_name; }
-
-      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
@@ -8016,10 +7992,10 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   // write documents
   {
@@ -8265,10 +8241,10 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
 
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   // write documents without attributes
   {

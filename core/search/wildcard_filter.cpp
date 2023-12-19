@@ -73,8 +73,6 @@ auto ExecuteWildcard(bstring& buf, bytes_view term, Term&& t, Prefix&& p,
     }
     case WildcardType::kWildcard:
       return w(term);
-    default:
-      ABSL_UNREACHABLE();
   }
 }
 

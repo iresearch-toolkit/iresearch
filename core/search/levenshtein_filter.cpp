@@ -49,7 +49,7 @@ IRS_FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
 
   static_assert(sizeof(score_t) == sizeof(uint32_t));
 
-  return 1.f - score_t(distance) / size;
+  return 1.f - static_cast<score_t>(distance) / static_cast<score_t>(size);
 }
 
 template<typename Invalid, typename Term, typename Levenshtein>

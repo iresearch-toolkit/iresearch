@@ -191,14 +191,6 @@ struct doc_buffer : skip_buffer {
     last = doc;
   }
 
-  void reset() noexcept {
-    skip_buffer::reset();
-    doc = docs.begin();
-    freq = freqs.begin();
-    last = doc_limits::invalid();
-    block_last = doc_limits::min();
-  }
-
   std::span<doc_id_t> docs;
   std::span<uint32_t> freqs;
   uint32_t* skip_doc;
@@ -1586,7 +1578,7 @@ class position final : public irs::position,
   value_t seek(value_t target) final {
     const uint32_t freq = *this->freq_;
     if (this->pend_pos_ > freq) {
-      skip(this->pend_pos_ - freq);
+      skip(static_cast<uint32_t>(this->pend_pos_ - freq));
       this->pend_pos_ = freq;
     }
     while (value_ < target && this->pend_pos_) {
@@ -1620,7 +1612,7 @@ class position final : public irs::position,
     const uint32_t freq = *this->freq_;
 
     if (this->pend_pos_ > freq) {
-      skip(this->pend_pos_ - freq);
+      skip(static_cast<uint32_t>(this->pend_pos_ - freq));
       this->pend_pos_ = freq;
     }
 
@@ -1956,6 +1948,7 @@ auto ResolveExtent(uint8_t extent, Func&& func) {
         if constexpr (PossibleMin <= 0) {
           return std::forward<Func>(func)(Extent<0>{});
         }
+        [[fallthrough]];
       default:
         return std::forward<Func>(func)(DynamicExtent{extent});
     }
@@ -4130,7 +4123,7 @@ template<bool Wand, uint32_t PosMin>
 struct format_traits_sse4 {
   using align_type = __m128i;
 
-  static constexpr bool wand() noexcept { return Wand; };
+  static constexpr bool wand() noexcept { return Wand; }
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr uint32_t block_size() noexcept { return SIMDBlockSize; }
   static_assert(block_size() <= doc_limits::eof());

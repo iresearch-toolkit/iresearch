@@ -44,7 +44,8 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
 
   threshold = std::clamp(threshold, 0.f, 1.f);
   const auto min_match_count =
-    std::clamp(static_cast<size_t>(std::ceil(terms_count * threshold)),
+    std::clamp(static_cast<size_t>(
+                 std::ceil(static_cast<float_t>(terms_count) * threshold)),
                size_t{1}, terms_count);
   if (ctx.scorers.empty() && 1 == min_match_count) {
     irs::by_terms_options options;

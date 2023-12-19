@@ -43,8 +43,6 @@ DirectoryReaderImpl::Init::Init(const directory& dir,
                                 const DirectoryMeta& meta) {
   const bool has_segments_file = !meta.filename.empty();
 
-  auto& [file_refs, docs_count, live_docs_count] = *this;
-
   file_refs.reserve(meta.index_meta.segments.size() +
                     size_t{has_segments_file});
 
@@ -211,8 +209,8 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
 std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
   const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
   const std::shared_ptr<const DirectoryReaderImpl>& cached) {
-  IndexMeta meta;
-  index_file_refs::ref_t meta_file_ref = LoadNewestIndexMeta(meta, dir, codec);
+  IndexMeta index_meta;
+  auto meta_file_ref = LoadNewestIndexMeta(index_meta, dir, codec);
 
   if (!meta_file_ref) {
     throw index_not_found{};
@@ -220,7 +218,7 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
 
   IRS_ASSERT(codec);
 
-  if (cached && cached->meta_.index_meta == meta) {
+  if (cached && cached->meta_.index_meta == index_meta) {
     return cached;  // no changes to refresh
   }
 
@@ -241,7 +239,7 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
     }
   }
 
-  const auto& segments = meta.segments;
+  const auto& segments = index_meta.segments;
 
   ReadersType readers(segments.size());
   auto reader = readers.begin();
@@ -272,7 +270,8 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
 
   return std::make_shared<DirectoryReaderImpl>(
     dir, std::move(codec), opts,
-    DirectoryMeta{.filename = *meta_file_ref, .index_meta = std::move(meta)},
+    DirectoryMeta{.filename = *meta_file_ref,
+                  .index_meta = std::move(index_meta)},
     std::move(readers));
 }
 

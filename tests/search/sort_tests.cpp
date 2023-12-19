@@ -370,8 +370,6 @@ TEST(sort_tests, prepare_order) {
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(2 == scorers.size());
-    auto& front = scorers.front();
-    auto& back = scorers.back();
 
     irs::score score;
     ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);

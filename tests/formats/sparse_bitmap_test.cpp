@@ -787,8 +787,6 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::doc_id_t expected_index = 0;
-
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1;;) {
       irs::sparse_bitmap_iterator it{
         stream->dup(), iterator_options(bitmap_index, true), 65536};
@@ -805,7 +803,6 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
       ASSERT_EQ(expected_doc, it.seek(expected_doc));
 
       expected_doc += STEP;
-      ++expected_index;
 
       if (expected_doc == (irs::doc_limits::min() + 1)) {
         break;
@@ -816,8 +813,6 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
   {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
-
-    irs::doc_id_t expected_index = 0;
 
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1;;) {
       irs::sparse_bitmap_iterator it{
@@ -837,7 +832,6 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
       ASSERT_EQ(expected_doc, it.seek(expected_doc - 1));
 
       expected_doc += STEP;
-      ++expected_index;
 
       if (expected_doc == (irs::doc_limits::min() + 1)) {
         break;
@@ -848,8 +842,6 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
   {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
-
-    irs::doc_id_t expected_index = 0;
 
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1 + STEP;;) {
       irs::sparse_bitmap_iterator it{stream->dup(),
@@ -866,7 +858,6 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
       ASSERT_EQ(expected_doc, it.seek(expected_doc - STEP + 1));
 
       expected_doc += STEP;
-      ++expected_index;
 
       if (expected_doc == (irs::doc_limits::min() + 1)) {
         break;

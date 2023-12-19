@@ -245,7 +245,7 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   }
 
   auto& level_0 = levels_.back();
-  return level_0.left + level_0.step;
+  return static_cast<doc_id_t>(level_0.left + level_0.step);
 }
 
 }  // namespace irs

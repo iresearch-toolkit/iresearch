@@ -202,7 +202,9 @@ TEST_F(ref_counter_tests, test_ref_counter_visit) {
 
   // test empty
   {
-    auto visitor = [](const int& key, size_t count) -> bool { return true; };
+    auto visitor = [](const int& /*key*/, size_t /*count*/) -> bool {
+      return true;
+    };
 
     ASSERT_FALSE(refs.empty());
     ASSERT_TRUE(refs.visit(visitor, true));

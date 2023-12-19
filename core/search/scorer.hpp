@@ -312,19 +312,19 @@ Scorers Scorers::Prepare(Iterator begin, Iterator end) {
   return scorers;
 }
 
-inline constexpr size_t kBufferRuntimeSize = std::numeric_limits<size_t>::max();
+inline constexpr uint32_t kBufferRuntimeSize = 0;
 
 struct NoopAggregator {
-  constexpr size_t size() const noexcept { return 0; }
+  constexpr uint32_t size() const noexcept { return 0; }
 };
 
-template<size_t Size>
+template<uint32_t Size>
 struct ScoreBuffer {
   static_assert(Size > 0);
 
-  ScoreBuffer(size_t = 0) noexcept {}
+  ScoreBuffer(uint32_t = 0) noexcept {}
 
-  constexpr size_t size() const noexcept { return Size; }
+  constexpr uint32_t size() const noexcept { return Size; }
 
   constexpr score_t* temp() noexcept { return buf_.data(); }
 
@@ -344,7 +344,9 @@ struct ScoreBuffer<kBufferRuntimeSize> {
     IRS_ASSERT(size);
   }
 
-  size_t size() const noexcept { return buf_.get_deleter().size(); }
+  uint32_t size() const noexcept {
+    return static_cast<uint32_t>(buf_.get_deleter().size());
+  }
 
   score_t* temp() noexcept { return buf_.get(); }
 
@@ -359,7 +361,7 @@ struct Aggregator : ScoreBuffer<Size> {
   using Buffer::Buffer;
 
   IRS_FORCE_INLINE size_t byte_size() const noexcept {
-    return this->size() * sizeof(score_t);
+    return static_cast<size_t>(this->size()) * sizeof(score_t);
   }
 
   IRS_FORCE_INLINE void Merge(score_t& dst, score_t src) const noexcept {
@@ -367,7 +369,7 @@ struct Aggregator : ScoreBuffer<Size> {
   }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
-    for (size_t i = 0; i != this->size(); ++i) {
+    for (uint32_t i = 0; i != this->size(); ++i) {
       merger_(dst, src);
       ++dst;
       ++src;
@@ -448,9 +450,6 @@ auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
       return impl.template operator()<MaxMerger>();
     case ScoreMergeType::kMin:
       return impl.template operator()<MinMerger>();
-    default:
-      IRS_ASSERT(false);
-      return visitor(NoopAggregator{});
   }
 }
 
@@ -458,7 +457,7 @@ auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
 template<typename Impl, typename StatsType = void>
 class ScorerBase : public Scorer {
  public:
-  static_assert(std::is_same_v<StatsType, void> ||
+  static_assert(std::is_void_v<StatsType> ||
                 std::is_trivially_constructible_v<StatsType>);
 
   WandWriter::ptr prepare_wand_writer(size_t) const override { return nullptr; }

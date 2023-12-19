@@ -130,7 +130,6 @@ bool verify_lock_file(const path_char_t* file);
 bool absolute(bool& result, const path_char_t* path) noexcept;
 
 bool block_size(file_blksize_t& result, const path_char_t* file) noexcept;
-bool block_size(file_blksize_t& result, void* fd) noexcept;
 bool byte_size(uint64_t& result, const path_char_t* file) noexcept;
 bool byte_size(uint64_t& result, int fd) noexcept;
 bool byte_size(uint64_t& result, void* fd) noexcept;

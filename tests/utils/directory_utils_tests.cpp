@@ -35,8 +35,6 @@ class directory_utils_tests : public ::testing::Test {
  protected:
   class directory_mock : public irs::directory {
    public:
-    directory_mock() noexcept {}
-
     using directory::attributes;
 
     irs::directory_attributes& attributes() noexcept final { return attrs_; }

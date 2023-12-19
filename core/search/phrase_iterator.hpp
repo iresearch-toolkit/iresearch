@@ -230,8 +230,8 @@ class VariadicPhraseFrequency {
 
     if constexpr (VolatileBoost) {
       if (phrase_freq_.value) {
-        phrase_boost_.value =
-          phrase_boost_.value / (phrase_size_ * phrase_freq_.value);
+        phrase_boost_.value /=
+          static_cast<score_t>(phrase_size_ * phrase_freq_.value);
       }
     }
 

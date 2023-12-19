@@ -145,7 +145,6 @@ class SkipList {
 
   SkipList() = default;
 
-  bool Empty() const noexcept { return skip_list_.empty(); }
   size_t Size() const noexcept { return skip_list_.size(); }
   irs::score_t At(size_t level, irs::doc_id_t doc) const noexcept {
     EXPECT_LT(level, skip_list_.size());
@@ -377,7 +376,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
 
 void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
                                         irs::IndexFeatures features,
-                                        DocsView docs) {
+                                        DocsView /*docs*/) {
   ASSERT_NE(nullptr, actual);
 
   auto* threshold_value = irs::get_mutable<irs::score>(actual.get());

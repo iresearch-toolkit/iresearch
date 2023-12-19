@@ -75,7 +75,7 @@ timer_stat_t& get_stat(const std::string& key);
   ::irs::timer_utils::scoped_timer timer_stat##_##line(    \
     MSVC_ONLY(&timer_state##_##line == nullptr             \
                 ? ::irs::timer_utils::get_stat(timer_name) \
-                :) timer_state##_##line);
+                :) timer_state##_##line)
 #define REGISTER_TIMER_EXPANDER__(timer_name, line) \
   REGISTER_TIMER__(timer_name, line)
 #define SCOPED_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)

@@ -50,7 +50,7 @@ struct type {
   ///       it's platform dependent
   //////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view name() noexcept {
-    if constexpr (detail::has_member_type_name_v<T>) {
+    if constexpr (detail::HasMember_type_name<T>::value) {
       return T::type_name();
     } else {
       return ctti<T>();

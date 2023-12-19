@@ -76,12 +76,6 @@ struct GetVisitor {
         return by_range::visit(segment, field, *range, visitor);
       };
   }
-
-  template<typename T>
-  result_type operator()(const T&) const {
-    IRS_ASSERT(false);
-    return [](const SubReader&, const term_reader&, filter_visitor&) {};
-  }
 };
 
 struct PrepareVisitor : util::noncopyable {

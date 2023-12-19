@@ -150,7 +150,7 @@ bool BufferedColumn::FlushDense(column_output& writer, DocMapView docmap,
       WriteValue(writer, new_value);
       index_.emplace_back(new_value);
     }
-  };
+  }
 
   return true;
 }

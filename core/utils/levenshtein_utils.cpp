@@ -147,8 +147,6 @@ class parametric_state {
     return positions_.end();
   }
 
-  size_t size() const noexcept { return positions_.size(); }
-
   bool empty() const noexcept { return positions_.empty(); }
 
   void clear() noexcept { return positions_.clear(); }
@@ -251,7 +249,8 @@ void add_elementary_transitions(parametric_state& state, const position& pos,
     // Situation 2, [i+j,e+j-1] - elements X[i+1:i+j-1] are deleted
     for (size_t j = 1, max = max_distance + 1 - pos.distance; j < max; ++j) {
       if (irs::check_bit(chi, j)) {
-        state.emplace(pos.offset + 1 + j, pos.distance + j, false);
+        state.emplace(static_cast<uint32_t>(pos.offset + 1 + j),
+                      pos.distance + j, false);
       }
     }
 
@@ -355,9 +354,6 @@ struct character {
   byte_type utf8[utf8_utils::kMaxCharSize]{};
   size_t size{};
   uint32_t cp{};  // utf8 code point
-
-  const byte_type* begin() const noexcept { return utf8; }
-  const byte_type* end() const noexcept { return utf8 + size; }
 };
 
 //////////////////////////////////////////////////////////////////////////////

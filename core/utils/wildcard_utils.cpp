@@ -69,6 +69,7 @@ WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
           curr_any_str = ++size_any_str;
           break;
         }
+        [[fallthrough]];
       case WildcardMatch::kAnyChr:
         return WildcardType::kWildcard;
       case WildcardMatch::kEscape:
