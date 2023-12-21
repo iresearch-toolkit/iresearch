@@ -60,7 +60,6 @@ WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
     auto prev_any_str = std::exchange(curr_any_str, 0);
     if (escaped) {
       escaped = false;
-      seen_escaped = true;
       continue;
     }
     switch (*it) {
@@ -74,6 +73,7 @@ WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
         return WildcardType::kWildcard;
       case WildcardMatch::kEscape:
         escaped = true;
+        seen_escaped = true;
         break;
       default:
         break;
