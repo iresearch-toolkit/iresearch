@@ -42,8 +42,7 @@ class by_phrase_options {
  private:
   using phrase_part =
     std::variant<by_term_options, by_prefix_options, by_wildcard_options,
-                 by_edit_distance_filter_options, by_terms_options,
-                 by_range_options>;
+                 by_edit_distance_options, by_terms_options, by_range_options>;
 
   using phrase_type = std::map<size_t, phrase_part>;
 

@@ -469,7 +469,7 @@ TEST_P(bm25_test_case, test_phrase) {
       irs::ViewCast<irs::byte_type>(std::string_view("ca"));
     phrase.push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("p_e"));
-    auto& lt = phrase.push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = phrase.push_back<irs::by_edit_distance_options>();
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("biscuit"));
     auto& ct = phrase.push_back<irs::by_terms_options>();

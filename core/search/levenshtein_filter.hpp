@@ -31,7 +31,7 @@ class by_edit_distance;
 class parametric_description;
 struct filter_visitor;
 
-struct by_edit_distance_filter_options {
+struct by_edit_distance_all_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
@@ -65,28 +65,14 @@ struct by_edit_distance_filter_options {
   /// @brief consider transpositions as an atomic change
   //////////////////////////////////////////////////////////////////////////////
   bool with_transpositions{false};
-
-  bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
-    return term == rhs.term && max_distance == rhs.max_distance &&
-           with_transpositions == rhs.with_transpositions;
-  }
-
-  size_t hash() const noexcept {
-    const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions),
-                                    std::hash<bstring>()(term));
-    const auto hash1 = hash_combine(std::hash<uint8_t>()(max_distance),
-                                    std::hash<bstring>()(prefix));
-    return hash_combine(hash0, hash1);
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_edit_distance_options
 /// @brief options for levenshtein filter
 ////////////////////////////////////////////////////////////////////////////////
-struct by_edit_distance_options : by_edit_distance_filter_options {
+struct by_edit_distance_options : by_edit_distance_all_options {
   using filter_type = by_edit_distance;
-  using filter_options = by_edit_distance_filter_options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of the most relevant terms to consider for scoring
@@ -94,11 +80,17 @@ struct by_edit_distance_options : by_edit_distance_filter_options {
   size_t max_terms{};
 
   bool operator==(const by_edit_distance_options& rhs) const noexcept {
-    return filter_options::operator==(rhs) && max_terms == rhs.max_terms;
+    return term == rhs.term && max_distance == rhs.max_distance &&
+           with_transpositions == rhs.with_transpositions &&
+           max_terms == rhs.max_terms;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(), max_terms);
+    const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions),
+                                    std::hash<bstring>()(term));
+    const auto hash1 = hash_combine(std::hash<uint8_t>()(max_distance),
+                                    std::hash<bstring>()(prefix));
+    return hash_combine(hash_combine(hash0, hash1), max_terms);
   }
 };
 
@@ -114,7 +106,7 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
                                options_type::pdp_f provider,
                                bool with_transpositions, bytes_view prefix);
 
-  static field_visitor visitor(const options_type::filter_options& options);
+  static field_visitor visitor(const by_edit_distance_all_options& options);
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
     auto sub_ctx = ctx;
@@ -130,9 +122,8 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
 namespace std {
 
 template<>
-struct hash<::irs::by_edit_distance_filter_options> {
-  size_t operator()(
-    const ::irs::by_edit_distance_filter_options& v) const noexcept {
+struct hash<::irs::by_edit_distance_options> {
+  size_t operator()(const ::irs::by_edit_distance_options& v) const noexcept {
     return v.hash();
   }
 };

@@ -233,7 +233,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 }  // namespace
 
 field_visitor by_edit_distance::visitor(
-  const options_type::filter_options& opts) {
+  const by_edit_distance_all_options& opts) {
   return executeLevenshtein(
     opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
     opts.term,
