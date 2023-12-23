@@ -29,35 +29,29 @@
 #include "prepared_state_visitor.hpp"
 #include "search/boolean_query.hpp"
 
+namespace irs {
 namespace {
 
-// first - pointer to the innermost not "not" node
-// second - collapsed negation mark
-std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
+std::pair<const filter*, bool> optimize_not(const Not& node) {
   bool neg = true;
-  const irs::filter* inner = node.filter();
-  while (inner && inner->type() == irs::type<irs::Not>::id()) {
+  const auto* inner = node.filter();
+  while (inner != nullptr && inner->type() == type<Not>::id()) {
     neg = !neg;
-    inner = static_cast<const irs::Not*>(inner)->filter();
+    inner = DownCast<Not>(inner)->filter();
   }
 
-  return std::make_pair(inner, neg);
+  return std::pair{inner, neg};
 }
 
 }  // namespace
-
-namespace irs {
-
 bool boolean_filter::equals(const filter& rhs) const noexcept {
   if (!filter::equals(rhs)) {
     return false;
   }
   const auto& typed_rhs = DownCast<boolean_filter>(rhs);
-  return filters_.size() == typed_rhs.size() &&
-         std::equal(begin(), end(), typed_rhs.begin(),
-                    [](const filter::ptr& lhs, const filter::ptr& rhs) {
-                      return *lhs == *rhs;
-                    });
+  return std::equal(
+    begin(), end(), typed_rhs.begin(), typed_rhs.end(),
+    [](const auto& lhs, const auto& rhs) { return *lhs == *rhs; });
 }
 
 filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
@@ -81,8 +75,8 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
 
-  irs::filter::ptr all_docs_zero_boost;
-  irs::filter::ptr all_docs_no_boost;
+  FilterWithBoost::Ptr all_docs_zero_boost;
+  FilterWithBoost::Ptr all_docs_no_boost;
 
   group_filters(all_docs_zero_boost, incl, excl);
 
@@ -95,21 +89,21 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
   return PrepareBoolean(incl, excl, ctx);
 }
 
-void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
+void boolean_filter::group_filters(FilterWithBoost::Ptr& all_docs_zero_boost,
                                    std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl) const {
   incl.reserve(size() / 2);
   excl.reserve(incl.capacity());
 
-  const irs::filter* empty_filter{nullptr};
+  const filter* empty_filter = nullptr;
   const auto is_or = type() == irs::type<Or>::id();
-  for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
-    if (irs::type<irs::empty>::id() == (*begin)->type()) {
-      empty_filter = begin->get();
+  for (const auto& filter : *this) {
+    if (irs::type<irs::empty>::id() == filter->type()) {
+      empty_filter = filter.get();
       continue;
     }
-    if (irs::type<Not>::id() == (*begin)->type()) {
-      const auto res = optimize_not(DownCast<Not>(**begin));
+    if (irs::type<Not>::id() == filter->type()) {
+      const auto res = optimize_not(DownCast<Not>(*filter));
 
       if (!res.first) {
         continue;
@@ -117,7 +111,7 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
 
       if (res.second) {
         if (!all_docs_zero_boost) {
-          all_docs_zero_boost = MakeAllDocsFilter(0.f);
+          all_docs_zero_boost = MakeAllDocsFilter(0.F);
         }
 
         if (*all_docs_zero_boost == *res.first) {
@@ -135,7 +129,7 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
         incl.push_back(res.first);
       }
     } else {
-      incl.push_back(begin->get());
+      incl.push_back(filter.get());
     }
   }
   if (empty_filter != nullptr) {
@@ -167,7 +161,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
   for (auto filter : incl) {
     if (*filter == *cumulative_all) {
       all_count++;
-      all_boost += filter->boost();
+      all_boost += DownCast<FilterWithBoost>(*filter).boost();
     }
   }
   if (all_count != 0) {
@@ -191,7 +185,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
       // resulting boost will be: new_boost * OR_BOOST * LEFT_BOOST. If we
       // substitute new_boost back we will get ( boost * OR_BOOST * ALL_BOOST +
       // boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
-      auto left_boost = (*incl.begin())->boost();
+      auto left_boost = (*incl.begin())->BoostImpl();
       if (boost() != 0 && left_boost != 0 && !sub_ctx.scorers.empty()) {
         sub_ctx.boost = (sub_ctx.boost * boost() * all_boost +
                          sub_ctx.boost * boost() * left_boost) /
@@ -257,7 +251,7 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
   for (auto filter : incl) {
     if (*filter == *cumulative_all) {
       all_count++;
-      all_boost += filter->boost();
+      all_boost += DownCast<FilterWithBoost>(*filter).boost();
       incl_all = filter;
     }
   }

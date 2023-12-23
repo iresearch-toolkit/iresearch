@@ -31,7 +31,7 @@
 namespace irs {
 
 // Represents user-side boolean filter as the container for other filters
-class boolean_filter : public filter, public AllDocsProvider {
+class boolean_filter : public FilterWithBoost, public AllDocsProvider {
  public:
   auto begin() const { return filters_.begin(); }
   auto end() const { return filters_.end(); }
@@ -44,32 +44,30 @@ class boolean_filter : public filter, public AllDocsProvider {
 
   template<typename T, typename... Args>
   T& add(Args&&... args) {
-    static_assert(std::is_base_of_v<filter, T>);
-
-    return static_cast<T&>(
-      *filters_.emplace_back(std::make_unique<T>(std::forward<Args>(args)...)));
+    return add(std::make_unique<T>(std::forward<Args>(args)...));
   }
 
-  filter& add(filter::ptr&& filter) {
+  template<typename T>
+  T& add(std::unique_ptr<T>&& filter) {
     IRS_ASSERT(filter);
-    return *filters_.emplace_back(std::move(filter));
+    return DownCast<T>(*filters_.emplace_back(std::move(filter)));
   }
 
   void clear() { filters_.clear(); }
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const override;
+  prepared::ptr prepare(const PrepareContext& ctx) const override;
 
  protected:
   bool equals(const filter& rhs) const noexcept final;
 
-  virtual filter::prepared::ptr PrepareBoolean(
-    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const PrepareContext& ctx) const = 0;
+  virtual prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
+                                       std::vector<const filter*>& excl,
+                                       const PrepareContext& ctx) const = 0;
 
  private:
-  void group_filters(filter::ptr& all_docs_no_boost,
+  void group_filters(FilterWithBoost::Ptr& all_docs_zero_boost,
                      std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
@@ -85,9 +83,9 @@ class And final : public boolean_filter {
   }
 
  protected:
-  filter::prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
-                                       std::vector<const filter*>& excl,
-                                       const PrepareContext& ctx) const final;
+  prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
+                               std::vector<const filter*>& excl,
+                               const PrepareContext& ctx) const final;
 };
 
 // Represents disjunction
@@ -102,45 +100,40 @@ class Or final : public boolean_filter {
     return *this;
   }
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   type_info::type_id type() const noexcept final { return irs::type<Or>::id(); }
 
  protected:
-  filter::prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
-                                       std::vector<const filter*>& excl,
-                                       const PrepareContext& ctx) const final;
+  prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
+                               std::vector<const filter*>& excl,
+                               const PrepareContext& ctx) const final;
 
  private:
   size_t min_match_count_{1};
 };
 
 // Represents negation
-class Not : public filter, public AllDocsProvider {
+class Not : public FilterWithBoost, public AllDocsProvider {
  public:
-  const irs::filter* filter() const { return filter_.get(); }
+  const filter* filter() const { return filter_.get(); }
 
   template<typename T>
   const T* filter() const {
-    using type =
-      typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
-
-    return static_cast<const type*>(filter_.get());
+    return DownCast<T>(filter_.get());
   }
 
   template<typename T, typename... Args>
   T& filter(Args&&... args) {
-    using type =
-      typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
-
-    filter_ = std::make_unique<type>(std::forward<Args>(args)...);
-    return static_cast<type&>(*filter_);
+    static_assert(std::is_base_of_v<irs::filter, T>);
+    filter_ = std::make_unique<T>(std::forward<Args>(args)...);
+    return DownCast<T>(*filter_);
   }
 
   void clear() { filter_.reset(); }
   bool empty() const { return nullptr == filter_; }
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   type_info::type_id type() const noexcept final {
     return irs::type<Not>::id();

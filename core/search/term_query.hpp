@@ -40,9 +40,12 @@ class TermQuery : public filter::prepared {
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final;
 
+  score_t boost() const noexcept final { return boost_; }
+
  private:
   States states_;
   bstring stats_;
+  score_t boost_;
 };
 
 }  // namespace irs

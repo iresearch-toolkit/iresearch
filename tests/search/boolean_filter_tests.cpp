@@ -237,11 +237,11 @@ struct seek_doc {
 
 namespace detail {
 
-struct boosted : public irs::filter {
+struct boosted : public irs::FilterWithBoost {
   struct prepared : irs::filter::prepared {
     explicit prepared(const basic_doc_iterator::docids_t& docs,
                       irs::score_t boost)
-      : irs::filter::prepared(boost), docs(docs) {}
+      : docs{docs}, boost_{boost} {}
 
     irs::doc_iterator::ptr execute(
       const irs::ExecutionContext& ctx) const final {
@@ -255,8 +255,13 @@ struct boosted : public irs::filter {
       // No terms to visit
     }
 
+    irs::score_t boost() const noexcept final { return boost_; }
+
     basic_doc_iterator::docids_t docs;
     irs::bstring stats;
+
+   private:
+    irs::score_t boost_;
   };
 
   irs::filter::prepared::ptr prepare(
@@ -1161,7 +1166,7 @@ TEST(boolean_query_boost, or_filter) {
 
 namespace detail {
 
-struct unestimated : public irs::filter {
+struct unestimated : public irs::FilterWithBoost {
   struct doc_iterator : irs::doc_iterator {
     irs::doc_id_t value() const final {
       // prevent iterator to filter out
@@ -1187,6 +1192,8 @@ struct unestimated : public irs::filter {
                irs::score_t) const final {
       // No terms to visit
     }
+
+    irs::score_t boost() const noexcept final { return irs::kNoBoost; }
   };
 
   filter::prepared::ptr prepare(
@@ -1199,7 +1206,7 @@ struct unestimated : public irs::filter {
   }
 };
 
-struct estimated : public irs::filter {
+struct estimated : public irs::FilterWithBoost {
   struct doc_iterator : irs::doc_iterator {
     doc_iterator(irs::cost::cost_t est, bool* evaluated) {
       cost.reset([est, evaluated]() noexcept {
@@ -1240,6 +1247,8 @@ struct estimated : public irs::filter {
                irs::score_t) const final {
       // No terms to visit
     }
+
+    irs::score_t boost() const noexcept final { return irs::kNoBoost; }
 
     bool* evaluated;
     irs::cost::cost_t est;

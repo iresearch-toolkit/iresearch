@@ -28,11 +28,11 @@ namespace irs {
 
 class AllDocsProvider {
  public:
-  using ProviderFunc = std::function<filter::ptr(score_t)>;
+  using ProviderFunc = std::function<FilterWithBoost::Ptr(score_t)>;
 
-  static filter::ptr Default(score_t boost);
+  static FilterWithBoost::Ptr Default(score_t boost);
 
-  filter::ptr MakeAllDocsFilter(score_t boost) const {
+  FilterWithBoost::Ptr MakeAllDocsFilter(score_t boost) const {
     return all_docs_(boost);
   }
 

@@ -27,7 +27,7 @@
 namespace irs {
 
 // Filter returning all documents
-class all : public filter {
+class all : public FilterWithBoost {
  public:
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 

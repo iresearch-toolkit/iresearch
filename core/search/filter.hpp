@@ -68,20 +68,12 @@ class filter {
 
     static prepared::ptr empty();
 
-    explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
-
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
 
     virtual void visit(const SubReader& segment, PreparedStateVisitor& visitor,
                        score_t boost) const = 0;
 
-    score_t boost() const noexcept { return boost_; }
-
-   protected:
-    void boost(score_t boost) noexcept { boost_ *= boost; }
-
-   private:
-    score_t boost_;
+    virtual score_t boost() const noexcept = 0;
   };
 
   using ptr = std::unique_ptr<filter>;
@@ -90,26 +82,36 @@ class filter {
 
   bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
 
-  virtual filter::prepared::ptr prepare(const PrepareContext& ctx) const = 0;
-
-  score_t boost() const noexcept { return boost_; }
-
-  void boost(score_t boost) noexcept { boost_ = boost; }
+  virtual prepared::ptr prepare(const PrepareContext& ctx) const = 0;
 
   virtual type_info::type_id type() const noexcept = 0;
+
+  // kludge for optimization in And::prepare
+  virtual score_t BoostImpl() const noexcept { return kNoBoost; }
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept {
     return type() == rhs.type();
   }
+};
+
+class FilterWithBoost : public filter {
+ public:
+  using Ptr = std::unique_ptr<FilterWithBoost>;
+
+  score_t boost() const noexcept { return boost_; }
+
+  void boost(score_t boost) noexcept { boost_ = boost; }
 
  private:
-  score_t boost_{kNoBoost};
+  score_t BoostImpl() const noexcept final { return boost(); }
+
+  score_t boost_ = kNoBoost;
 };
 
 // Convenient base class filters with options
 template<typename Options>
-class filter_with_options : public filter {
+class filter_with_options : public FilterWithBoost {
  public:
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
@@ -152,7 +154,7 @@ class filter_base : public filter_with_options<Options> {
 };
 
 // Filter which returns no documents
-class empty final : public filter {
+class empty final : public FilterWithBoost {
  public:
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 

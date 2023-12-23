@@ -37,6 +37,8 @@ struct EmptyQuery : public filter::prepared {
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
+
+  score_t boost() const noexcept final { return kNoBoost; }
 };
 
 EmptyQuery kEmptyQuery;

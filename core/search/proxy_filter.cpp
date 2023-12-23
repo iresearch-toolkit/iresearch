@@ -197,6 +197,7 @@ struct proxy_query_cache {
 class proxy_query : public filter::prepared {
  public:
   explicit proxy_query(proxy_filter::cache_ptr cache) : cache_{cache} {
+    IRS_ASSERT(cache_);
     IRS_ASSERT(cache_->real_filter_prepared_);
   }
 
@@ -224,6 +225,8 @@ class proxy_query : public filter::prepared {
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
+
+  score_t boost() const noexcept final { return kNoBoost; }
 
  private:
   proxy_filter::cache_ptr cache_;

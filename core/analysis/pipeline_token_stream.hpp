@@ -70,22 +70,15 @@ class pipeline_token_stream final : public TypedAnalyzer<pipeline_token_stream>,
   template<typename Visitor>
   bool visit_members(Visitor&& visitor) const {
     for (const auto& sub : pipeline_) {
-      if (sub.get_stream().type() ==
-          type()) {  // pipe inside pipe - forward visiting
-#if IRESEARCH_DEBUG
-        const auto& sub_pipe =
-          dynamic_cast<const pipeline_token_stream&>(sub.get_stream());
-#else
-        const auto& sub_pipe =
-          static_cast<const pipeline_token_stream&>(sub.get_stream());
-#endif
+      const auto& stream = sub.get_stream();
+      if (stream.type() == type()) {
+        // pipe inside pipe - forward visiting
+        const auto& sub_pipe = DownCast<pipeline_token_stream>(stream);
         if (!sub_pipe.visit_members(visitor)) {
           return false;
         }
-      } else {
-        if (!visitor(sub.get_stream())) {
-          return false;
-        }
+      } else if (!visitor(sub.get_stream())) {
+        return false;
       }
     }
     return true;

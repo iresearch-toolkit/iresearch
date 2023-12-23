@@ -40,6 +40,8 @@ class BooleanQuery : public filter::prepared {
   void visit(const irs::SubReader& segment, irs::PreparedStateVisitor& visitor,
              score_t boost) const final;
 
+  score_t boost() const noexcept final { return boost_; }
+
   void prepare(const PrepareContext& ctx, ScoreMergeType merge_type,
                queries_t queries, size_t exclude_start);
 
@@ -65,8 +67,9 @@ class BooleanQuery : public filter::prepared {
   // excl_..queries.end() - excluded queries
   queries_t queries_;
   // index of the first excluded query
-  size_t excl_{0};
-  ScoreMergeType merge_type_{ScoreMergeType::kSum};
+  size_t excl_ = 0;
+  ScoreMergeType merge_type_ = ScoreMergeType::kSum;
+  score_t boost_ = kNoBoost;
 };
 
 // Represent a set of queries joint by "And"

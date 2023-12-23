@@ -601,7 +601,8 @@ class ByNestedQuery : public filter::prepared {
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
-    boost *= this->boost();
+    // TODO(MBkkt) maybe use none_boost for NoneMatcher?
+    // boost *= this->boost();
 
     if (!visitor.Visit(*this, boost)) {
       return;
@@ -610,6 +611,8 @@ class ByNestedQuery : public filter::prepared {
     IRS_ASSERT(child_);
     child_->visit(segment, visitor, boost);
   }
+
+  score_t boost() const noexcept final { return kNoBoost; }
 
  private:
   DocIteratorProvider parent_;
