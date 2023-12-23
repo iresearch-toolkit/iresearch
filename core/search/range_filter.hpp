@@ -67,7 +67,7 @@ struct by_range_options : by_range_filter_options {
 /// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class by_range : public filter_base<by_range_options> {
+class by_range : public FilterWithField<by_range_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field,
@@ -78,7 +78,7 @@ class by_range : public filter_base<by_range_options> {
                     const options_type::range_type& rng,
                     filter_visitor& visitor);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     return prepare(ctx.Boost(boost()), field(), options().range,
                    options().scored_terms_limit);
   }

@@ -91,7 +91,7 @@ struct ByNestedOptions {
 };
 
 // Filter is capable of finding parents by the corresponding child filter.
-class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
+class ByNestedFilter final : public FilterWithOptions<ByNestedOptions> {
  public:
   prepared::ptr prepare(const PrepareContext& ctx) const final;
 };

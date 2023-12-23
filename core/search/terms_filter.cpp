@@ -106,8 +106,7 @@ void by_terms::visit(const SubReader& segment, const term_reader& field,
 
 filter::prepared::ptr by_terms::Prepare(const PrepareContext& ctx,
                                         std::string_view field,
-                                        const by_terms_options& options,
-                                        const AllDocsProvider& provider) {
+                                        const by_terms_options& options) {
   const auto& [terms, min_match, merge_type] = options;
   const size_t size = terms.size();
 
@@ -115,29 +114,7 @@ filter::prepared::ptr by_terms::Prepare(const PrepareContext& ctx,
     // Empty or unreachable search criteria
     return prepared::empty();
   }
-
-  if (0 == min_match) {
-    if (ctx.scorers.empty()) {
-      return provider.MakeAllDocsFilter(kNoBoost)->prepare({
-        .index = ctx.index,
-        .memory = ctx.memory,
-      });
-    }
-    Or disj;
-    // Don't contribute to the score
-    disj.add(provider.MakeAllDocsFilter(0.));
-    // Reset min_match to 1
-    auto& terms = disj.add<by_terms>();
-    *terms.mutable_field() = field;
-    *terms.mutable_options() = options;
-    terms.mutable_options()->min_match = 1;
-    return disj.prepare({
-      .index = ctx.index,
-      .memory = ctx.memory,
-      .scorers = ctx.scorers,
-      .ctx = ctx.ctx,
-    });
-  }
+  IRS_ASSERT(min_match != 0);
 
   if (1 == size) {
     const auto term = std::begin(terms);
@@ -174,6 +151,32 @@ filter::prepared::ptr by_terms::Prepare(const PrepareContext& ctx,
   return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
                                               std::move(stats), ctx.boost,
                                               merge_type, min_match);
+}
+
+filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
+  if (options().terms.empty() || options().min_match != 0) {
+    return Prepare(ctx, field(), options());
+  }
+  if (ctx.scorers.empty()) {
+    return MakeAllDocsFilter(kNoBoost)->prepare({
+      .index = ctx.index,
+      .memory = ctx.memory,
+    });
+  }
+  Or disj;
+  // Don't contribute to the score
+  disj.add(MakeAllDocsFilter(0.F));
+  // Reset min_match to 1
+  auto& terms = disj.add<by_terms>();
+  *terms.mutable_field() = field();
+  *terms.mutable_options() = options();
+  terms.mutable_options()->min_match = 1;
+  return disj.prepare({
+    .index = ctx.index,
+    .memory = ctx.memory,
+    .scorers = ctx.scorers,
+    .ctx = ctx.ctx,
+  });
 }
 
 }  // namespace irs

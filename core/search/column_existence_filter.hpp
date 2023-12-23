@@ -45,9 +45,9 @@ struct by_column_existence_options {
 
 // User-side column existence filter
 class by_column_existence final
-  : public filter_base<by_column_existence_options> {
+  : public FilterWithField<by_column_existence_options> {
  public:
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs

@@ -46,7 +46,8 @@ struct by_ngram_similarity_options {
   }
 };
 
-class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
+class by_ngram_similarity
+  : public FilterWithField<by_ngram_similarity_options> {
  public:
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field_name,

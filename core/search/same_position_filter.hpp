@@ -43,13 +43,13 @@ struct by_same_position_options {
   }
 };
 
-class by_same_position : public filter_with_options<by_same_position_options> {
+class by_same_position : public FilterWithOptions<by_same_position_options> {
  public:
   // Returns features required for the filter
   static constexpr IndexFeatures kRequiredFeatures =
     IndexFeatures::FREQ | IndexFeatures::POS;
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs

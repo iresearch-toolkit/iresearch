@@ -91,18 +91,18 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 ///              termA@0 + termA@2 + termA@5 + termA@10
 ///              termB@0 + termB@2 + termB@6 + termB@10
 //////////////////////////////////////////////////////////////////////////////
-class by_granular_range : public filter_base<by_granular_range_options> {
+class by_granular_range : public FilterWithField<by_granular_range_options> {
  public:
-  static filter::prepared::ptr prepare(const PrepareContext& ctx,
-                                       std::string_view field,
-                                       const options_type::range_type& rng,
-                                       size_t scored_terms_limit);
+  static prepared::ptr prepare(const PrepareContext& ctx,
+                               std::string_view field,
+                               const options_type::range_type& rng,
+                               size_t scored_terms_limit);
 
   static void visit(const SubReader& segment, const term_reader& reader,
                     const options_type::range_type& rng,
                     filter_visitor& visitor);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     return prepare(ctx.Boost(boost()), field(), options().range,
                    options().scored_terms_limit);
   }

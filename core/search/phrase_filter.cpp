@@ -444,9 +444,8 @@ filter::prepared::ptr by_phrase::Prepare(const PrepareContext& ctx,
   if (1 == options.size()) {
     auto query =
       std::visit(PrepareVisitor{ctx, field}, options.begin()->second);
-    if (query) {
-      return query;
-    }
+    IRS_ASSERT(query);
+    return query;
   }
 
   // prepare phrase stats (collector for each term)

@@ -67,7 +67,7 @@ class boolean_filter : public FilterWithBoost, public AllDocsProvider {
                                        const PrepareContext& ctx) const = 0;
 
  private:
-  void group_filters(FilterWithBoost::Ptr& all_docs_zero_boost,
+  void group_filters(AllDocsProvider::Ptr& all_docs_zero_boost,
                      std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
@@ -114,7 +114,7 @@ class Or final : public boolean_filter {
 };
 
 // Represents negation
-class Not : public FilterWithBoost, public AllDocsProvider {
+class Not : public FilterWithType<Not>, public AllDocsProvider {
  public:
   const filter* filter() const { return filter_.get(); }
 
@@ -134,10 +134,6 @@ class Not : public FilterWithBoost, public AllDocsProvider {
   bool empty() const { return nullptr == filter_; }
 
   prepared::ptr prepare(const PrepareContext& ctx) const final;
-
-  type_info::type_id type() const noexcept final {
-    return irs::type<Not>::id();
-  }
 
  protected:
   bool equals(const irs::filter& rhs) const noexcept final;

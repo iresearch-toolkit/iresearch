@@ -40,7 +40,7 @@ TEST_P(empty_filter_test_case, empty) {
 
   std::vector<irs::cost::cost_t> cost{0};
 
-  CheckQuery(irs::empty(), Docs{}, cost, rdr);
+  CheckQuery(irs::Empty{}, Docs{}, cost, rdr);
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();

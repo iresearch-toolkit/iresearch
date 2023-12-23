@@ -46,11 +46,11 @@ EmptyQuery kEmptyQuery;
 }  // namespace
 
 filter::prepared::ptr filter::prepared::empty() {
-  return memory::to_managed<filter::prepared>(kEmptyQuery);
+  return memory::to_managed<prepared>(kEmptyQuery);
 }
 
-filter::prepared::ptr empty::prepare(const PrepareContext& /*ctx*/) const {
-  return memory::to_managed<filter::prepared>(kEmptyQuery);
+filter::prepared::ptr Empty::prepare(const PrepareContext& /*ctx*/) const {
+  return memory::to_managed<prepared>(kEmptyQuery);
 }
 
 }  // namespace irs

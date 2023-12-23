@@ -90,7 +90,8 @@ struct by_edit_distance_options : by_edit_distance_all_options {
 /// @class by_edit_distance
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
-class by_edit_distance final : public filter_base<by_edit_distance_options> {
+class by_edit_distance final
+  : public FilterWithField<by_edit_distance_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
@@ -100,7 +101,7 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
 
   static field_visitor visitor(const by_edit_distance_all_options& options);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     auto sub_ctx = ctx;
     sub_ctx.boost *= boost();
     return prepare(sub_ctx, field(), options().term, options().max_terms,

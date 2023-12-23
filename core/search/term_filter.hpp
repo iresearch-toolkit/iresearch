@@ -42,7 +42,7 @@ struct by_term_options {
 };
 
 // User-side term filter
-class by_term : public filter_base<by_term_options> {
+class by_term : public FilterWithField<by_term_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term);

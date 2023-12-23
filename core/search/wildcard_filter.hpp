@@ -53,7 +53,7 @@ struct by_wildcard_options : by_wildcard_filter_options {
 };
 
 // User-side wildcard filter
-class by_wildcard final : public filter_base<by_wildcard_options> {
+class by_wildcard final : public FilterWithField<by_wildcard_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
@@ -61,7 +61,7 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
 
   static field_visitor visitor(bytes_view term);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     return prepare(ctx.Boost(boost()), field(), options().term,
                    options().scored_terms_limit);
   }

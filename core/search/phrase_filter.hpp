@@ -132,7 +132,7 @@ class by_phrase_options {
   bool is_simple_term_only_{true};
 };
 
-class by_phrase : public filter_base<by_phrase_options> {
+class by_phrase : public FilterWithField<by_phrase_options> {
  public:
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field,

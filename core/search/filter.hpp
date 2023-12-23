@@ -73,6 +73,7 @@ class filter {
     virtual void visit(const SubReader& segment, PreparedStateVisitor& visitor,
                        score_t boost) const = 0;
 
+    // test only member
     virtual score_t boost() const noexcept = 0;
   };
 
@@ -80,7 +81,9 @@ class filter {
 
   virtual ~filter() = default;
 
-  bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
+  IRS_FORCE_INLINE bool operator==(const filter& rhs) const noexcept {
+    return equals(rhs);
+  }
 
   virtual prepared::ptr prepare(const PrepareContext& ctx) const = 0;
 
@@ -97,8 +100,6 @@ class filter {
 
 class FilterWithBoost : public filter {
  public:
-  using Ptr = std::unique_ptr<FilterWithBoost>;
-
   score_t boost() const noexcept { return boost_; }
 
   void boost(score_t boost) noexcept { boost_ = boost; }
@@ -109,19 +110,25 @@ class FilterWithBoost : public filter {
   score_t boost_ = kNoBoost;
 };
 
+template<typename Type>
+class FilterWithType : public FilterWithBoost {
+ public:
+  using filter_type = Type;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<Type>::id();
+  }
+};
+
 // Convenient base class filters with options
 template<typename Options>
-class filter_with_options : public FilterWithBoost {
+class FilterWithOptions : public FilterWithType<typename Options::filter_type> {
  public:
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
-
-  type_info::type_id type() const noexcept final {
-    return irs::type<filter_type>::id();
-  }
 
  protected:
   bool equals(const filter& rhs) const noexcept override {
@@ -130,14 +137,14 @@ class filter_with_options : public FilterWithBoost {
   }
 
  private:
-  options_type options_;
+  IRS_NO_UNIQUE_ADDRESS options_type options_;
 };
 
 // Convenient base class for single field filters
 template<typename Options>
-class filter_base : public filter_with_options<Options> {
+class FilterWithField : public FilterWithOptions<Options> {
  public:
-  using options_type = typename filter_with_options<Options>::options_type;
+  using options_type = typename FilterWithOptions<Options>::options_type;
   using filter_type = typename options_type::filter_type;
 
   std::string_view field() const noexcept { return field_; }
@@ -145,7 +152,7 @@ class filter_base : public filter_with_options<Options> {
 
  protected:
   bool equals(const filter& rhs) const noexcept final {
-    return filter_with_options<options_type>::equals(rhs) &&
+    return FilterWithOptions<options_type>::equals(rhs) &&
            field_ == DownCast<filter_type>(rhs).field_;
   }
 
@@ -154,13 +161,9 @@ class filter_base : public filter_with_options<Options> {
 };
 
 // Filter which returns no documents
-class empty final : public FilterWithBoost {
+class Empty final : public FilterWithType<Empty> {
  public:
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
-
-  type_info::type_id type() const noexcept final {
-    return irs::type<empty>::id();
-  }
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 struct filter_visitor;

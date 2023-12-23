@@ -75,8 +75,8 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
 
-  FilterWithBoost::Ptr all_docs_zero_boost;
-  FilterWithBoost::Ptr all_docs_no_boost;
+  AllDocsProvider::Ptr all_docs_zero_boost;
+  AllDocsProvider::Ptr all_docs_no_boost;
 
   group_filters(all_docs_zero_boost, incl, excl);
 
@@ -89,7 +89,7 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
   return PrepareBoolean(incl, excl, ctx);
 }
 
-void boolean_filter::group_filters(FilterWithBoost::Ptr& all_docs_zero_boost,
+void boolean_filter::group_filters(AllDocsProvider::Ptr& all_docs_zero_boost,
                                    std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl) const {
   incl.reserve(size() / 2);
@@ -98,7 +98,7 @@ void boolean_filter::group_filters(FilterWithBoost::Ptr& all_docs_zero_boost,
   const filter* empty_filter = nullptr;
   const auto is_or = type() == irs::type<Or>::id();
   for (const auto& filter : *this) {
-    if (irs::type<irs::empty>::id() == filter->type()) {
+    if (irs::type<Empty>::id() == filter->type()) {
       empty_filter = filter.get();
       continue;
     }
@@ -143,7 +143,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
   // optimization step
   //  if include group empty itself or has 'empty' -> this whole conjunction is
   //  empty
-  if (incl.empty() || incl.back()->type() == irs::type<irs::empty>::id()) {
+  if (incl.empty() || incl.back()->type() == irs::type<Empty>::id()) {
     return prepared::empty();
   }
 
@@ -228,7 +228,7 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
     return MakeAllDocsFilter(kNoBoost)->prepare(sub_ctx);
   }
 
-  if (!incl.empty() && incl.back()->type() == irs::type<irs::empty>::id()) {
+  if (!incl.empty() && incl.back()->type() == irs::type<Empty>::id()) {
     incl.pop_back();
   }
 

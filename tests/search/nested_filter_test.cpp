@@ -1144,7 +1144,7 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
 
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
-  opts.child = std::make_unique<irs::empty>();
+  opts.child = std::make_unique<irs::Empty>();
   opts.parent = MakeParentProvider("customer");
   opts.match = irs::kMatchNone;
   filter.boost(1.f);
@@ -1205,7 +1205,7 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
 
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
-  opts.child = std::make_unique<irs::empty>();
+  opts.child = std::make_unique<irs::Empty>();
 
   // Bitset iterator doesn't provide score, check that wrapper works correctly
   opts.parent = [word = irs::bitset::word_t{}](

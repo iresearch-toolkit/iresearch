@@ -15625,7 +15625,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   {
     irs::Or root;
     append<irs::by_term>(root, "name", "A");  // 1
-    root.add<irs::empty>();
+    root.add<irs::Empty>();
 
     CheckQuery(root, Docs{1}, rdr);
   }
@@ -15635,7 +15635,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     irs::Or root;
     root.add<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("name", "A");  // 1
-    root.add<irs::empty>();
+    root.add<irs::Empty>();
 
     CheckQuery(
       root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
@@ -16760,9 +16760,9 @@ TEST(Or_test, optimize_all_unscored) {
     node.docs = {3};
   }
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
 
   auto prep = root.prepare({.index = irs::SubReader::empty()});
 
@@ -16787,9 +16787,9 @@ TEST(Or_test, optimize_all_scored) {
     node.docs = {3};
   }
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
   tests::sort::boost sort{};
   auto pord = irs::Scorers::Prepare(sort);
   auto prep = root.prepare({.index = irs::SubReader::empty(), .scorers = pord});

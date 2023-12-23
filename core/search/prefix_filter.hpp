@@ -64,7 +64,7 @@ struct by_prefix_options : by_prefix_filter_options {
 /// @class by_prefix
 /// @brief user-side prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-class by_prefix : public filter_base<by_prefix_options> {
+class by_prefix : public FilterWithField<by_prefix_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view prefix,
@@ -73,7 +73,7 @@ class by_prefix : public filter_base<by_prefix_options> {
   static void visit(const SubReader& segment, const term_reader& reader,
                     bytes_view prefix, filter_visitor& visitor);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     auto sub_ctx = ctx;
     sub_ctx.boost *= boost();
     return prepare(sub_ctx, field(), options().term,
