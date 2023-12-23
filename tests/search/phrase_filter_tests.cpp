@@ -8730,7 +8730,6 @@ TEST(by_phrase_test, equal) {
     q1.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("brown"));
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
@@ -8785,7 +8784,6 @@ TEST(by_phrase_test, equal) {
     }
 
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
@@ -8929,11 +8927,9 @@ TEST(by_phrase_test, copy_move) {
 
     irs::by_phrase q1 = q0;
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
     irs::by_phrase q2 = q0;
     irs::by_phrase q3 = std::move(q2);
     ASSERT_EQ(q0, q3);
-    ASSERT_EQ(q0.hash(), q3.hash());
   }
 }
 

@@ -102,16 +102,6 @@ class by_phrase_options {
     return phrase_ == rhs.phrase_;
   }
 
-  // Returns hash value
-  size_t hash() const noexcept {
-    size_t hash = 0;
-    for (auto& part : phrase_) {
-      hash = hash_combine(hash, part.first);
-      hash = hash_combine(hash, part.second);
-    }
-    return hash;
-  }
-
   // Clear phrase contents
   void clear() noexcept {
     phrase_.clear();

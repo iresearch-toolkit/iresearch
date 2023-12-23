@@ -41,15 +41,6 @@ struct by_same_position_options {
   bool operator==(const by_same_position_options& rhs) const noexcept {
     return terms == rhs.terms;
   }
-
-  size_t hash() const noexcept {
-    size_t hash = 0;
-    for (auto& term : terms) {
-      hash = hash_combine(hash, term.first);
-      hash = hash_combine(hash, term.second);
-    }
-    return hash;
-  }
 };
 
 class by_same_position : public filter_with_options<by_same_position_options> {

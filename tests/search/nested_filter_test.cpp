@@ -228,19 +228,16 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_NE(nullptr, std::get_if<irs::Match>(&opts.match));
     ASSERT_EQ(irs::kMatchAny, std::get<irs::Match>(opts.match));
     ASSERT_EQ(opts, irs::ByNestedOptions{});
-    ASSERT_EQ(opts.hash(), irs::ByNestedOptions{}.hash());
   }
 
   {
     const auto opts0 = MakeOptions("parent", "child", "442");
     const auto opts1 = MakeOptions("parent", "child", "442");
     ASSERT_EQ(opts0, opts1);
-    ASSERT_EQ(opts0.hash(), opts1.hash());
 
     // We discount parent providers from equality comparison
     const auto opts2 = MakeOptions("parent42", "child", "442");
     ASSERT_EQ(opts0, opts2);
-    ASSERT_EQ(opts0.hash(), opts2.hash());
 
     ASSERT_NE(opts0, MakeOptions("parent", "child", "443"));
     ASSERT_NE(opts0,

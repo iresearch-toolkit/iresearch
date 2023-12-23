@@ -88,10 +88,6 @@ class filter {
 
   virtual ~filter() = default;
 
-  virtual size_t hash() const noexcept {
-    return std::hash<type_info::type_id>()(type());
-  }
-
   bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
 
   virtual filter::prepared::ptr prepare(const PrepareContext& ctx) const = 0;
@@ -111,9 +107,6 @@ class filter {
   score_t boost_{kNoBoost};
 };
 
-// boost::hash_combine support
-inline size_t hash_value(const filter& q) noexcept { return q.hash(); }
-
 // Convenient base class filters with options
 template<typename Options>
 class filter_with_options : public filter {
@@ -123,10 +116,6 @@ class filter_with_options : public filter {
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
-
-  size_t hash() const noexcept override {
-    return hash_combine(filter::hash(), options_.hash());
-  }
 
   type_info::type_id type() const noexcept final {
     return irs::type<filter_type>::id();
@@ -151,11 +140,6 @@ class filter_base : public filter_with_options<Options> {
 
   std::string_view field() const noexcept { return field_; }
   std::string* mutable_field() noexcept { return &field_; }
-
-  size_t hash() const noexcept final {
-    return hash_combine(hash_utils::Hash(field_),
-                        filter_with_options<options_type>::hash());
-  }
 
  protected:
   bool equals(const filter& rhs) const noexcept final {
@@ -182,12 +166,3 @@ using field_visitor =
   std::function<void(const SubReader&, const term_reader&, filter_visitor&)>;
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<irs::filter> {
-  size_t operator()(const irs::filter& key) const { return key.hash(); }
-};
-
-}  // namespace std

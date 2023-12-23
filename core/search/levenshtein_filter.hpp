@@ -84,14 +84,6 @@ struct by_edit_distance_options : by_edit_distance_all_options {
            with_transpositions == rhs.with_transpositions &&
            max_terms == rhs.max_terms;
   }
-
-  size_t hash() const noexcept {
-    const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions),
-                                    std::hash<bstring>()(term));
-    const auto hash1 = hash_combine(std::hash<uint8_t>()(max_distance),
-                                    std::hash<bstring>()(prefix));
-    return hash_combine(hash_combine(hash0, hash1), max_terms);
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,14 +110,3 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_edit_distance_options> {
-  size_t operator()(const ::irs::by_edit_distance_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

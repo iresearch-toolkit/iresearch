@@ -284,7 +284,6 @@ TEST(by_prefix_test, equal) {
     irs::by_prefix q = make_filter("field", "term");
 
     ASSERT_EQ(q, make_filter("field", "term"));
-    ASSERT_EQ(q.hash(), make_filter("field", "term").hash());
     ASSERT_NE(q, make_filter("field1", "term"));
     ASSERT_NE(q, make_filter("field", "term", 100));
   }
@@ -293,7 +292,6 @@ TEST(by_prefix_test, equal) {
     irs::by_prefix q = make_filter("field", "term", 100);
 
     ASSERT_EQ(q, make_filter("field", "term", 100));
-    ASSERT_EQ(q.hash(), make_filter("field", "term", 100).hash());
     ASSERT_NE(q, make_filter("field1", "term", 100));
     ASSERT_NE(q, make_filter("field", "term"));
   }

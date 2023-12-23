@@ -54,10 +54,6 @@ struct by_terms_options {
     bool operator<(const search_term& rhs) const noexcept {
       return term < rhs.term;
     }
-
-    size_t hash() const noexcept {
-      return hash_combine(std::hash<decltype(boost)>()(boost), term);
-    }
   };
 
   using filter_type = by_terms;
@@ -70,14 +66,6 @@ struct by_terms_options {
   bool operator==(const by_terms_options& rhs) const noexcept {
     return min_match == rhs.min_match && merge_type == rhs.merge_type &&
            terms == rhs.terms;
-  }
-
-  size_t hash() const noexcept {
-    size_t hash = hash_combine(0, min_match);
-    for (auto& term : terms) {
-      hash = hash_combine(hash, term.hash());
-    }
-    return hash_combine(hash, merge_type);
   }
 };
 
@@ -100,14 +88,3 @@ class by_terms final : public filter_base<by_terms_options>,
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_terms_options> {
-  size_t operator()(const ::irs::by_terms_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

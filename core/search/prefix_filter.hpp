@@ -39,8 +39,6 @@ struct by_prefix_filter_options {
   bool operator==(const by_prefix_filter_options& rhs) const noexcept {
     return term == rhs.term;
   }
-
-  size_t hash() const noexcept { return hash_utils::Hash(term); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,10 +57,6 @@ struct by_prefix_options : by_prefix_filter_options {
   bool operator==(const by_prefix_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
            scored_terms_limit == rhs.scored_terms_limit;
-  }
-
-  size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(), scored_terms_limit);
   }
 };
 
@@ -88,14 +82,3 @@ class by_prefix : public filter_base<by_prefix_options> {
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_prefix_options> {
-  size_t operator()(const ::irs::by_prefix_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

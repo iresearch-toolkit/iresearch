@@ -1723,7 +1723,6 @@ TEST(by_granular_range_test, equal) {
   q1.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   ASSERT_EQ(q0, q1);
-  ASSERT_EQ(q0.hash(), q1.hash());
 
   irs::by_granular_range q2;
   *q2.mutable_field() = "field1";

@@ -44,14 +44,6 @@ struct by_ngram_similarity_options {
   bool operator==(const by_ngram_similarity_options& rhs) const noexcept {
     return ngrams == rhs.ngrams && threshold == rhs.threshold;
   }
-
-  size_t hash() const noexcept {
-    size_t hash = std::hash<decltype(threshold)>()(threshold);
-    for (const auto& ngram : ngrams) {
-      hash = hash_combine(hash, hash_utils::Hash(ngram));
-    }
-    return hash;
-  }
 };
 
 class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {

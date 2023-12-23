@@ -39,8 +39,6 @@ struct by_term_options {
   bool operator==(const by_term_options& rhs) const noexcept {
     return term == rhs.term;
   }
-
-  size_t hash() const noexcept { return hash_utils::Hash(term); }
 };
 
 // User-side term filter
@@ -60,14 +58,3 @@ class by_term : public filter_base<by_term_options> {
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_term_options> {
-  size_t operator()(const ::irs::by_term_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

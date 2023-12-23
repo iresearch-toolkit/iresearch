@@ -41,8 +41,6 @@ struct by_column_existence_options {
   bool operator==(const by_column_existence_options& rhs) const noexcept {
     return acceptor == rhs.acceptor;
   }
-
-  size_t hash() const noexcept { return std::hash<ColumnAcceptor>()(acceptor); }
 };
 
 // User-side column existence filter

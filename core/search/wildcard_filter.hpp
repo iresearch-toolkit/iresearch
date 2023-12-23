@@ -36,8 +36,6 @@ struct by_wildcard_filter_options {
   bool operator==(const by_wildcard_filter_options& rhs) const noexcept {
     return term == rhs.term;
   }
-
-  size_t hash() const noexcept { return std::hash<bstring>()(term); }
 };
 
 // Options for wildcard filter
@@ -51,10 +49,6 @@ struct by_wildcard_options : by_wildcard_filter_options {
   bool operator==(const by_wildcard_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
            scored_terms_limit == rhs.scored_terms_limit;
-  }
-
-  size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(), scored_terms_limit);
   }
 };
 
@@ -74,14 +68,3 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_wildcard_options> {
-  size_t operator()(const ::irs::by_wildcard_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

@@ -22,8 +22,6 @@
 
 #include "boolean_filter.hpp"
 
-#include <boost/container_hash/hash.hpp>
-
 #include "conjunction.hpp"
 #include "disjunction.hpp"
 #include "exclusion.hpp"
@@ -49,17 +47,6 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
 }  // namespace
 
 namespace irs {
-
-size_t boolean_filter::hash() const noexcept {
-  size_t seed = 0;
-
-  ::boost::hash_combine(seed, filter::hash());
-  std::for_each(
-    filters_.begin(), filters_.end(),
-    [&seed](const filter::ptr& f) { ::boost::hash_combine(seed, *f); });
-
-  return seed;
-}
 
 bool boolean_filter::equals(const filter& rhs) const noexcept {
   if (!filter::equals(rhs)) {
@@ -351,15 +338,6 @@ filter::prepared::ptr Not::prepare(const PrepareContext& ctx) const {
 
   // negation has been optimized out
   return res.first->prepare(sub_ctx);
-}
-
-size_t Not::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  if (filter_) {
-    ::boost::hash_combine<const irs::filter&>(seed, *filter_);
-  }
-  return seed;
 }
 
 bool Not::equals(const irs::filter& rhs) const noexcept {

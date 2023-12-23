@@ -16444,7 +16444,6 @@ TEST(Not_test, equal) {
   {
     irs::Not lhs, rhs;
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16454,7 +16453,6 @@ TEST(Not_test, equal) {
     irs::Not rhs;
     rhs.filter<irs::by_term>() = make_filter<irs::by_term>("abc", "def");
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16507,7 +16505,6 @@ TEST(And_test, equal) {
     }
 
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16691,7 +16688,6 @@ TEST(Or_test, equal) {
     }
 
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {

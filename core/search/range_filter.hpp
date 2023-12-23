@@ -42,8 +42,6 @@ struct by_range_filter_options {
   bool operator==(const by_range_filter_options& rhs) const noexcept {
     return range == rhs.range;
   }
-
-  size_t hash() const noexcept { return range.hash(); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,12 +60,6 @@ struct by_range_options : by_range_filter_options {
   bool operator==(const by_range_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
            scored_terms_limit == rhs.scored_terms_limit;
-  }
-
-  size_t hash() const noexcept {
-    return hash_combine(
-      filter_options::hash(),
-      std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
   }
 };
 
@@ -93,14 +85,3 @@ class by_range : public filter_base<by_range_options> {
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_range_options> {
-  size_t operator()(const ::irs::by_range_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

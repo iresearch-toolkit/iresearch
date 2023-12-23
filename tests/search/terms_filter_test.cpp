@@ -64,7 +64,6 @@ TEST(by_terms_test, equal) {
   const irs::by_terms q1 =
     make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
   ASSERT_EQ(q0, q1);
-  ASSERT_EQ(q0.hash(), q1.hash());
 
   const irs::by_terms q2 =
     make_filter("field1", {{"bar", 0.5f}, {"baz", 0.25f}});
@@ -80,7 +79,6 @@ TEST(by_terms_test, equal) {
   irs::by_terms q5 = make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
   q5.mutable_options()->min_match = 2;
   ASSERT_NE(q0, q5);
-  ASSERT_NE(q0.hash(), q5.hash());
 }
 
 class terms_filter_test_case : public tests::FilterTestCaseBase {};

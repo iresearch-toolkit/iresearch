@@ -91,8 +91,7 @@ struct elsa<std::string_view> {
 
 }  // namespace frozen
 
-namespace absl {
-namespace hash_internal {
+namespace absl::hash_internal {
 
 template<typename Char>
 struct HashImpl<::irs::hashed_basic_string_view<Char>> {
@@ -101,17 +100,12 @@ struct HashImpl<::irs::hashed_basic_string_view<Char>> {
   }
 };
 
-}  // namespace hash_internal
-}  // namespace absl
-
-namespace std {
+}  // namespace absl::hash_internal
 
 template<typename Char>
-struct hash<::irs::hashed_basic_string_view<Char>> {
+struct std::hash<::irs::hashed_basic_string_view<Char>> {
   size_t operator()(
     const ::irs::hashed_basic_string_view<Char>& value) const noexcept {
     return value.hash();
   }
 };
-
-}  // namespace std

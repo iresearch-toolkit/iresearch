@@ -60,10 +60,6 @@ struct by_granular_range_options {
   bool operator==(const by_granular_range_options& rhs) const noexcept {
     return range == rhs.range && scored_terms_limit == rhs.scored_terms_limit;
   }
-
-  size_t hash() const noexcept {
-    return hash_combine(scored_terms_limit, range.hash());
-  }
 };
 
 //////////////////////////////////////////////////////////////////////////////

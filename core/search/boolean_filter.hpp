@@ -55,8 +55,6 @@ class boolean_filter : public filter, public AllDocsProvider {
     return *filters_.emplace_back(std::move(filter));
   }
 
-  size_t hash() const noexcept final;
-
   void clear() { filters_.clear(); }
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
@@ -143,8 +141,6 @@ class Not : public filter, public AllDocsProvider {
   bool empty() const { return nullptr == filter_; }
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
-
-  size_t hash() const noexcept final;
 
   type_info::type_id type() const noexcept final {
     return irs::type<Not>::id();
