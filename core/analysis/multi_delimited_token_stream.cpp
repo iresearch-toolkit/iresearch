@@ -43,32 +43,32 @@ namespace {
 template<typename Derived>
 class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
  public:
-  MultiDelimitedTokenStreamBase() { std::get<increment>(attrs_).value = 1; }
+  MultiDelimitedTokenStreamBase() { std::get<increment>(attrs).value = 1; }
 
   bool next() override {
     while (true) {
-      if (data_.begin() == data_.end()) {
+      if (data.begin() == data.end()) {
         return false;
       }
 
       auto [next, skip] = static_cast<Derived*>(this)->FindNextDelim();
 
-      if (next == data_.begin()) {
+      if (next == data.begin()) {
         // skip empty terms
-        data_ = bytes_view{next + skip, data_.end()};
+        data = bytes_view{next + skip, data.end()};
         continue;
       }
 
-      auto& term = std::get<term_attribute>(attrs_);
-      term.value = bytes_view{data_.begin(), next};
-      auto& offset = std::get<irs::offset>(attrs_);
-      offset.start = std::distance(start_, data_.data());
+      auto& term = std::get<term_attribute>(attrs);
+      term.value = bytes_view{data.begin(), next};
+      auto& offset = std::get<irs::offset>(attrs);
+      offset.start = std::distance(start, data.data());
       offset.end = offset.start + term.value.size();
 
-      if (next == data_.end()) {
-        data_ = {};
+      if (next == data.end()) {
+        data = {};
       } else {
-        data_ = bytes_view{next + skip, data_.end()};
+        data = bytes_view{next + skip, data.end()};
       }
 
       return true;
@@ -100,7 +100,7 @@ class MultiDelimitedTokenStreamSingleChars final
     IRS_ASSERT(false);
   }
 
-  auto FindNextDelim() { return this->data_.end(); }
+  auto FindNextDelim() { return this->data.end(); }
 };
 
 template<>
@@ -116,10 +116,10 @@ class MultiDelimitedTokenStreamSingleChars<1> final
   }
 
   auto FindNextDelim() {
-    if (auto pos = this->data_.find(delim); pos != bstring::npos) {
-      return this->data_.begin() + pos;
+    if (auto pos = this->data.find(delim); pos != bstring::npos) {
+      return this->data.begin() + pos;
     }
-    return this->data_.end();
+    return this->data.end();
   }
 
   byte_type delim;
@@ -135,7 +135,7 @@ class MultiDelimitedTokenStreamSingleChars<0> final
     IRS_ASSERT(opts.delimiters.empty());
   }
 
-  auto FindNextDelim() { return this->data_.end(); }
+  auto FindNextDelim() { return this->data.end(); }
 };
 
 class MultiDelimitedTokenStreamGenericSingleChars final
@@ -145,26 +145,25 @@ class MultiDelimitedTokenStreamGenericSingleChars final
   explicit MultiDelimitedTokenStreamGenericSingleChars(const Options& opts) {
     for (const auto& delim : opts.delimiters) {
       IRS_ASSERT(delim.size() == 1);
-      bytes_[delim[0]] = true;
+      bytes[delim[0]] = true;
     }
   }
 
   auto FindNextDelim() {
-    return std::find_if(data_.begin(), data_.end(), [&](auto c) {
+    return std::find_if(data.begin(), data.end(), [&](auto c) {
       if (c > SCHAR_MAX) {
         return false;
       }
       IRS_ASSERT(c <= SCHAR_MAX);
-      return bytes_[c];
+      return bytes[c];
     });
   }
   // TODO maybe use a bitset instead?
-  std::array<bool, SCHAR_MAX + 1> bytes_{};
+  std::array<bool, SCHAR_MAX + 1> bytes{};
 };
 
 struct TrieNode {
-  explicit TrieNode(int32_t stateId, int32_t depth)
-    : state_id(stateId), depth(depth) {}
+  explicit TrieNode(int32_t id, int32_t depth) : state_id(id), depth(depth) {}
   int32_t state_id;
   int32_t depth;
   bool is_leaf{false};
@@ -202,7 +201,7 @@ void InsertErrorTransitions(const std::vector<bstring>& strings,
     return;
   }
 
-  for (size_t k = 0; k < 256; k++) {
+  for (size_t k = 0; k <= std::numeric_limits<byte>::max(); k++) {
     if (auto it = node->simple_trie.find(k); it != node->simple_trie.end()) {
       node->real_trie.emplace(k, it->second);
       matched_word.push_back(k);
@@ -322,8 +321,8 @@ class MultiDelimitedTokenStreamGeneric final
   auto FindNextDelim() {
     auto state = matcher.GetFst().Start();
     matcher.SetState(state);
-    for (size_t k = 0; k < data_.length(); k++) {
-      matcher.Find(data_[k]);
+    for (size_t k = 0; k < data.length(); k++) {
+      matcher.Find(data[k]);
 
       state = matcher.Value().nextstate;
 
@@ -331,14 +330,14 @@ class MultiDelimitedTokenStreamGeneric final
         auto length = matcher.Final(state).Payload();
         IRS_ASSERT(length <= k);
 
-        return std::make_pair(data_.begin() + (k - length),
+        return std::make_pair(data.begin() + (k - length),
                               static_cast<size_t>(length + 1));
       }
 
       matcher.SetState(state);
     }
 
-    return std::make_pair(data_.end(), size_t{0});
+    return std::make_pair(data.end(), size_t{0});
   }
 
   automaton autom;
@@ -353,9 +352,9 @@ class MultiDelimitedTokenStreamSingle final
     : delim(std::move(opts.delimiters[0])) {}
 
   auto FindNextDelim() {
-    auto next = data_.end();
-    if (auto pos = this->data_.find(delim); pos != bstring::npos) {
-      next = this->data_.begin() + pos;
+    auto next = data.end();
+    if (auto pos = this->data.find(delim); pos != bstring::npos) {
+      next = this->data.begin() + pos;
     }
     return std::make_pair(next, delim.size());
   }
@@ -372,7 +371,7 @@ class MultiDelimitedTokenStreamSingle final
       searcher(delim.begin(), delim.end()) {}
 
   auto FindNextDelim() {
-    auto next = std::search(data_.begin(), data_.end(), searcher);
+    auto next = std::search(data.begin(), data.end(), searcher);
     return std::make_pair(next, delim.size());
   }
 
@@ -402,7 +401,8 @@ irs::analysis::analyzer::ptr Make(MultiDelimitedAnalyser::Options&& opts) {
                 [](const auto& delim) { return delim.size() == 1; });
   if (single_character_case) {
     return MakeSingleChar<0>(std::move(opts));
-  } else if (opts.delimiters.size() == 1) {
+  }
+  if (opts.delimiters.size() == 1) {
     return std::make_unique<MultiDelimitedTokenStreamSingle>(opts);
   }
   return std::make_unique<MultiDelimitedTokenStreamGeneric>(std::move(opts));
@@ -477,7 +477,7 @@ bool MakeVpackConfig(const MultiDelimitedAnalyser::Options& options,
 irs::analysis::analyzer::ptr MakeVpack(VPackSlice slice) {
   MultiDelimitedAnalyser::Options options;
   if (ParseVpackOptions(slice, options)) {
-    return irs::analysis::MultiDelimitedAnalyser::make(std::move(options));
+    return irs::analysis::MultiDelimitedAnalyser::Make(std::move(options));
   }
   return nullptr;
 }
@@ -523,7 +523,7 @@ void MultiDelimitedAnalyser::init() {
   //                        normalize_json_config);  // match registration above
 }
 
-analyzer::ptr MultiDelimitedAnalyser::make(
+analyzer::ptr MultiDelimitedAnalyser::Make(
   MultiDelimitedAnalyser::Options&& opts) {
   return ::Make(std::move(opts));
 }

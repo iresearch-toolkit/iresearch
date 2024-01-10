@@ -43,23 +43,23 @@ class MultiDelimitedAnalyser : public TypedAnalyzer<MultiDelimitedAnalyser>,
   }
   static void init();
 
-  static analyzer::ptr make(Options&&);
+  static analyzer::ptr Make(Options&&);
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    return irs::get_mutable(attrs_, type);
+    return irs::get_mutable(attrs, type);
   }
 
-  bool reset(std::string_view data) final {
-    data_ = ViewCast<byte_type>(data);
-    start_ = data_.data();
+  bool reset(std::string_view input) final {
+    data = ViewCast<byte_type>(input);
+    start = data.data();
     return true;
   }
 
  protected:
-  using attributes = std::tuple<increment, offset, term_attribute>;
-  const byte_type* start_;
-  bytes_view data_;
-  attributes attrs_;
+  using Attributes = std::tuple<increment, offset, term_attribute>;
+  const byte_type* start{};
+  bytes_view data{};
+  Attributes attrs;
 };
 
 }  // namespace analysis
