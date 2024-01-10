@@ -201,7 +201,7 @@ void InsertErrorTransitions(const std::vector<bstring>& strings,
     return;
   }
 
-  for (size_t k = 0; k <= std::numeric_limits<byte>::max(); k++) {
+  for (size_t k = 0; k <= std::numeric_limits<byte_type>::max(); k++) {
     if (auto it = node->simple_trie.find(k); it != node->simple_trie.end()) {
       node->real_trie.emplace(k, it->second);
       matched_word.push_back(k);
