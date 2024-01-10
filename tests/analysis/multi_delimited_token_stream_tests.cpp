@@ -96,6 +96,42 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_empty_match) {
   ASSERT_FALSE(stream->next());
 }
 
+TEST_F(multi_delimited_token_stream_tests, test_delimiter_3) {
+  auto stream = irs::analysis::MultiDelimitedAnalyser::make(
+    {.delimiters = {";"_b, ","_b, "|"_b}});
+  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
+            stream->type());
+
+  ASSERT_TRUE(stream->reset("a;b||c|d,ff"));
+
+  auto* payload = irs::get<irs::payload>(*stream);
+  ASSERT_EQ(nullptr, payload);
+  auto* term = irs::get<irs::term_attribute>(*stream);
+  auto* offset = irs::get<irs::offset>(*stream);
+
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("a", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 0);
+  ASSERT_EQ(offset->end, 1);
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("b", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 2);
+  ASSERT_EQ(offset->end, 3);
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("c", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 5);
+  ASSERT_EQ(offset->end, 6);
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("d", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 7);
+  ASSERT_EQ(offset->end, 8);
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("ff", irs::ViewCast<char>(term->value));
+  ASSERT_EQ(offset->start, 9);
+  ASSERT_EQ(offset->end, 11);
+  ASSERT_FALSE(stream->next());
+}
+
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
   auto stream = irs::analysis::MultiDelimitedAnalyser::make(
     {.delimiters = {";"_b, ","_b, "|"_b, "."_b, ":"_b}});

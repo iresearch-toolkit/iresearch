@@ -62,8 +62,8 @@ class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
       auto& term = std::get<term_attribute>(attrs_);
       term.value = bytes_view{data_.begin(), next};
       auto& offset = std::get<irs::offset>(attrs_);
-      offset.start = std::distance(start_, std::addressof(*data_.begin()));
-      offset.end = std::distance(start_, std::addressof(*next));
+      offset.start = std::distance(start_, data_.data());
+      offset.end = offset.start + term.value.size();
 
       if (next == data_.end()) {
         data_ = {};
@@ -93,21 +93,14 @@ class MultiDelimitedTokenStreamSingleChars final
       MultiDelimitedTokenStreamSingleChars<N>> {
  public:
   explicit MultiDelimitedTokenStreamSingleChars(
-    const MultiDelimitedAnalyser::Options& opts) {
-    IRS_ASSERT(opts.delimiters.size() == N);
-    std::size_t k = 0;
-    for (const auto& delim : opts.delimiters) {
-      IRS_ASSERT(delim.size() == 1);
-      bytes[k++] = delim[0];
-    }
+    const MultiDelimitedAnalyser::Options&) {
+    // according to benchmarks "table" version is
+    // ~1.5x faster except cases for 0 and 1.
+    // So this should not be used.
+    IRS_ASSERT(false);
   }
 
-  auto FindNextDelim() {
-    return std::search(this->data_.begin(), this->data_.end(), bytes.begin(),
-                       bytes.end());
-  }
-
-  std::array<byte_type, N> bytes;
+  auto FindNextDelim() { return this->data_.end(); }
 };
 
 template<>
@@ -166,7 +159,7 @@ class MultiDelimitedTokenStreamGenericSingleChars final
     });
   }
   // TODO maybe use a bitset instead?
-  std::array<bool, SCHAR_MAX + 1> bytes_;
+  std::array<bool, SCHAR_MAX + 1> bytes_{};
 };
 
 struct TrieNode {
@@ -228,9 +221,9 @@ void InsertErrorTransitions(const std::vector<bstring>& strings,
 
       auto* dest = root;
       for (auto c : prefix) {
-        auto it = dest->simple_trie.find(c);
-        IRS_ASSERT(it != dest->simple_trie.end());
-        dest = it->second;
+        auto itt = dest->simple_trie.find(c);
+        IRS_ASSERT(itt != dest->simple_trie.end());
+        dest = itt->second;
       }
       node->real_trie.emplace(k, dest);
       matched_word.pop_back();
@@ -392,7 +385,7 @@ class MultiDelimitedTokenStreamSingle final
 template<std::size_t N>
 irs::analysis::analyzer::ptr MakeSingleChar(
   MultiDelimitedAnalyser::Options&& opts) {
-  if constexpr (N >= 4) {
+  if constexpr (N >= 2) {
     return std::make_unique<MultiDelimitedTokenStreamGenericSingleChars>(
       std::move(opts));
   } else if (opts.delimiters.size() == N) {
