@@ -285,15 +285,14 @@ automaton MakeStringTrie(const std::vector<bstring>& strings) {
         last_state = next_state;
         last_char = k;
       } else if (last_state != next_state) {
-        a.EmplaceArc(n->state_id, range_label::fromRange(last_char, k - 1),
+        a.EmplaceArc(n->state_id, RangeLabel::From(last_char, k - 1),
                      last_state);
         last_state = next_state;
         last_char = k;
       }
     }
 
-    a.EmplaceArc(n->state_id, range_label::fromRange(last_char, 255),
-                 last_state);
+    a.EmplaceArc(n->state_id, RangeLabel::From(last_char, 255), last_state);
   }
 
   return a;
@@ -304,7 +303,7 @@ class MultiDelimitedTokenStreamGeneric final
  public:
   explicit MultiDelimitedTokenStreamGeneric(const Options& opts)
     : autom(MakeStringTrie(opts.delimiters)),
-      matcher(make_automaton_matcher(autom)) {
+      matcher(MakeAutomatonMatcher(autom)) {
     // fst::drawFst(automaton_, std::cout);
 
 #ifdef IRESEARCH_DEBUG
