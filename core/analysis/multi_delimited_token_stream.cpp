@@ -55,12 +55,13 @@ class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
 
       if (next == data.begin()) {
         // skip empty terms
-        data = bytes_view{next + skip, data.end()};
+        IRS_ASSERT(skip <= data.size());
+        data = bytes_view(data.data() + skip, data.size() - skip);
         continue;
       }
 
       auto& term = std::get<term_attribute>(attrs);
-      term.value = bytes_view{data.begin(), next};
+      term.value = bytes_view(data.data(), std::distance(data.begin(), next));
       auto& offset = std::get<irs::offset>(attrs);
       offset.start = std::distance(start, data.data());
       offset.end = offset.start + term.value.size();
@@ -68,7 +69,8 @@ class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
       if (next == data.end()) {
         data = {};
       } else {
-        data = bytes_view{next + skip, data.end()};
+        auto ns = next + skip;
+        data = bytes_view(&(*ns), std::distance(ns, data.end()));
       }
 
       return true;
