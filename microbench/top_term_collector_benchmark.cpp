@@ -54,24 +54,24 @@ class seek_term_iterator : public irs::seek_term_iterator {
   seek_term_iterator(iterator_type begin, size_t count)
     : begin_(begin), end_(begin + count), cookie_ptr_(begin) {}
 
-  irs::SeekResult seek_ge(irs::bytes_view) override {
+  irs::SeekResult seek_ge(irs::bytes_view) final {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  bool seek(irs::bytes_view) override { return false; }
+  bool seek(irs::bytes_view) final { return false; }
 
-  irs::seek_cookie::ptr cookie() const override {
+  irs::seek_cookie::ptr cookie() const final {
     return std::make_unique<seek_ptr>(cookie_ptr_);
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }
     return nullptr;
   }
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     if (begin_ == end_) {
       return false;
     }
@@ -83,25 +83,24 @@ class seek_term_iterator : public irs::seek_term_iterator {
     return true;
   }
 
-  irs::bytes_view value() const noexcept override { return value_; }
+  irs::bytes_view value() const noexcept final { return value_; }
 
-  void read() override {}
+  void read() final {}
 
-  irs::doc_iterator::ptr postings(
-    irs::IndexFeatures /*features*/) const override {
+  irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const final {
     return irs::doc_iterator::empty();
   }
 
   struct seek_ptr final : irs::seek_cookie {
     explicit seek_ptr(iterator_type ptr) noexcept : ptr(ptr) {}
 
-    irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
       return nullptr;
     }
 
-    bool IsEqual(const seek_cookie& rhs) const override { return false; }
+    bool IsEqual(const seek_cookie& /*rhs*/) const final { return false; }
 
-    size_t Hash() const override { return 0; }
+    size_t Hash() const final { return 0; }
 
     iterator_type ptr;
   };
@@ -121,26 +120,26 @@ struct SubReader final : irs::SubReader {
   uint64_t CountMappedMemory() const final { return 0; }
 
   const irs::SegmentInfo& Meta() const noexcept final { return info; }
-  const irs::column_reader* column(std::string_view) const override {
+  const irs::column_reader* column(std::string_view) const final {
     return nullptr;
   }
   const irs::DocumentMask* docs_mask() const noexcept final { return nullptr; }
-  irs::column_iterator::ptr columns() const override {
+  irs::column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();
   }
-  const irs::column_reader* column(irs::field_id) const override {
+  const irs::column_reader* column(irs::field_id) const final {
     return nullptr;
   }
-  irs::doc_iterator::ptr docs_iterator() const override {
+  irs::doc_iterator::ptr docs_iterator() const final {
     return irs::doc_iterator::empty();
   }
-  const irs::term_reader* field(std::string_view) const override {
+  const irs::term_reader* field(std::string_view) const final {
     return nullptr;
   }
-  irs::field_iterator::ptr fields() const override {
+  irs::field_iterator::ptr fields() const final {
     return irs::field_iterator::empty();
   }
-  const irs::column_reader* sort() const override { return nullptr; }
+  const irs::column_reader* sort() const final { return nullptr; }
 
   irs::SegmentInfo info;
 };

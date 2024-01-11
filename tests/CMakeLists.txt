@@ -208,10 +208,12 @@ if (MSVC)
 endif ()
 
 include_directories(iresearch-tests-static
-  ${EXTERNAL_INCLUDE_DIRS}
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
+)
+include_directories(iresearch-tests-static SYSTEM
+  ${EXTERNAL_INCLUDE_DIRS}
   ${ICU_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}

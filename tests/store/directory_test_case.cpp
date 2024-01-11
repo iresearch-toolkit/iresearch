@@ -4444,28 +4444,6 @@ class fs_directory_test : public test_base {
   }
 
  protected:
-  static void check_files(const directory& dir,
-                          const std::filesystem::path& path) {
-    const std::string file_name = "abcd";
-
-    // create empty file
-    {
-      const auto file = path / file_name;
-
-      std::ofstream f(file.native());
-    }
-
-    // read files from directory
-    std::vector<std::string> files;
-    auto list_files = [&files](std::string_view name) {
-      files.emplace_back(name);
-      return true;
-    };
-    ASSERT_TRUE(dir.visit(list_files));
-    ASSERT_EQ(1, files.size());
-    ASSERT_EQ(file_name, files[0]);
-  }
-
   std::string name_;
   std::filesystem::path path_;
   std::shared_ptr<FSDirectory> dir_;

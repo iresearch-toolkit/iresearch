@@ -42,11 +42,6 @@ class Scorers {
     return static_cast<T&>(*bucket);
   }
 
-  const irs::Scorer& operator[](size_t i) const noexcept {
-    EXPECT_LT(i, scorers_.size());
-    return *scorers_[i];
-  }
-
   // Intentionally imlicit
   operator irs::ScorersView() const noexcept { return scorers_; }
 

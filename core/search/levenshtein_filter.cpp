@@ -49,7 +49,7 @@ IRS_FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
 
   static_assert(sizeof(score_t) == sizeof(uint32_t));
 
-  return 1.f - score_t(distance) / size;
+  return 1.f - static_cast<score_t>(distance) / static_cast<score_t>(size);
 }
 
 template<typename Invalid, typename Term, typename Levenshtein>
@@ -156,7 +156,7 @@ void VisitImpl(const SubReader& segment, const term_reader& reader,
       terms->read();
 
       const auto utf8_value_size =
-        static_cast<uint32_t>(utf8_utils::utf8_length(terms->value()));
+        static_cast<uint32_t>(utf8_utils::Length(terms->value()));
       const auto boost =
         similarity(*distance, std::min(utf8_value_size, utf8_target_size));
 
@@ -171,14 +171,14 @@ bool collect_terms(const IndexReader& index, std::string_view field,
                    const parametric_description& d, Collector& collector) {
   const auto acceptor = make_levenshtein_automaton(d, prefix, term);
 
-  if (!validate(acceptor)) {
+  if (!Validate(acceptor)) {
     return false;
   }
 
-  auto matcher = make_automaton_matcher(acceptor);
+  auto matcher = MakeAutomatonMatcher(acceptor);
   const auto utf8_term_size =
-    std::max(1U, static_cast<uint32_t>(utf8_utils::utf8_length(prefix) +
-                                       utf8_utils::utf8_length(term)));
+    std::max(1U, static_cast<uint32_t>(utf8_utils::Length(prefix) +
+                                       utf8_utils::Length(term)));
   const uint8_t max_distance = d.max_distance() + 1;
 
   for (auto& segment : index) {
@@ -254,7 +254,7 @@ field_visitor by_edit_distance::visitor(
         automaton_context(const parametric_description& d, bytes_view prefix,
                           bytes_view term)
           : acceptor(make_levenshtein_automaton(d, prefix, term)),
-            matcher(make_automaton_matcher(acceptor)) {}
+            matcher(MakeAutomatonMatcher(acceptor)) {}
 
         automaton acceptor;
         automaton_table_matcher matcher;
@@ -262,13 +262,13 @@ field_visitor by_edit_distance::visitor(
 
       auto ctx = std::make_shared<automaton_context>(d, prefix, term);
 
-      if (!validate(ctx->acceptor)) {
+      if (!Validate(ctx->acceptor)) {
         return [](const SubReader&, const term_reader&, filter_visitor&) {};
       }
 
       const auto utf8_term_size =
-        std::max(1U, static_cast<uint32_t>(utf8_utils::utf8_length(prefix) +
-                                           utf8_utils::utf8_length(term)));
+        std::max(1U, static_cast<uint32_t>(utf8_utils::Length(prefix) +
+                                           utf8_utils::Length(term)));
       const uint8_t max_distance = d.max_distance() + 1;
 
       return [ctx = std::move(ctx), utf8_term_size, max_distance](

@@ -321,8 +321,6 @@ enum class ColumnHint : uint32_t {
 ENABLE_BITMASK_ENUM(ColumnHint);
 
 struct column_reader : public memory::Managed {
-  virtual ~column_reader() = default;
-
   // Returns column id.
   virtual field_id id() const = 0;
 

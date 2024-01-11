@@ -147,8 +147,6 @@ class parametric_state {
     return positions_.end();
   }
 
-  size_t size() const noexcept { return positions_.size(); }
-
   bool empty() const noexcept { return positions_.empty(); }
 
   void clear() noexcept { return positions_.clear(); }
@@ -251,7 +249,8 @@ void add_elementary_transitions(parametric_state& state, const position& pos,
     // Situation 2, [i+j,e+j-1] - elements X[i+1:i+j-1] are deleted
     for (size_t j = 1, max = max_distance + 1 - pos.distance; j < max; ++j) {
       if (irs::check_bit(chi, j)) {
-        state.emplace(pos.offset + 1 + j, pos.distance + j, false);
+        state.emplace(static_cast<uint32_t>(pos.offset + 1 + j),
+                      pos.distance + j, false);
       }
     }
 
@@ -352,12 +351,9 @@ uint32_t distance(const parametric_state& state, const uint32_t max_distance,
 
 struct character {
   bitset chi;  // characteristic vector
-  byte_type utf8[utf8_utils::MAX_CODE_POINT_SIZE]{};
+  byte_type utf8[utf8_utils::kMaxCharSize]{};
   size_t size{};
   uint32_t cp{};  // utf8 code point
-
-  const byte_type* begin() const noexcept { return utf8; }
-  const byte_type* end() const noexcept { return utf8 + size; }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -365,7 +361,7 @@ struct character {
 //////////////////////////////////////////////////////////////////////////////
 std::vector<character> make_alphabet(bytes_view word, size_t& utf8_size) {
   SmallVector<uint32_t, 16> chars;
-  utf8_utils::utf8_to_utf32<false>(word, std::back_inserter(chars));
+  utf8_utils::ToUTF32<false>(word, std::back_inserter(chars));
   utf8_size = chars.size();
 
   std::sort(chars.begin(), chars.end());
@@ -390,14 +386,14 @@ std::vector<character> make_alphabet(bytes_view word, size_t& utf8_size) {
     begin->cp = c;
 
     // set utf8 representation
-    begin->size = utf8_utils::utf32_to_utf8(c, begin->utf8);
+    begin->size = utf8_utils::FromChar32(c, begin->utf8);
 
     // evaluate characteristic vector
     auto& chi = begin->chi;
     chi.reset(capacity);
     auto utf8_begin = word.data();
     for (size_t i = 0; i < utf8_size; ++i) {
-      chi.reset(i, c == utf8_utils::next(utf8_begin));
+      chi.reset(i, c == utf8_utils::ToChar32(utf8_begin));
     }
     IRS_ASSERT(utf8_begin == word.data() + word.size());
   }
@@ -590,10 +586,10 @@ automaton make_levenshtein_automaton(const parametric_description& description,
   auto end = prefix.data() + prefix.size();
   decltype(start_state) to;
   for (; begin != end;) {
-    const byte_type* next = utf8_utils::next(begin, end);
+    const byte_type* next = utf8_utils::Next(begin, end);
     to = a.AddState();
     auto dist = std::distance(begin, next);
-    irs::utf8_emplace_arc(a, start_state, bytes_view(begin, dist), to);
+    irs::Utf8EmplaceArc(a, start_state, bytes_view(begin, dist), to);
     start_state = to;
     begin = next;
   }
@@ -613,7 +609,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
   std::vector<std::pair<bytes_view, automaton::StateId>> arcs;
   arcs.resize(utf8_size);  // allocate space for max possible number of arcs
 
-  for (utf8_transitions_builder builder; !stack.empty();) {
+  for (Utf8TransitionsBuilder builder; !stack.empty();) {
     const auto state = stack.back();
     stack.pop_back();
     arcs.clear();
@@ -656,17 +652,17 @@ automaton make_levenshtein_automaton(const parametric_description& description,
 
     if (INVALID_STATE == default_state && arcs.empty()) {
       // optimization for invalid terminal state
-      a.EmplaceArc(state.from, range_label{0, 255}, INVALID_STATE);
+      a.EmplaceArc(state.from, RangeLabel::From(0, 255), INVALID_STATE);
     } else if (INVALID_STATE == default_state && ascii &&
                !a.Final(state.from)) {
       // optimization for ascii only input without default state and weight
       for (auto& arc : arcs) {
         IRS_ASSERT(1 == arc.first.size());
-        a.EmplaceArc(state.from, range_label::fromRange(arc.first.front()),
+        a.EmplaceArc(state.from, RangeLabel::From(arc.first.front()),
                      arc.second);
       }
     } else {
-      builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
+      builder.Insert(a, state.from, default_state, arcs.begin(), arcs.end());
     }
   }
 
@@ -690,14 +686,13 @@ size_t edit_distance(const parametric_description& description,
   IRS_ASSERT(description);
 
   SmallVector<uint32_t, 16> lhs_chars;
-  utf8_utils::utf8_to_utf32<false>(lhs, lhs_size,
-                                   std::back_inserter(lhs_chars));
+  utf8_utils::ToUTF32<false>({lhs, lhs_size}, std::back_inserter(lhs_chars));
 
   size_t state = 1;   // current parametric state
   size_t offset = 0;  // current offset
 
   for (auto* rhs_end = rhs + rhs_size; rhs < rhs_end;) {
-    const auto c = utf8_utils::next(rhs);
+    const auto c = utf8_utils::ToChar32(rhs);
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
     const auto end =
@@ -723,8 +718,8 @@ bool edit_distance(size_t& distance, const parametric_description& description,
   IRS_ASSERT(description);
 
   SmallVector<uint32_t, 16> lhs_chars;
-  if (!utf8_utils::utf8_to_utf32<true>(lhs, lhs_size,
-                                       std::back_inserter(lhs_chars))) {
+  if (!utf8_utils::ToUTF32<true>({lhs, lhs_size},
+                                 std::back_inserter(lhs_chars))) {
     return false;
   }
 
@@ -732,9 +727,9 @@ bool edit_distance(size_t& distance, const parametric_description& description,
   size_t offset = 0;  // current offset
 
   for (auto* rhs_end = rhs + rhs_size; rhs < rhs_end;) {
-    const auto c = utf8_utils::next_checked(rhs, rhs_end);
+    const auto c = utf8_utils::ToChar32(rhs, rhs_end);
 
-    if (utf8_utils::INVALID_CODE_POINT == c) {
+    if (c == utf8_utils::kInvalidChar32) {
       return false;
     }
 

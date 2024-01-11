@@ -187,10 +187,7 @@ namespace std {
 
 template<>
 struct hash<irs::filter> {
-  typedef irs::filter argument_type;
-  typedef size_t result_type;
-
-  result_type operator()(const argument_type& key) const { return key.hash(); }
+  size_t operator()(const irs::filter& key) const { return key.hash(); }
 };
 
 }  // namespace std

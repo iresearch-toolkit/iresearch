@@ -24,34 +24,32 @@
 
 #include "utils/utf8_character_tables.hpp"
 
-namespace irs {
-namespace utf8_utils {
+namespace irs::utf8_utils {
 
 // Returns true if a specified character 'c' is a whitespace according to
 // unicode standard, for details see https://unicode.org/reports
-constexpr bool char_is_white_space(uint32_t c) noexcept {
-  return 0 != WHITE_SPACE_TABLE.count(c);
+constexpr bool CharIsWhiteSpace(uint32_t c) noexcept {
+  return kWhiteSpaceTable.count(c) != 0;
 }
 
-constexpr uint16_t char_general_category(uint32_t c) noexcept {
-  const auto it = frozen::bits::lower_bound<GENERAL_CATEGORY_TABLE.size()>(
-    GENERAL_CATEGORY_TABLE.begin(), c, GENERAL_CATEGORY_TABLE.key_comp());
+constexpr uint16_t CharGeneralCategory(uint32_t c) noexcept {
+  const auto it = frozen::bits::lower_bound<kGeneralCategoryTable.size()>(
+    kGeneralCategoryTable.begin(), c, kGeneralCategoryTable.key_comp());
 
-  if (it != GENERAL_CATEGORY_TABLE.begin() && it->first != c) {
+  if (it != kGeneralCategoryTable.begin() && it->first != c) {
     return std::prev(it)->second;
   }
   return it->second;
 }
 
-constexpr char char_primary_category(uint32_t c) noexcept {
-  return char(char_general_category(c) >> 8);
+constexpr char CharPrimaryCategory(uint32_t c) noexcept {
+  return static_cast<char>(CharGeneralCategory(c) >> 8U);
 }
 
-constexpr bool char_is_alphanumeric(uint32_t c) noexcept {
-  const auto g = char_primary_category(c);
+constexpr bool CharIsAlphanumeric(uint32_t c) noexcept {
+  const auto g = CharPrimaryCategory(c);
 
   return g == 'L' || g == 'N';
 }
 
-}  // namespace utf8_utils
-}  // namespace irs
+}  // namespace irs::utf8_utils

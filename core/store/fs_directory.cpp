@@ -160,7 +160,7 @@ class fs_lock : public index_lock {
 
 class fs_index_output : public buffered_index_output {
  public:
-  DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
+  DEFINE_FACTORY_INLINE(index_output);  // cppcheck-suppress unknownMacro
 
   static index_output::ptr open(const path_char_t* name,
                                 const ResourceManagementOptions& rm) noexcept
@@ -225,7 +225,9 @@ class fs_index_output : public buffered_index_output {
     buffered_index_output::reset(buf_, sizeof buf_);
   }
 
-  ~fs_index_output() { rm_.transactions->Decrease(sizeof(fs_index_output)); }
+  ~fs_index_output() override {
+    rm_.transactions->Decrease(sizeof(fs_index_output));
+  }
 
   byte_type buf_[1024];
   file_utils::handle_t handle_;
@@ -378,7 +380,7 @@ class fs_index_input : public buffered_index_input {
 
   fs_index_input(const fs_index_input& rhs);
 
-  ~fs_index_input();
+  ~fs_index_input() override;
 
   fs_index_input& operator=(const fs_index_input&) = delete;
 

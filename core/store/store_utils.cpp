@@ -75,7 +75,7 @@ void write_zvdouble(data_output& out, double_t v) {
   } else {
     const float_t fv = static_cast<float_t>(v);
 
-    if (fv == static_cast<double_t>(v)) {
+    if (static_cast<double_t>(fv) == v) {
       out.write_byte(0xFE);
       out.write_int(numeric_utils::ftoi32(fv));
     } else if (!std::signbit(v)) {
@@ -97,7 +97,7 @@ double_t read_zvdouble(data_input& in) {
     return numeric_utils::i64tod(in.read_long());
   } else if (0xFE == b) {
     // float value
-    return numeric_utils::i32tof(in.read_int());
+    return static_cast<double_t>(numeric_utils::i32tof(in.read_int()));
   } else if (0 != (b & 0x80)) {
     // small signed value
     return double_t((b & 0x7F) - 1);

@@ -290,11 +290,7 @@ set(IRESEARCH_EXTERNAL_INCLUDES
   ${Fasttext_INCLUDE_DIR}
   ${FROZEN_INCLUDE_DIR})
 
-if (SUPPRESS_EXTERNAL_WARNINGS)
-  include_directories(SYSTEM ${IRESEARCH_EXTERNAL_INCLUDES})
-else ()
-  include_directories(${IRESEARCH_EXTERNAL_INCLUDES})
-endif ()
+include_directories(SYSTEM ${IRESEARCH_EXTERNAL_INCLUDES})
 
 add_library(iresearch-static
   STATIC

@@ -53,7 +53,7 @@ class ScoreFunction : util::noncopyable {
     const auto size = reinterpret_cast<size_t>(ctx);
     std::memset(res, 0, size);
   }
-  static void DefaultMin(score_ctx* ctx, score_t min) noexcept {}
+  static void DefaultMin(score_ctx* /*ctx*/, score_t /*min*/) noexcept {}
 
   // Returns default scoring function setting `size` score buckets to 0.
   static ScoreFunction Default(size_t count) noexcept {

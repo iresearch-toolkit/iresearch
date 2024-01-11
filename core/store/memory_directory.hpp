@@ -173,7 +173,7 @@ class memory_index_input final : public index_input {
   const byte_type* begin_{buf_};  // current position
   const byte_type* end_{buf_};    // end of the valid bytes
   size_t start_{};                // buffer offset in file
-};                                // memory_index_input
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_index_output

@@ -252,7 +252,7 @@ struct container_iterator<BT_DENSE, false> {
         }
       }
       ctx.popcnt = self->index_ + popcnt + std::popcount(ctx.word);
-      ctx.word_idx = word_idx;
+      ctx.word_idx = static_cast<int32_t>(word_idx);
     }
 
     uint32_t word_delta = target_word_idx - ctx.word_idx;
@@ -394,8 +394,9 @@ struct container_iterator<BT_DENSE, true> {
       }
     }
 
-    return self->block_ + (word_idx + 1) * bits_required<size_t>() -
-           std::countl_zero(word) - 1;
+    return self->block_ +
+           static_cast<doc_id_t>((word_idx + 1) * bits_required<size_t>() -
+                                 std::countl_zero(word) - 1);
   }
 };
 

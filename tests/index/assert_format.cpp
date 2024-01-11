@@ -222,9 +222,6 @@ void index_segment::compute_features() {
   struct column_output final : public irs::column_output {
     explicit column_output(irs::bstring& buf) noexcept : buf_{&buf} {}
 
-    column_output(column_output&&) = default;
-    column_output& operator=(column_output&&) = default;
-
     void Prepare(irs::doc_id_t) final { written = true; }
 
     void write_byte(irs::byte_type b) final { (*buf_) += b; }
@@ -780,7 +777,7 @@ void assert_terms_next(const field& expected_field,
 
   auto expected_term = expected_field.iterator();
   if (matcher) {
-    expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
+    expected_term = irs::memory::make_managed<irs::AutomatonTermIterator>(
       matcher->GetFst(), std::move(expected_term));
   }
 
@@ -821,7 +818,7 @@ void assert_terms_seek(const field& expected_field,
                        size_t lookahead = 10) {
   auto expected_term = expected_field.iterator();
   if (matcher) {
-    expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
+    expected_term = irs::memory::make_managed<irs::AutomatonTermIterator>(
       matcher->GetFst(), std::move(expected_term));
   }
 

@@ -31,10 +31,10 @@ TEST(scorers_tests, duplicate_register) {
     }
 
     irs::ScoreFunction prepare_scorer(
-      const irs::ColumnProvider& segment,
-      const std::map<irs::type_info::type_id, irs::field_id>& features,
-      const irs::byte_type* stats, const irs::attribute_provider& doc_attrs,
-      irs::score_t boost) const final {
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*features*/, const irs::byte_type* /*stats*/,
+      const irs::attribute_provider& /*doc_attrs*/,
+      irs::score_t /*boost*/) const final {
       return {};
     }
 

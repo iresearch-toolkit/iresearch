@@ -401,9 +401,9 @@ bool normalizing_token_stream::reset(std::string_view data) {
     case UPPER:
       state_->token.toUpper(state_->options.locale);  // inplace case-conversion
       break;
-    default: {
-    }  // NOOP
-  };
+    case NONE:
+      break;
+  }
 
   // collate value, e.g. remove accents
   if (state_->transliterator) {

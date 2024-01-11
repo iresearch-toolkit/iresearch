@@ -101,13 +101,9 @@ irs::filter::ptr MakeOr(
 
 class SubReaderMock final : public irs::SubReader {
  public:
-  explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
-
   virtual uint64_t CountMappedMemory() const { return 0; }
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
-
-  const SubReaderMock& operator*() const noexcept { return *this; }
 
   // Live & deleted docs
 
@@ -1605,8 +1601,6 @@ class index_test_case : public tests::index_test_base {
     struct {
       const std::string_view& name() const { return name_; }
 
-      irs::features_t features() const { return {}; }
-
       bool write(irs::data_output&) const noexcept { return true; }
 
       std::string_view name_;
@@ -1959,8 +1953,6 @@ class index_test_case : public tests::index_test_base {
 
       const std::string_view& name() const { return name_; }
 
-      irs::features_t features() const { return {}; }
-
       bool write(irs::data_output& out) const {
         write_string(out, value_);
         return valid_;
@@ -2145,10 +2137,8 @@ class index_test_case : public tests::index_test_base {
 
     // error while commiting index (during sync in index_meta_writer)
     {
-      override_sync_directory override_dir(dir(), [](const std::string_view&) {
-        throw irs::io_error();
-        return true;
-      });
+      override_sync_directory override_dir(
+        dir(), [](const std::string_view&) -> bool { throw irs::io_error(); });
 
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
@@ -2665,21 +2655,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
 
   // prefix
   {
-    auto acceptor = irs::from_wildcard("forb%");
+    auto acceptor = irs::FromWildcard("forb%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
-    auto acceptor = irs::from_wildcard("%ende%");
+    auto acceptor = irs::FromWildcard("%ende%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
-    auto acceptor = irs::from_wildcard("%ione");
+    auto acceptor = irs::FromWildcard("%ione");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
@@ -2710,21 +2700,21 @@ TEST_P(index_test_case, europarl_docs_big_automaton) {
 
   // prefix
   {
-    auto acceptor = irs::from_wildcard("forb%");
+    auto acceptor = irs::FromWildcard("forb%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
-    auto acceptor = irs::from_wildcard("%ende%");
+    auto acceptor = irs::FromWildcard("%ende%");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
-    auto acceptor = irs::from_wildcard("%ione");
+    auto acceptor = irs::FromWildcard("%ione");
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
@@ -3042,7 +3032,7 @@ TEST_P(index_test_case, document_context) {
     std::condition_variable wait_cond;
     std::atomic<bool> wait;
     std::string_view name() { return ""; }
-    irs::features_t features() const { return {}; }
+
     bool write(irs::data_output&) {
       { std::lock_guard cond_lock{cond_mutex}; }
 

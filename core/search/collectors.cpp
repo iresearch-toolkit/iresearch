@@ -198,7 +198,7 @@ size_t term_collectors::push_back() {
 
 void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
                              const field_collectors& field_collectors,
-                             const IndexReader& index) const {
+                             const IndexReader& /*index*/) const {
   const auto bucket_count = buckets_.size();
 
   switch (bucket_count) {

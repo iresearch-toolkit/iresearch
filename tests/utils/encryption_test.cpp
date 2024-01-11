@@ -478,8 +478,6 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     int64_t checksum() const final { return out_->checksum(); }
 
-    const index_output& stream() const { return *out_; }
-
     using irs::buffered_index_output::remain;
 
     size_t last_written_size() const noexcept { return last_written_size_; }
@@ -500,8 +498,6 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     buffered_input(index_input& in) noexcept : in_(&in) {
       irs::buffered_index_input::reset(buf_, sizeof buf_, 0);
     }
-
-    const index_input& stream() { return *in_; }
 
     size_t length() const final { return in_->length(); }
 

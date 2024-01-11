@@ -85,8 +85,8 @@ bool Norm2ReaderContext::Reset(const ColumnProvider& reader, field_id column_id,
     const auto hdr = Norm2Header::Read(header);
     if (hdr.has_value()) {
       auto& value = hdr.value();
-      num_bytes = value.NumBytes();
-      max_num_bytes = value.MaxNumBytes();
+      num_bytes = static_cast<uint32_t>(value.NumBytes());
+      max_num_bytes = static_cast<uint32_t>(value.MaxNumBytes());
       return true;
     }
   }

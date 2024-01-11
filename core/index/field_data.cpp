@@ -140,7 +140,7 @@ class pos_iterator final : public irs::position {
  public:
   pos_iterator() : prox_in_(EMPTY_POOL) {}
 
-  void clear() noexcept {
+  void Clear() noexcept {
     pos_ = 0;
     value_ = pos_limits::invalid();
     offs_.clear();
@@ -148,7 +148,7 @@ class pos_iterator final : public irs::position {
   }
 
   // reset field
-  void reset(IndexFeatures features, const frequency& freq) {
+  void Reset(IndexFeatures features, const frequency& freq) {
     IRS_ASSERT(IndexFeatures::NONE != (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
@@ -162,8 +162,8 @@ class pos_iterator final : public irs::position {
   }
 
   // reset value
-  void reset(const Reader& prox) {
-    clear();
+  void Reset(const Reader& prox) {
+    Clear();
     prox_in_ = prox;
   }
 
@@ -202,10 +202,6 @@ class pos_iterator final : public irs::position {
     return true;
   }
 
-  void reset() final {
-    IRS_ASSERT(false);  // unsupported
-  }
-
  private:
   using attributes = std::tuple<attribute_ptr<offset>, attribute_ptr<payload>>;
 
@@ -216,7 +212,7 @@ class pos_iterator final : public irs::position {
   offset offs_;
   attributes attrs_;
   uint32_t pos_{};  // current position
-};                  // pos_iterator
+};
 
 }  // namespace
 
@@ -244,7 +240,7 @@ class doc_iterator : public irs::doc_iterator {
       freq = &freq_;
 
       if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
-        pos_.reset(features, freq_);
+        pos_.Reset(features, freq_);
         pos = &pos_;
         has_cookie_ = field.prox_random_access();
       }
@@ -266,7 +262,7 @@ class doc_iterator : public irs::doc_iterator {
     if (ppos.ptr && prox) {
       // reset positions only once,
       // as we need iterator for sequential reads
-      pos_.reset(*prox);
+      pos_.Reset(*prox);
     }
   }
 
@@ -327,7 +323,7 @@ class doc_iterator : public irs::doc_iterator {
       IRS_ASSERT(doc.value != posting_->doc);
     }
 
-    pos_.clear();
+    pos_.Clear();
 
     return true;
   }
@@ -366,7 +362,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
       pfreq = &freq_;
 
       if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
-        pos_.reset(features, freq_);
+        pos_.Reset(features, freq_);
         ppos = &pos_;
       }
     }
@@ -428,9 +424,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
       value.value = doc.doc;
       freq_.value = doc.freq;
 
-      if (doc.cookie) {
-        // (cookie != 0) -> we have proximity data
-        pos_.reset(greedy_reader(*byte_pool_, doc.cookie));
+      if (doc.cookie) {  // we have proximity data
+        pos_.Reset(greedy_reader(*byte_pool_, doc.cookie));
       }
 
       ++it_;
@@ -454,7 +449,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
     doc_id_t doc{doc_limits::eof()};  // doc_id
     uint32_t freq;                    // freq
     uint64_t cookie;                  // prox_cookie
-  };                                  // doc_entry
+  };
 
   void reset_dense(detail::doc_iterator& it, const frequency& freq,
                    std::span<const doc_id_t> docmap) {

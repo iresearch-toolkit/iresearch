@@ -30,7 +30,7 @@ static constexpr size_t kThreads = 1;
 static constexpr size_t kColumns = 1000;
 static constexpr size_t kColumnsIter = kColumns * 10;
 
-static void WriteFile(std::mt19937_64& rng) {
+static void WriteFile(std::mt19937_64& /*rng*/) {
   auto writer = irs::columnstore2::make_writer(
     irs::columnstore2::Version::kMax, false, irs::IResourceManager::kNoop);
   // const auto size = size_t{1} << kFileSizePower(rng);

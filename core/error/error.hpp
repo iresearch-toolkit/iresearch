@@ -46,9 +46,9 @@ enum class ErrorCode : uint32_t {
   undefined_error
 };
 
-#define DECLARE_ERROR_CODE(class_name)                     \
-  static constexpr ErrorCode CODE = ErrorCode::class_name; \
-  ::irs::ErrorCode code() const noexcept final { return CODE; }
+#define DECLARE_ERROR_CODE(class_name)                          \
+  ::irs::ErrorCode code() const noexcept final { return CODE; } \
+  static constexpr ErrorCode CODE = ErrorCode::class_name
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base

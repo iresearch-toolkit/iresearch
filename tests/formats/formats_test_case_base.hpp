@@ -41,7 +41,7 @@ class MockTermReader final : public irs::basic_term_reader {
       max_term_(max_term) {}
 
  private:
-  irs::attribute* get_mutable(irs::type_info::type_id type) final {
+  irs::attribute* get_mutable(irs::type_info::type_id /*type*/) final {
     return nullptr;
   }
   irs::term_iterator::ptr iterator() const final {

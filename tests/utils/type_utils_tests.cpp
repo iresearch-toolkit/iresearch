@@ -29,16 +29,16 @@ DEFINE_HAS_MEMBER(bar);
 
 TEST(type_utils_tests, sfinae) {
   struct A {
-    void foo() {}
+    [[maybe_unused]] void foo() {}
   };
   struct B {
     int bar;
   };
 
-  static_assert(HAS_MEMBER(A, foo));
-  static_assert(!HAS_MEMBER(B, foo));
-  static_assert(!HAS_MEMBER(A, bar));
-  static_assert(HAS_MEMBER(B, bar));
+  static_assert(HasMember_foo<A>::value);
+  static_assert(!HasMember_foo<B>::value);
+  static_assert(!HasMember_bar<A>::value);
+  static_assert(HasMember_bar<B>::value);
 }
 
 TEST(type_utils_tests, is_convertible) {

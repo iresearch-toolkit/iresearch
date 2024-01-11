@@ -44,139 +44,83 @@
 
 namespace irs {
 
-WildcardType wildcard_type(bytes_view expr) noexcept {
-  if (expr.empty()) {
-    return WildcardType::TERM;
+WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
+  if (pattern.empty()) {
+    return WildcardType::kTerm;
   }
 
   bool escaped = false;
   bool seen_escaped = false;
-  size_t num_match_any_string = 0;
-  size_t num_adjacent_match_any_string = 0;
+  size_t size_any_str = 0;
+  size_t curr_any_str = 0;
 
-  const auto* char_begin = expr.data();
-  const auto* end = expr.data() + expr.size();
-
-  while (char_begin < end) {
-    const size_t char_length = utf8_utils::cp_length_msb(*char_begin);
-    const auto char_end = char_begin + char_length;
-
-    if (!char_length || char_end > end) {
-      return WildcardType::INVALID;
+  const auto* it = pattern.data();
+  const auto* end = it + pattern.size();
+  for (; it != end; it = utf8_utils::Next(it, end)) {
+    auto prev_any_str = std::exchange(curr_any_str, 0);
+    if (escaped) {
+      escaped = false;
+      continue;
     }
-
-    switch (*char_begin) {
-      case WildcardMatch::ANY_STRING:
-        num_adjacent_match_any_string += size_t(!escaped);
-        num_match_any_string += size_t(!escaped);
-        seen_escaped |= escaped;
-        escaped = false;
-        break;
-      case WildcardMatch::ANY_CHAR:
-        if (!escaped) {
-          return WildcardType::WILDCARD;
+    switch (*it) {
+      case WildcardMatch::kAnyStr:
+        if (prev_any_str == size_any_str) {
+          curr_any_str = ++size_any_str;
+          break;
         }
+        [[fallthrough]];
+      case WildcardMatch::kAnyChr:
+        return WildcardType::kWildcard;
+      case WildcardMatch::kEscape:
+        escaped = true;
         seen_escaped = true;
-        num_adjacent_match_any_string = 0;
-        escaped = false;
-        break;
-      case WildcardMatch::ESCAPE:
-        num_adjacent_match_any_string = 0;
-        seen_escaped |= escaped;
-        escaped = !escaped;
         break;
       default:
-        num_adjacent_match_any_string = 0;
-        escaped = false;
         break;
     }
-
-    char_begin = char_end;
   }
-
-  if (0 == num_match_any_string) {
-    return seen_escaped ? WildcardType::TERM_ESCAPED : WildcardType::TERM;
+  if (size_any_str == 0) {
+    return seen_escaped ? WildcardType::kTermEscaped : WildcardType::kTerm;
   }
-
-  if (expr.size() == num_match_any_string) {
-    return WildcardType::MATCH_ALL;
+  if (size_any_str == curr_any_str) {
+    return seen_escaped ? WildcardType::kPrefixEscaped : WildcardType::kPrefix;
   }
-
-  if (num_match_any_string == num_adjacent_match_any_string) {
-    return seen_escaped ? WildcardType::PREFIX_ESCAPED : WildcardType::PREFIX;
-  }
-
-  return WildcardType::WILDCARD;
+  return WildcardType::kWildcard;
 }
 
-automaton from_wildcard(bytes_view expr) {
-  // need this variable to preserve valid address
-  // for cases with match all and  terminal escape
-  // character (%\\)
-  const byte_type c = WildcardMatch::ESCAPE;
-
+automaton FromWildcard(bytes_view expr) {
   bool escaped = false;
   std::vector<automaton> parts;
-  parts.reserve(expr.size() / 2);  // reserve some space
+  parts.reserve(expr.size());
 
-  auto append_char = [&](bytes_view label) {
-    parts.emplace_back(make_char(label));
-    escaped = false;
-  };
+  const auto* it = expr.data();
+  const auto* end = it + expr.size();
+  while (it != end) {
+    const auto curr = *it;
+    const auto* next = utf8_utils::Next(it, end);
+    // TODO(MBkkt) remove manual size compute, needed for some apple libc++
+    bytes_view label{it, static_cast<size_t>(next - it)};
+    it = next;
 
-  const auto* label_begin = expr.data();
-  const auto* end = expr.data() + expr.size();
-
-  while (label_begin < end) {
-    const auto label_length = utf8_utils::cp_length_msb(*label_begin);
-    const auto label_end = label_begin + label_length;
-
-    if (!label_length || label_end > end) {
-      // invalid UTF-8 sequence
-      return {};
+    if (escaped) {
+      parts.emplace_back(MakeChar(label));
+      escaped = false;
+      continue;
     }
-
-    switch (*label_begin) {
-      case WildcardMatch::ANY_STRING: {
-        if (escaped) {
-          append_char({label_begin, label_length});
-        } else {
-          parts.emplace_back(make_all());
-        }
+    switch (curr) {
+      case WildcardMatch::kAnyStr:
+        parts.emplace_back(MakeAll());
         break;
-      }
-      case WildcardMatch::ANY_CHAR: {
-        if (escaped) {
-          append_char({label_begin, label_length});
-        } else {
-          parts.emplace_back(make_any());
-        }
+      case WildcardMatch::kAnyChr:
+        parts.emplace_back(MakeAny());
         break;
-      }
-      case WildcardMatch::ESCAPE: {
-        if (escaped) {
-          append_char({label_begin, label_length});
-        } else {
-          escaped = !escaped;
-        }
+      case WildcardMatch::kEscape:
+        escaped = true;
         break;
-      }
-      default: {
-        if (escaped) {
-          // a backslash followed by no special character
-          parts.emplace_back(make_char(c));
-        }
-        append_char({label_begin, label_length});
+      default:
+        parts.emplace_back(MakeChar(label));
         break;
-      }
     }
-
-    label_begin = label_end;
-  }
-
-  if (escaped) {
-    // a non-terminated escape sequence
-    parts.emplace_back(make_char(c));
   }
 
   automaton nfa;
@@ -196,11 +140,11 @@ automaton from_wildcard(bytes_view expr) {
 
 #ifdef IRESEARCH_DEBUG
   // ensure nfa is sorted
-  static constexpr auto EXPECTED_NFA_PROPERTIES =
+  static constexpr auto kExpectedNfaProperties =
     fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
 
-  IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
-             nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+  IRS_ASSERT(kExpectedNfaProperties ==
+             nfa.Properties(kExpectedNfaProperties, true));
 #endif
 
   // nfa is sorted
@@ -214,11 +158,11 @@ automaton from_wildcard(bytes_view expr) {
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
-  static constexpr auto EXPECTED_DFA_PROPERTIES =
-    fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
+  static constexpr auto kExpectedDfaProperties =
+    kExpectedNfaProperties | fst::kIDeterministic;
 
-  IRS_ASSERT(EXPECTED_DFA_PROPERTIES ==
-             dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
+  IRS_ASSERT(kExpectedDfaProperties ==
+             dfa.Properties(kExpectedDfaProperties, true));
 #endif
 
   return dfa;

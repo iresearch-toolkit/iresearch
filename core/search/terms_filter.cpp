@@ -70,7 +70,7 @@ class terms_visitor {
   }
 
   void visit(score_t boost) {
-    size_t stat_index = collector_.stat_index();
+    auto stat_index = collector_.stat_index();
     collector_.visit(boost);
     collector_.stat_index(++stat_index);
   }
