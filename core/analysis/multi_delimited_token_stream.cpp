@@ -43,7 +43,7 @@ namespace {
 template<typename Derived>
 class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
  public:
-  MultiDelimitedTokenStreamBase() { std::get<increment>(attrs).value = 1; }
+  MultiDelimitedTokenStreamBase() = default;
 
   bool next() override {
     while (true) {
@@ -69,8 +69,8 @@ class MultiDelimitedTokenStreamBase : public MultiDelimitedAnalyser {
       if (next == data.end()) {
         data = {};
       } else {
-        auto ns = next + skip;
-        data = bytes_view(&(*ns), std::distance(ns, data.end()));
+        data =
+          bytes_view(&(*next) + skip, std::distance(next, data.end()) - skip);
       }
 
       return true;
