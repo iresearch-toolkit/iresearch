@@ -27,6 +27,7 @@ set(IReSearch_tests_sources
   ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/minhash_token_stream_test.cpp
+  ./analysis/multi_delimited_token_stream_tests.cpp
   ./analysis/pipeline_stream_tests.cpp
   ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
@@ -163,6 +164,7 @@ set_ipo(iresearch-tests-static)
 
 add_dependencies(iresearch-tests-static
   iresearch-analyzer-delimiter-static
+  iresearch-analyzer-multi-delimiter-static
   iresearch-analyzer-ngram-static
   iresearch-analyzer-text-static
   iresearch-analyzer-norm-static

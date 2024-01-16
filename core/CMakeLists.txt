@@ -343,6 +343,7 @@ add_dependencies(iresearch-static
   iresearch-build_identifier
   iresearch-build_version
   iresearch-analyzer-delimiter-static
+  iresearch-analyzer-multi-delimiter-static
   iresearch-analyzer-ngram-static
   iresearch-analyzer-text-static
   iresearch-analyzer-norm-static
@@ -392,6 +393,7 @@ endif ()
 
 target_link_libraries(iresearch-static
   PUBLIC iresearch-analyzer-delimiter-static
+  PUBLIC iresearch-analyzer-multi-delimiter-static
   PUBLIC iresearch-analyzer-ngram-static
   PUBLIC iresearch-analyzer-text-static
   PUBLIC iresearch-analyzer-norm-static
@@ -433,7 +435,7 @@ endif ()
 add_library(iresearch-analyzer-delimiter-static
   STATIC
   ./analysis/delimited_token_stream.cpp
-  )
+)
 
 set_ipo(iresearch-analyzer-delimiter-static)
 
@@ -442,11 +444,34 @@ set_target_properties(iresearch-analyzer-delimiter-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-delimiter-s
-  )
+)
 
 target_link_libraries(iresearch-analyzer-delimiter-static
   iresearch-static
-  )
+)
+
+################################################################################
+### analysis plugin : multi-delimiter
+################################################################################
+
+add_library(iresearch-analyzer-multi-delimiter-static
+  STATIC
+  ./analysis/multi_delimited_token_stream.cpp
+)
+
+set_ipo(iresearch-analyzer-multi-delimiter-static)
+
+set_target_properties(iresearch-analyzer-multi-delimiter-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-multi-delimiter-s
+)
+
+target_link_libraries(iresearch-analyzer-multi-delimiter-static
+  iresearch-static
+  iresearch-ofst
+)
 
 ################################################################################
 ### analysis plugin : text
