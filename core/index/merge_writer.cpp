@@ -139,11 +139,6 @@ class ProgressTracker {
 
   explicit operator bool() const noexcept { return valid_; }
 
-  void reset() noexcept {
-    hits_ = 0;
-    valid_ = true;
-  }
-
  private:
   const MergeWriter::FlushProgress* progress_;
   const size_t count_;  // call progress callback each `count_` hits
@@ -404,8 +399,6 @@ class CompoundColumnIterator final {
     iterators_.reserve(size);
     iterator_mask_.reserve(size);
   }
-
-  size_t size() const { return iterators_.size(); }
 
   void add(const SubReader& reader, const doc_map_f& doc_map) {
     auto it = reader.columns();
@@ -1805,7 +1798,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Handle empty values greater than the last document in sort column
   for (auto it = itrs.begin(); auto& reader : readers_) {
     if (!fill_doc_map(reader.doc_id_map, *it,
-                      doc_limits::min() + reader.reader->docs_count())) {
+                      doc_limits::min() +
+                        static_cast<doc_id_t>(reader.reader->docs_count()))) {
       return false;  // progress callback requested termination
     }
     ++it;

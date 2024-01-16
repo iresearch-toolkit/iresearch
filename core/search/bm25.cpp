@@ -353,7 +353,8 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           *res = c0 - c0 / (1.f + tf * inv_c1);
         } else {
           const float_t c1 =
-            state.norm_const + state.norm_length * state.norm();
+            state.norm_const +
+            state.norm_length * static_cast<float_t>(state.norm());
 
           *res = c0 - c0 * c1 / (c1 + tf);
         }
@@ -377,8 +378,9 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
   const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0;
 
   // precomputed idf value
-  stats->idf += float_t(std::log1p((docs_with_field - docs_with_term + 0.5) /
-                                   (docs_with_term + 0.5)));
+  stats->idf += float_t(
+    std::log1p((static_cast<double>(docs_with_field - docs_with_term) + 0.5) /
+               (static_cast<double>(docs_with_term) + 0.5)));
   IRS_ASSERT(stats->idf >= 0.f);
 
   // - stats were already initialized
@@ -392,7 +394,8 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
 
   stats->norm_const = k_ - kb;
   if (total_term_freq && docs_with_field) {
-    const float_t avg_dl = float_t(total_term_freq) / docs_with_field;
+    const auto avg_dl = static_cast<float_t>(total_term_freq) /
+                        static_cast<float_t>(docs_with_field);
     stats->norm_length = kb / avg_dl;
   } else {
     stats->norm_length = kb;

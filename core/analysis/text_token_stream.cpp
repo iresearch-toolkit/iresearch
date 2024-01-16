@@ -374,9 +374,9 @@ bool process_term(analysis::text_token_stream::state_t& state,
     case analysis::text_token_stream::UPPER:
       state.token.toUpper(state.options.locale);  // inplace case-conversion
       break;
-    default: {
-    }  // NOOP
-  };
+    case analysis::text_token_stream::NONE:
+      break;
+  }
 
   // collate value, e.g. remove accents
   if (state.transliterator) {
@@ -399,7 +399,8 @@ bool process_term(analysis::text_token_stream::state_t& state,
     const sb_symbol* value =
       reinterpret_cast<const sb_symbol*>(word_utf8.c_str());
 
-    value = sb_stemmer_stem(state.stemmer.get(), value, (int)word_utf8.size());
+    value = sb_stemmer_stem(state.stemmer.get(), value,
+                            static_cast<int>(word_utf8.size()));
 
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
@@ -1053,18 +1054,17 @@ bool text_token_stream::next_word() {
       continue;
     }
 
+    // TODO(MBkkt) simdutf::utf8_length_from_utf16
     auto utf8_length = [data = &state_->data](uint32_t begin,
                                               uint32_t end) noexcept {
       uint32_t length = 0;
       while (begin < end) {
         const auto cp = data->char32At(begin);
-
-        // icu::UnicodeString::kInvalidUChar is private
-        if (IRS_UNLIKELY(0xFFFF == cp)) {
-          return uint32_t{0};
+        if (cp == utf8_utils::kInvalidChar32) {
+          IRS_ASSERT(length == 0);
+          return 0U;
         }
-
-        length += utf8_utils::cp_length(cp);
+        length += utf8_utils::LengthFromChar32(cp);
         begin += 1U + uint32_t{!U_IS_BMP(cp)};
       }
       return length;
@@ -1092,13 +1092,13 @@ bool text_token_stream::next_ngram() {
     inc.value = 1;
     // find the first ngram > min
     do {
-      state_->ngram.it = utf8_utils::next(state_->ngram.it, end);
+      state_->ngram.it = utf8_utils::Next(state_->ngram.it, end);
     } while (++state_->ngram.length < state_->options.min_gram &&
              state_->ngram.it != end);
   } else {
     // not first ngram in a word
     inc.value = 0;  // staying on the current pos
-    state_->ngram.it = utf8_utils::next(state_->ngram.it, end);
+    state_->ngram.it = utf8_utils::Next(state_->ngram.it, end);
     ++state_->ngram.length;
   }
 

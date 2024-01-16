@@ -79,25 +79,15 @@ irs::bytes_view kDummy;  // placeholder for visiting logic in columnstore
 struct column_meta {
  public:
   column_meta() = default;
-  column_meta(column_meta&& rhs) noexcept
-    : name(std::move(rhs.name)), id(rhs.id) {
-    rhs.id = field_limits::invalid();
-  }
 
+  column_meta(column_meta&&) = delete;
   column_meta(const column_meta&) = delete;
+  column_meta& operator=(column_meta&&) = delete;
   column_meta& operator=(const column_meta&) = delete;
-  column_meta& operator=(column_meta&& rhs) noexcept = delete;
-
-  bool operator==(const column_meta& rhs) const noexcept {
-    return name == rhs.name;
-  }
 
   std::string name;
   field_id id{field_limits::invalid()};
 };
-
-static_assert(std::is_nothrow_move_constructible_v<column_meta>,
-              "default move constructor expected");
 
 struct format_traits {
   IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
@@ -135,7 +125,7 @@ enum ColumnProperty : uint32_t {
   CP_MASK = 1 << 2,           // column contains no data
   CP_COLUMN_DENSE = 1 << 3,   // column index is dense
   CP_COLUMN_ENCRYPT = 1 << 4  // column contains encrypted data
-};                            // ColumnProperty
+};
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
@@ -255,23 +245,6 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     throw irs::index_error("error while reading compact");
   }
 }
-
-struct ColumnMetaEq : ValueRefEq<column_meta*> {
-  using is_transparent = void;
-  using Self::operator();
-
-  bool operator()(const Ref& lhs,
-                  const hashed_string_view& rhs) const noexcept {
-    return lhs.ref->name == rhs;
-  }
-
-  bool operator()(const hashed_string_view& lhs,
-                  const Ref& rhs) const noexcept {
-    return this->operator()(rhs, lhs);
-  }
-};
-
-using name_to_column_map = flat_hash_set<ColumnMetaEq>;
 
 class meta_writer final {
  public:
@@ -577,7 +550,7 @@ class index_block {
   uint64_t* offset_{offsets_};
   doc_id_t* key_{keys_};
   uint32_t flushed_{};  // number of flushed items
-};                      // index_block
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer
@@ -686,7 +659,7 @@ class writer final : public irs::columnstore_writer {
       // do not take into account last block
       const auto blocks_count = std::max(1U, column_index_.total());
       avg_block_count_ = block_index_.flushed() / blocks_count;
-      avg_block_size_ = length_ / blocks_count;
+      avg_block_size_ = static_cast<uint32_t>(length_ / blocks_count);
 
       // we don't care of tail block size
       prev_block_size_ = block_buf_.size();
@@ -976,7 +949,7 @@ class block_cache : irs::util::noncopyable {
 
  private:
   std::deque<Block, Allocator> cache_;  // pointers remain valid
-};                                      // block_cache
+};
 
 template<typename Block, typename Allocator>
 struct block_cache_traits {
@@ -1131,7 +1104,7 @@ class dense_block : util::noncopyable {
         return false;
       }
 
-      value_ = base_ + std::distance(begin_, it_);
+      value_ = base_ + static_cast<uint32_t>(std::distance(begin_, it_));
       next_value();
 
       return true;
@@ -1200,7 +1173,7 @@ class dense_block : util::noncopyable {
     encode::avg::visit_block_packed_tail(
       in, size, reinterpret_cast<uint64_t*>(buf.data()),
       [begin](uint64_t offset) mutable {
-        *begin = offset;
+        *begin = static_cast<uint32_t>(offset);
         ++begin;
       });
 
@@ -1293,7 +1266,7 @@ class dense_fixed_offset_block : util::noncopyable {
     doc_id_t value_min_{};                        // min doc_id
     doc_id_t value_end_{};                        // after the last valid doc id
     doc_id_t value_back_{};                       // last valid doc id
-  };                                              // iterator
+  };
 
   void load(index_input& in, compression::decompressor* decomp,
             encryption::stream* cipher, bstring& buf) {
@@ -1409,7 +1382,7 @@ class sparse_mask_block : util::noncopyable {
   // in the worst case
   doc_id_t keys_[INDEX_BLOCK_SIZE];
   doc_id_t size_{};  // number of documents in a block
-};                   // sparse_mask_block
+};
 
 class dense_mask_block {
  public:
@@ -1669,9 +1642,7 @@ class column : public irs::column_reader, private util::noncopyable {
   using ptr = std::unique_ptr<column>;
 
   explicit column(field_id id, ColumnProperty props) noexcept
-    : props_(props), id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
-
-  virtual ~column() = default;
+    : id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
 
   field_id id() const final { return id_; }
 
@@ -1704,7 +1675,6 @@ class column : public irs::column_reader, private util::noncopyable {
   bool empty() const noexcept { return 0 == size(); }
   uint32_t avg_block_size() const noexcept { return avg_block_size_; }
   uint32_t avg_block_count() const noexcept { return avg_block_count_; }
-  ColumnProperty props() const noexcept { return props_; }
   compression::decompressor* decompressor() const noexcept {
     return decomp_.get();
   }
@@ -1719,11 +1689,10 @@ class column : public irs::column_reader, private util::noncopyable {
   uint32_t count_{};
   uint32_t avg_block_size_{};
   uint32_t avg_block_count_{};
-  ColumnProperty props_{CP_SPARSE};
   field_id id_;
   std::optional<std::string> name_;
   bool encrypted_{false};  // cached encryption mark
-};                         // column
+};
 
 template<typename Column>
 class column_iterator : public irs::doc_iterator {
@@ -1944,7 +1913,7 @@ class sparse_column final : public column {
     doc_id_t key;                                // min key in a block
     uint64_t offset;                             // block offset
     mutable std::atomic<const block_t*> pblock;  // pointer to cached block
-  };                                             // block_ref
+  };
 
   typedef std::vector<block_ref> refs_t;
 
@@ -1990,7 +1959,7 @@ class sparse_column final : public column {
 
   const context_provider* ctxs_;
   refs_t refs_;  // blocks index
-};               // sparse_column
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class dense_fixed_offset_column
@@ -2130,7 +2099,7 @@ class dense_fixed_offset_column final : public column {
   const context_provider* ctxs_;
   refs_t refs_;
   doc_id_t min_{};  // min key
-};                  // dense_fixed_offset_column
+};
 
 template<>
 class dense_fixed_offset_column<dense_mask_block> final : public column {
@@ -2251,7 +2220,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   };
 
   doc_id_t min_{};  // min key (less than any key in column)
-};                  // dense_fixed_offset_column
+};
 
 irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(
   ColumnHint) const {

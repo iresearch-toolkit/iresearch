@@ -41,13 +41,13 @@ namespace {
 
 using namespace irs;
 
-constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
-constexpr std::string_view BREAK_PARAM_NAME{"break"};
+constexpr std::string_view kCaseConvertParamName{"case"};
+constexpr std::string_view kBreakParamName{"break"};
 
 constexpr frozen::unordered_map<
   std::string_view,
   analysis::segmentation_token_stream::options_t::case_convert_t, 3>
-  CASE_CONVERT_MAP = {
+  kCaseConvertMap = {
     {"lower",
      analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
     {"none",
@@ -59,7 +59,7 @@ constexpr frozen::unordered_map<
 constexpr frozen::unordered_map<
   std::string_view,
   analysis::segmentation_token_stream::options_t::word_break_t, 3>
-  BREAK_CONVERT_MAP = {
+  kBreakConvertMap = {
     {"all", analysis::segmentation_token_stream::options_t::word_break_t::ALL},
     {"alpha",
      analysis::segmentation_token_stream::options_t::word_break_t::ALPHA},
@@ -74,43 +74,43 @@ bool parse_vpack_options(
     IRS_LOG_ERROR("Slice for segmentation_token_stream is not an object");
     return false;
   }
-  if (auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);
+  if (auto case_convert_slice = slice.get(kCaseConvertParamName);
       !case_convert_slice.isNone()) {
     if (!case_convert_slice.isString()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid type '", CASE_CONVERT_PARAM_NAME,
+        absl::StrCat("Invalid type '", kCaseConvertParamName,
                      "' (string expected) for segmentation_token_stream from "
                      "VPack arguments"));
       return false;
     }
     auto case_convert = case_convert_slice.stringView();
-    auto itr = CASE_CONVERT_MAP.find(
+    auto itr = kCaseConvertMap.find(
       std::string_view(case_convert.data(), case_convert.size()));
 
-    if (itr == CASE_CONVERT_MAP.end()) {
+    if (itr == kCaseConvertMap.end()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid value in '", CASE_CONVERT_PARAM_NAME,
+        absl::StrCat("Invalid value in '", kCaseConvertParamName,
                      "' for segmentation_token_stream from VPack arguments"));
       return false;
     }
     options.case_convert = itr->second;
   }
-  if (auto break_type_slice = slice.get(BREAK_PARAM_NAME);
+  if (auto break_type_slice = slice.get(kBreakParamName);
       !break_type_slice.isNone()) {
     if (!break_type_slice.isString()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid type '", BREAK_PARAM_NAME,
+        absl::StrCat("Invalid type '", kBreakParamName,
                      "' (string expected) for segmentation_token_stream from "
                      "VPack arguments"));
       return false;
     }
     auto break_type = break_type_slice.stringView();
-    auto itr = BREAK_CONVERT_MAP.find(
+    auto itr = kBreakConvertMap.find(
       std::string_view(break_type.data(), break_type.size()));
 
-    if (itr == BREAK_CONVERT_MAP.end()) {
+    if (itr == kBreakConvertMap.end()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid value in '", BREAK_PARAM_NAME,
+        absl::StrCat("Invalid value in '", kBreakParamName,
                      "' for segmentation_token_stream from VPack arguments"));
       return false;
     }
@@ -124,32 +124,32 @@ bool make_vpack_config(
   VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
-    auto it = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+    auto it = std::find_if(kCaseConvertMap.begin(), kCaseConvertMap.end(),
                            [v = options.case_convert](
-                             const decltype(CASE_CONVERT_MAP)::value_type& m) {
+                             const decltype(kCaseConvertMap)::value_type& m) {
                              return m.second == v;
                            });
-    if (it != CASE_CONVERT_MAP.end()) {
-      builder->add(CASE_CONVERT_PARAM_NAME, VPackValue(it->first));
+    if (it != kCaseConvertMap.end()) {
+      builder->add(kCaseConvertParamName, VPackValue(it->first));
     } else {
       IRS_LOG_WARN(absl::StrCat(
-        "Invalid value in '", CASE_CONVERT_PARAM_NAME,
+        "Invalid value in '", kCaseConvertParamName,
         "' for normalizing segmentation_token_stream from Value is: ",
         options.case_convert));
       return false;
     }
   }
   {
-    auto it = std::find_if(BREAK_CONVERT_MAP.begin(), BREAK_CONVERT_MAP.end(),
+    auto it = std::find_if(kBreakConvertMap.begin(), kBreakConvertMap.end(),
                            [v = options.word_break](
-                             const decltype(BREAK_CONVERT_MAP)::value_type& m) {
+                             const decltype(kBreakConvertMap)::value_type& m) {
                              return m.second == v;
                            });
-    if (it != BREAK_CONVERT_MAP.end()) {
-      builder->add(BREAK_PARAM_NAME, VPackValue(it->first));
+    if (it != kBreakConvertMap.end()) {
+      builder->add(kBreakParamName, VPackValue(it->first));
     } else {
       IRS_LOG_WARN(absl::StrCat(
-        "Invalid value in '", BREAK_PARAM_NAME,
+        "Invalid value in '", kBreakParamName,
         "' for normalizing segmentation_token_stream from Value is: ",
         options.word_break));
       return false;
@@ -272,20 +272,15 @@ bool accept_token(Iterator begin, Iterator end, word_break_t wb) {
     case word_break_t::ALL:
       return true;
     case word_break_t::GRAPHIC:
-      return std::find_if_not(begin, end, utf8_utils::char_is_white_space) !=
-             end;
+      return std::find_if_not(begin, end, utf8_utils::CharIsWhiteSpace) != end;
     case word_break_t::ALPHA:
-      return std::find_if(begin, end, utf8_utils::char_is_alphanumeric) != end;
-    default:
-      IRS_ASSERT(false);
-      return false;
+      return std::find_if(begin, end, utf8_utils::CharIsAlphanumeric) != end;
   }
 }
 
 }  // namespace
 
-namespace irs {
-namespace analysis {
+namespace irs::analysis {
 
 using namespace boost::text;
 
@@ -378,5 +373,4 @@ bool segmentation_token_stream::reset(std::string_view data) {
   return true;
 }
 
-}  // namespace analysis
-}  // namespace irs
+}  // namespace irs::analysis

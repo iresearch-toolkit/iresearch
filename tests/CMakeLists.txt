@@ -27,6 +27,7 @@ set(IReSearch_tests_sources
   ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/minhash_token_stream_test.cpp
+  ./analysis/multi_delimited_token_stream_tests.cpp
   ./analysis/pipeline_stream_tests.cpp
   ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
@@ -163,6 +164,7 @@ set_ipo(iresearch-tests-static)
 
 add_dependencies(iresearch-tests-static
   iresearch-analyzer-delimiter-static
+  iresearch-analyzer-multi-delimiter-static
   iresearch-analyzer-ngram-static
   iresearch-analyzer-text-static
   iresearch-analyzer-norm-static
@@ -206,10 +208,12 @@ if (MSVC)
 endif ()
 
 include_directories(iresearch-tests-static
-  ${EXTERNAL_INCLUDE_DIRS}
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
+)
+include_directories(iresearch-tests-static SYSTEM
+  ${EXTERNAL_INCLUDE_DIRS}
   ${ICU_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}

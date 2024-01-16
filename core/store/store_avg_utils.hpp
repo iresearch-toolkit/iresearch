@@ -37,8 +37,9 @@ inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin,
   const uint64_t base = *begin;
   const std::ptrdiff_t distance = std::distance(begin, end);
 
-  const uint64_t avg = std::lround(static_cast<double_t>(*end - base) /
-                                   (distance > 0 ? distance : 1));
+  const uint64_t avg =
+    std::lround(static_cast<double>(*end - base) /
+                (distance > 0 ? static_cast<double>(distance) : 1.0));
 
   uint64_t value = 0;
   *begin++ = 0;  // zig_zag_encode64(*begin - base - avg*0) == 0
@@ -61,8 +62,8 @@ inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin,
   const std::ptrdiff_t distance =
     std::distance(begin, end);  // prevent division by 0
 
-  const uint32_t avg = std::lround(static_cast<float_t>(*end - base) /
-                                   (distance > 0 ? distance : 1));
+  const auto avg = static_cast<uint32_t>(std::lround(
+    (*end - base) / (distance > 0 ? static_cast<double>(distance) : 1.0)));
 
   *begin++ = 0;  // zig_zag_encode32(*begin - base - avg*0) == 0
   for (uint32_t avg_base = base; begin <= end; ++begin) {

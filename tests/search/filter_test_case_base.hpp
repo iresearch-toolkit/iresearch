@@ -91,11 +91,11 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
       }
     }
 
-    void collect(irs::bytes_view in) final {
+    void collect(irs::bytes_view /*in*/) final {
       // NOOP
     }
 
-    void write(irs::data_output& out) const final {
+    void write(irs::data_output& /*out*/) const final {
       // NOOP
     }
 
@@ -120,11 +120,11 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
       }
     }
 
-    void collect(irs::bytes_view in) final {
+    void collect(irs::bytes_view /*in*/) final {
       // NOOP
     }
 
-    void write(irs::data_output& out) const final {
+    void write(irs::data_output& /*out*/) const final {
       // NOOP
     }
 
@@ -157,7 +157,7 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
     }
   }
 
-  irs::IndexFeatures index_features() const final {
+  irs::IndexFeatures index_features() const override {
     return irs::IndexFeatures::NONE;
   }
 
@@ -232,7 +232,8 @@ struct frequency_sort : public irs::ScorerBase<frequency_sort, stats_t> {
     size_t docs_count{};
     const irs::term_meta* meta_attr;
 
-    void collect(const irs::SubReader& segment, const irs::term_reader& field,
+    void collect(const irs::SubReader& /*segment*/,
+                 const irs::term_reader& /*field*/,
                  const irs::attribute_provider& term_attrs) final {
       meta_attr = irs::get<irs::term_meta>(term_attrs);
       ASSERT_NE(nullptr, meta_attr);
@@ -241,11 +242,11 @@ struct frequency_sort : public irs::ScorerBase<frequency_sort, stats_t> {
 
     void reset() noexcept final { docs_count = 0; }
 
-    void collect(irs::bytes_view in) final {
+    void collect(irs::bytes_view /*in*/) final {
       // NOOP
     }
 
-    void write(irs::data_output& out) const final {
+    void write(irs::data_output& /*out*/) const final {
       // NOOP
     }
   };
@@ -358,6 +359,13 @@ class FilterTestCaseBase : public index_test_base {
                          const irs::IndexReader& index,
                          std::string_view source_location = {});
 
+  static void MakeResult(const irs::filter& filter,
+                         std::span<const irs::Scorer::ptr> order,
+                         const irs::IndexReader& rdr,
+                         std::vector<irs::doc_id_t>& result,
+                         bool score_must_be_present = true,
+                         bool reverse = false);
+
   // Validate document order
   static void CheckQuery(const irs::filter& filter,
                          std::span<const irs::Scorer::ptr> order,
@@ -413,7 +421,8 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  void prepare(const irs::SubReader& segment, const irs::term_reader& field,
+  void prepare(const irs::SubReader& /*segment*/,
+               const irs::term_reader& /*field*/,
                const irs::seek_term_iterator& terms) noexcept final {
     it_ = &terms;
     ++prepare_calls_counter_;

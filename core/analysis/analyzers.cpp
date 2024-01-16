@@ -106,7 +106,7 @@ constexpr std::string_view kAnalyzerParam = "analyzer";
 std::string_view GetType(velocypack::Slice& input) {
   IRS_ASSERT(input.isObject());
   input = input.get(kAnalyzerParam);
-  if (input.isNone() || input.isNull() || input.isEmptyObject()) {
+  if (input.isNone() || input.isNull()) {
     return irs::string_token_stream::type_name();
   }
   if (!input.isObject()) {
@@ -247,10 +247,10 @@ bool NormalizeAnalyzer(velocypack::Slice input, velocypack::Builder& output) {
   if (type.empty()) {
     return false;
   }
-  velocypack::ObjectBuilder scope{&output, kAnalyzerParam};
   if (type == irs::string_token_stream::type_name()) {
     return true;
   }
+  velocypack::ObjectBuilder scope{&output, kAnalyzerParam};
   output.add(kTypeParam, velocypack::Value{type});
   input = input.get(kPropertiesParam);
   if (input.isNone()) {

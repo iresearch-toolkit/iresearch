@@ -132,6 +132,7 @@ if (NOT TARGET absl::base)
     set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
     set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(ABSL_USE_SYSTEM_INCLUDES ON CACHE BOOL "" FORCE)
     expand_path(${ABSL_ROOT} ABSL_ROOT_EXP)
     add_subdirectory(${ABSL_ROOT_EXP}
       ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-abseil-cpp.dir

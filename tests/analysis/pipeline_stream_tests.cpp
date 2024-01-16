@@ -35,7 +35,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#ifndef IRESEARCH_DLL
 namespace {
 
 class pipeline_test_analyzer
@@ -186,7 +185,6 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data,
     auto term_value =
       std::string(irs::ViewCast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:") << term_value);
-    auto old_pos = pos;
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
     ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),
@@ -864,5 +862,3 @@ TEST(pipeline_token_stream_test, members_visitor) {
   irs::analysis::pipeline_token_stream pipe3(std::move(pipeline_options3));
   assert_pipeline_members(pipe3, expected_nested);
 }
-
-#endif

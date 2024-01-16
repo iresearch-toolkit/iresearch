@@ -133,8 +133,8 @@ void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
     };
 
     // skip step of the level
-    size_t step =
-      skip_0_ * static_cast<size_t>(std::pow(skip_n_, --max_levels));
+    uint32_t step =
+      skip_0_ * static_cast<uint32_t>(std::pow(skip_n_, --max_levels));
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {

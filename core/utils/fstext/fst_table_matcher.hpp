@@ -89,10 +89,10 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
         fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
-        IRS_ASSERT(range.min <= std::numeric_limits<uint32_t>::max());
-        IRS_ASSERT(range.max <= std::numeric_limits<uint32_t>::max());
+        IRS_ASSERT(range.min <= std::numeric_limits<uint16_t>::max());
+        IRS_ASSERT(range.max <= std::numeric_limits<uint16_t>::max());
         range.max +=
-          decltype(range.max)(range.max < std::numeric_limits<uint32_t>::max());
+          decltype(range.max)(range.max < std::numeric_limits<uint16_t>::max());
 
         labels.emplace(range.min);
         labels.emplace(range.max);
@@ -344,6 +344,6 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   const StateId* state_end_{};    // Matcher state end
   const StateId* state_{};        // Matcher current state
   bool error_;                    // Matcher validity
-};                                // TableMatcher
+};
 
 }  // namespace fst

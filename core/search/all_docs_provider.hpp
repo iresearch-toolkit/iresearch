@@ -40,9 +40,6 @@ class AllDocsProvider {
     all_docs_ = provider ? std::move(provider) : ProviderFunc{&Default};
   }
 
- protected:
-  ~AllDocsProvider() = default;
-
  private:
   ProviderFunc all_docs_{&Default};
 };

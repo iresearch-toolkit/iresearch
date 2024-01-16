@@ -267,6 +267,6 @@ class buffered_index_input : public index_input {
   byte_type* end_{buf_};    // end of the valid bytes in the buffer
   size_t start_{};          // position of the buffer in file
   size_t buf_size_{};       // size of the buffer in bytes
-};                          // buffered_index_input
+};
 
 }  // namespace irs

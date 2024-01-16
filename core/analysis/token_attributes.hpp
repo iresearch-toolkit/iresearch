@@ -110,25 +110,21 @@ class position : public attribute, public attribute_provider {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept { return "position"; }
 
-  static position* empty() noexcept;
+  static position& empty() noexcept;
 
   template<typename Provider>
   static position& get_mutable(Provider& attrs) {
     auto* pos = irs::get_mutable<position>(&attrs);
-    return pos ? *pos : *empty();
-  }
-
-  virtual value_t seek(value_t target) {
-    while ((value_ < target) && next())
-      ;
-    return value_;
+    return pos ? *pos : empty();
   }
 
   value_t value() const noexcept { return value_; }
 
-  virtual void reset() = 0;
-
   virtual bool next() = 0;
+
+  virtual value_t seek(value_t /*target*/) { return pos_limits::invalid(); }
+
+  virtual void reset() {}
 
  protected:
   value_t value_{pos_limits::invalid()};

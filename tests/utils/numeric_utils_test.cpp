@@ -2046,14 +2046,17 @@ TEST(numeric_utils_test, double_t_traits) {
 TEST(numeric_utils_test, float_traits) {
   typedef float type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
+  (void)traits_t{};
 }
 
 TEST(numeric_utils_test, double_traits) {
   typedef double type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
+  (void)traits_t{};
 }
 
 TEST(numeric_utils_test, long_double_traits) {
   typedef long double type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
+  (void)traits_t{};
 }

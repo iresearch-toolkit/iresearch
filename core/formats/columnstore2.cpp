@@ -768,7 +768,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
     payload_reader<encrypted_value_reader<false>> operator()(
       index_input::ptr&& stream, encryption::stream& cipher) const {
       return {ctx->data_, ctx->len_, std::move(stream), &cipher, ctx->data_};
-    };
+    }
 
     payload_reader<value_reader<false>> operator()(
       index_input::ptr&& stream) const {
@@ -966,7 +966,7 @@ doc_iterator::ptr fixed_length_column::iterator(ColumnHint hint) const {
       index_input::ptr&& stream, encryption::stream& cipher) const {
       return {ctx->blocks_.data(), ctx->len_, std::move(stream), &cipher,
               ctx->len_};
-    };
+    }
 
     payload_reader<value_reader<false>> operator()(
       index_input::ptr&& stream) const {
@@ -1263,7 +1263,7 @@ doc_iterator::ptr sparse_column::iterator(ColumnHint hint) const {
     payload_reader<encrypted_value_reader<true>> operator()(
       index_input::ptr&& stream, encryption::stream& cipher) const {
       return {ctx->blocks_.data(), std::move(stream), &cipher, size_t{0}};
-    };
+    }
 
     payload_reader<value_reader<true>> operator()(
       index_input::ptr&& stream) const {
@@ -1291,12 +1291,12 @@ constexpr column_factory_f kFactories[]{
   &dense_fixed_length_column::read};
 
 bool less(std::string_view lhs, std::string_view rhs) noexcept {
-  if (IsNull(lhs)) {
-    return !IsNull(rhs);
-  }
-
   if (IsNull(rhs)) {
     return false;
+  }
+
+  if (IsNull(lhs)) {
+    return true;
   }
 
   return lhs < rhs;

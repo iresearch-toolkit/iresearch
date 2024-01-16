@@ -80,7 +80,8 @@ class timer_states : public irs::singleton<timer_states> {
 
     for (auto& entry : state_map_) {
       if (!visitor(entry.first, entry.second.count,
-                   size_t(entry.second.time * usec))) {  // truncate 'time_us'
+                   size_t(static_cast<double>(entry.second.time) *
+                          usec))) {  // truncate 'time_us'
         return false;
       }
     }
@@ -167,10 +168,10 @@ void flush_stats(std::ostream& out) {
   for (auto& entry : ordered_stats) {
     auto& key = entry.first;
     auto& count = entry.second.first;
-    auto& time = entry.second.second;
-    out << key << "\tcalls:" << count << ",\ttime: " << time / 1000
-        << " us,\tavg call: " << time / 1000 / (double)count << " us"
-        << std::endl;
+    auto time = static_cast<double>(entry.second.second);
+    out << key << "\tcalls:" << count << ",\ttime: " << time / 1000.0
+        << " us,\tavg call: " << time / 1000.0 / static_cast<double>(count)
+        << " us" << std::endl;
   }
 }
 

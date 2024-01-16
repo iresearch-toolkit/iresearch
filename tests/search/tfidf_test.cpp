@@ -240,8 +240,6 @@ TEST_P(tfidf_test_case, test_load) {
   ASSERT_NE(nullptr, scorer);
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST_P(tfidf_test_case, make_from_bool) {
   // `withNorms` argument
   {
@@ -315,8 +313,6 @@ TEST_P(tfidf_test_case, make_from_array) {
             irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                               "[ [] ]"));
 }
-
-#endif  // IRESEARCH_DLL
 
 TEST_P(tfidf_test_case, test_normalize_features) {
   // default norms
@@ -1379,8 +1375,6 @@ TEST_P(tfidf_test_case, test_query_norms) {
   test_query_norms(irs::type<irs::Norm>::id(), &irs::Norm::MakeWriter);
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST_P(tfidf_test_case, test_collector_serialization) {
   // initialize test data
   {
@@ -1648,8 +1642,6 @@ TEST_P(tfidf_test_case, test_order) {
   EXPECT_GT(counter.max, 0);
   counter.Reset();
 }
-
-#endif  // IRESEARCH_DLL
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 

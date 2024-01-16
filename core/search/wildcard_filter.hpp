@@ -61,8 +61,6 @@ struct by_wildcard_options : by_wildcard_filter_options {
 // User-side wildcard filter
 class by_wildcard final : public filter_base<by_wildcard_options> {
  public:
-  static ptr make();
-
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
                                size_t scored_terms_limit);

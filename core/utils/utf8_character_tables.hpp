@@ -25,13 +25,14 @@
 #include <frozen/map.h>
 #include <frozen/set.h>
 
-namespace irs {
-namespace utf8_utils {
+#include <cstdint>
 
-constexpr frozen::set<uint32_t, 10> WHITE_SPACE_TABLE = {
+namespace irs::utf8_utils {
+
+inline constexpr frozen::set<uint32_t, 10> kWhiteSpaceTable = {
   0x9, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2028, 0x202f, 0x205f, 0x3000};
 
-constexpr frozen::map<uint32_t, uint16_t, 3566> GENERAL_CATEGORY_TABLE = {
+inline constexpr frozen::map<uint32_t, uint16_t, 3566> kGeneralCategoryTable = {
   {0x00, 0x4363},     {0x20, 0x5a73},     {0x21, 0x506f},    {0x24, 0x5363},
   {0x25, 0x506f},     {0x28, 0x5073},     {0x29, 0x5065},    {0x2a, 0x506f},
   {0x2b, 0x536d},     {0x2c, 0x506f},     {0x2d, 0x5064},    {0x2e, 0x506f},
@@ -926,5 +927,4 @@ constexpr frozen::map<uint32_t, uint16_t, 3566> GENERAL_CATEGORY_TABLE = {
   {0x100000, 0x436f}, {0x10fffe, 0x436e},
 };
 
-}  // namespace utf8_utils
-}  // namespace irs
+}  // namespace irs::utf8_utils

@@ -519,12 +519,12 @@ struct maker<Class, false> {
 }  // namespace irs::memory
 
 // Default inline implementation of a factory method, instantiation on heap
-#define DEFINE_FACTORY_INLINE(class_name)                                 \
-  template<typename Class, bool>                                          \
-  friend struct irs::memory::maker;                                       \
-  template<typename _T, typename... Args>                                 \
-  static ptr make(Args&&... args) {                                       \
-    using type = std::enable_if_t<std::is_base_of_v<class_name, _T>, _T>; \
-    using maker_t = irs::memory::maker<type>;                             \
-    return maker_t::template make(std::forward<Args>(args)...);           \
-  }
+#define DEFINE_FACTORY_INLINE(class_name)                                     \
+  template<typename Type, typename... Args>                                   \
+  static ptr make(Args&&... args) {                                           \
+    using type = std::enable_if_t<std::is_base_of_v<class_name, Type>, Type>; \
+    using maker_t = irs::memory::maker<type>;                                 \
+    return maker_t::template make(std::forward<Args>(args)...);               \
+  }                                                                           \
+  template<typename Class, bool>                                              \
+  friend struct irs::memory::maker

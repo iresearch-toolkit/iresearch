@@ -91,7 +91,7 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
 
   size_t Hash() const noexcept { return std::hash<str_t>()(str_); }
 
-  StringRefWeight Quantize(float delta = kDelta) const noexcept {
+  StringRefWeight Quantize(float /*delta*/ = kDelta) const noexcept {
     return *this;
   }
 

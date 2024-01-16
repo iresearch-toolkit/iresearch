@@ -2189,10 +2189,8 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2235,11 +2233,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2302,11 +2298,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2369,11 +2363,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("f_x%"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2439,11 +2431,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fxo"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2489,11 +2479,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2547,10 +2535,8 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
       .term = irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2667,11 +2653,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2846,11 +2830,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3025,11 +3007,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("f%x"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3148,11 +3128,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fkx"));
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3272,11 +3250,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare({.index = rdr});
-#ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
               dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
-#endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);

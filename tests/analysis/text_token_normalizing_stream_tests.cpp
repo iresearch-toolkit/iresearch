@@ -32,12 +32,6 @@ class normalizing_token_stream_tests : public ::testing::Test {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-#ifndef IRESEARCH_DLL
-
 TEST_F(normalizing_token_stream_tests, consts) {
   static_assert("norm" ==
                 irs::type<irs::analysis::normalizing_token_stream>::name());
@@ -145,8 +139,6 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_FALSE(stream.next());
   }
 }
-
-#endif  // IRESEARCH_DLL
 
 TEST_F(normalizing_token_stream_tests, test_load) {
   // load jSON object

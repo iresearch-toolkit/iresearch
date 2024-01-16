@@ -413,7 +413,8 @@ class automaton_test_base : public test_base {
   static void assert_arc(const irs::automaton::Arc& actual_arc,
                          irs::automaton::Arc::Label expected_label,
                          irs::automaton::StateId expected_target) {
-    ASSERT_EQ(expected_label, actual_arc.ilabel);
+    ASSERT_EQ(expected_label, actual_arc.ilabel)
+      << actual_arc.min << " " << actual_arc.max;
     ASSERT_EQ(expected_label, actual_arc.olabel);
     ASSERT_EQ(expected_target, actual_arc.nextstate);
     ASSERT_EQ(fst::fsa::BooleanWeight::One(), actual_arc.weight);
@@ -425,7 +426,9 @@ class automaton_test_base : public test_base {
                                 irs::automaton::StateId>>& expected_arcs) {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(state, &actual_arcs);
-    ASSERT_EQ(expected_arcs.size(), actual_arcs.narcs);
+    if (expected_arcs.size() != actual_arcs.narcs) {
+      ASSERT_EQ(expected_arcs.size(), actual_arcs.narcs);
+    }
 
     auto* actual_arc = actual_arcs.arcs;
     for (auto& expected_arc : expected_arcs) {
@@ -455,7 +458,7 @@ class automaton_test_base : public test_base {
 class utf8_transitions_builder_test : public automaton_test_base {};
 
 TEST_F(utf8_transitions_builder_test, no_arcs) {
-  irs::utf8_transitions_builder builder;
+  irs::Utf8TransitionsBuilder builder;
 
   // no default transition
   {
@@ -463,7 +466,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
     auto start = a.AddState();
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs;
-    builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
+    builder.Insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
     ASSERT_EQ(1, a.NumStates());
@@ -486,7 +489,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
     auto intermediate2 = a.NumStates() + 2;
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs;
-    builder.insert(a, start, finish, arcs.begin(), arcs.end());
+    builder.Insert(a, start, finish, arcs.begin(), arcs.end());
 
     assert_properties(a);
     ASSERT_EQ(5, a.NumStates());
@@ -496,12 +499,12 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(4, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{0, 127}, finish);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{192, 223},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(0, 127), finish);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel::From(194, 223),
                  intermediate0);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{224, 239},
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel::From(224, 239),
                  intermediate1);
-      assert_arc(actual_arcs.arcs[3], irs::range_label{240, 255},
+      assert_arc(actual_arcs.arcs[3], irs::RangeLabel::From(240, 244),
                  intermediate2);
     }
 
@@ -510,7 +513,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191), finish);
     }
 
     // arcs from 'intermediate1'
@@ -518,7 +521,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191),
                  intermediate0);
     }
 
@@ -527,7 +530,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191),
                  intermediate1);
     }
 
@@ -541,7 +544,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
 }
 
 TEST_F(utf8_transitions_builder_test, empty_arc) {
-  irs::utf8_transitions_builder builder;
+  irs::Utf8TransitionsBuilder builder;
 
   // no default transition
   {
@@ -551,7 +554,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
       {irs::kEmptyStringView<irs::byte_type>, finish}};
-    builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
+    builder.Insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
     ASSERT_EQ(2, a.NumStates());
@@ -582,7 +585,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
       {irs::kEmptyStringView<irs::byte_type>, finish}};
-    builder.insert(a, start, finish, arcs.begin(), arcs.end());
+    builder.Insert(a, start, finish, arcs.begin(), arcs.end());
 
     assert_properties(a);
     ASSERT_EQ(5, a.NumStates());
@@ -592,12 +595,12 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(4, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{0, 127}, finish);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{192, 223},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(0, 127), finish);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel::From(194, 223),
                  intermediate0);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{224, 239},
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel::From(224, 239),
                  intermediate1);
-      assert_arc(actual_arcs.arcs[3], irs::range_label{240, 255},
+      assert_arc(actual_arcs.arcs[3], irs::RangeLabel::From(240, 244),
                  intermediate2);
     }
 
@@ -606,7 +609,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish);
+      assert_arc(actual_arcs.arcs[0], irs::kRhoLabel, finish);
     }
 
     // arcs from 'intermediate1'
@@ -614,8 +617,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::kRhoLabel, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -623,8 +625,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::kRhoLabel, intermediate1);
     }
 
     // arcs from 'finish0'
@@ -637,7 +638,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
 }
 
 TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
-  irs::utf8_transitions_builder builder;
+  irs::Utf8TransitionsBuilder builder;
 
   // no default transition
   {
@@ -659,7 +660,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
                       finish1);
     std::sort(arcs.begin(), arcs.end());
 
-    builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
+    builder.Insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
     ASSERT_EQ(3, a.NumStates());
@@ -673,7 +674,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       auto* actual_arc = actual_arcs.arcs;
       for (auto& arc : arcs) {
         ASSERT_EQ(1, arc.first.size());
-        assert_arc(*actual_arc, irs::range_label::fromRange(arc.first[0]),
+        assert_arc(*actual_arc, irs::RangeLabel::From(arc.first[0]),
                    arc.second);
         ++actual_arc;
       }
@@ -720,7 +721,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
                       finish1);
     std::sort(arcs.begin(), arcs.end());
 
-    builder.insert(a, start, finish1, arcs.begin(), arcs.end());
+    builder.Insert(a, start, finish1, arcs.begin(), arcs.end());
 
     assert_properties(a);
     ASSERT_EQ(6, a.NumStates());  // +3 intermediate states
@@ -740,12 +741,11 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
         if (min < expected_arc->first[0]) {
           assert_arc(
             *actual_arc,
-            irs::range_label{min, uint32_t(expected_arc->first[0]) - 1},
+            irs::RangeLabel::From(min, uint32_t(expected_arc->first[0]) - 1),
             actual_arc->nextstate);
           ++actual_arc;
         }
-        assert_arc(*actual_arc,
-                   irs::range_label::fromRange(expected_arc->first[0]),
+        assert_arc(*actual_arc, irs::RangeLabel::From(expected_arc->first[0]),
                    actual_arc->nextstate);
         min = expected_arc->first[0] + 1;
         ++actual_arc;
@@ -754,16 +754,16 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
 
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
       ASSERT_LT(min, 128);
-      assert_arc(*actual_arc, irs::range_label{min, 127}, finish1);
+      assert_arc(*actual_arc, irs::RangeLabel::From(min, 127), finish1);
       ++actual_arc;
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
-      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
+      assert_arc(*actual_arc, irs::RangeLabel::From(194, 223), intermediate0);
       ++actual_arc;
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
-      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
+      assert_arc(*actual_arc, irs::RangeLabel::From(224, 239), intermediate1);
       ++actual_arc;
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
-      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
+      assert_arc(*actual_arc, irs::RangeLabel::From(240, 244), intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -773,7 +773,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish1);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191), finish1);
     }
 
     // arcs from 'intermediate1'
@@ -781,7 +781,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191),
                  intermediate0);
     }
 
@@ -790,7 +790,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191),
                  intermediate1);
     }
 
@@ -811,7 +811,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
 }
 
 TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
-  irs::utf8_transitions_builder builder;
+  irs::Utf8TransitionsBuilder builder;
 
   {
     irs::automaton a;
@@ -867,43 +867,43 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
       irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
     std::sort(arcs.begin(), arcs.end());
 
-    builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
+    builder.Insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
 
     std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
       expected_automaton{
-        {{irs::range_label::fromRange(48), 1},
-         {irs::range_label::fromRange(55), 2},
-         {irs::range_label::fromRange(85), 1},
-         {irs::range_label::fromRange(97), 1},
-         {irs::range_label::fromRange(98), 2},
-         {irs::range_label::fromRange(209), 3},
-         {irs::range_label::fromRange(226), 6},
-         {irs::range_label::fromRange(227), 8},
-         {irs::range_label::fromRange(245), 11},
-         {irs::range_label::fromRange(254), 11},
-         {irs::range_label::fromRange(255), 14}},
+        {{irs::RangeLabel::From(48), 1},
+         {irs::RangeLabel::From(55), 2},
+         {irs::RangeLabel::From(85), 1},
+         {irs::RangeLabel::From(97), 1},
+         {irs::RangeLabel::From(98), 2},
+         {irs::RangeLabel::From(209), 3},
+         {irs::RangeLabel::From(226), 6},
+         {irs::RangeLabel::From(227), 8},
+         {irs::RangeLabel::From(245), 11},
+         {irs::RangeLabel::From(254), 11},
+         {irs::RangeLabel::From(255), 14}},
         {},
         {},
-        {{irs::range_label::fromRange(134), 1},
-         {irs::range_label::fromRange(144), 1}},
-        {{irs::range_label::fromRange(150), 2}},
-        {{irs::range_label::fromRange(150), 2},
-         {irs::range_label::fromRange(151), 2}},
-        {{irs::range_label::fromRange(133), 4},
-         {irs::range_label::fromRange(158), 5}},
-        {{irs::range_label::fromRange(151), 2}},
-        {{irs::range_label::fromRange(133), 7},
-         {irs::range_label::fromRange(158), 7}},
-        {{irs::range_label::fromRange(134), 2}},
-        {{irs::range_label::fromRange(151), 9}},
-        {{irs::range_label::fromRange(133), 10}},
-        {{irs::range_label::fromRange(134), 2},
-         {irs::range_label::fromRange(150), 2}},
-        {{irs::range_label::fromRange(151), 12}},
-        {{irs::range_label::fromRange(133), 13}},
+        {{irs::RangeLabel::From(134), 1},    //
+         {irs::RangeLabel::From(144), 1}},   //
+        {{irs::RangeLabel::From(150), 2}},   //
+        {{irs::RangeLabel::From(150), 2},    //
+         {irs::RangeLabel::From(151), 2}},   //
+        {{irs::RangeLabel::From(133), 4},    //
+         {irs::RangeLabel::From(158), 5}},   //
+        {{irs::RangeLabel::From(151), 2}},   //
+        {{irs::RangeLabel::From(133), 7},    //
+         {irs::RangeLabel::From(158), 7}},   //
+        {{irs::RangeLabel::From(134), 2}},   //
+        {{irs::RangeLabel::From(151), 9}},   //
+        {{irs::RangeLabel::From(133), 10}},  //
+        {{irs::RangeLabel::From(134), 2},    //
+         {irs::RangeLabel::From(150), 2}},   //
+        {{irs::RangeLabel::From(151), 12}},  //
+        {{irs::RangeLabel::From(133), 13}},  //
       };
 
     assert_automaton(a, expected_automaton);
@@ -911,7 +911,7 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
 }
 
 TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
-  irs::utf8_transitions_builder builder;
+  irs::Utf8TransitionsBuilder builder;
 
   {
     irs::automaton a;
@@ -968,84 +968,93 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
       irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
     std::sort(arcs.begin(), arcs.end());
 
-    builder.insert(a, start, rho, arcs.begin(), arcs.end());
+    builder.Insert(a, start, rho, arcs.begin(), arcs.end());
 
     assert_properties(a);
 
     std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
       expected_automaton{
-        {{irs::range_label{0, 47}, 3},     {irs::range_label{48, 48}, 1},
-         {irs::range_label{49, 54}, 3},    {irs::range_label{55, 55}, 2},
-         {irs::range_label{56, 84}, 3},    {irs::range_label{85, 85}, 1},
-         {irs::range_label{86, 96}, 3},    {irs::range_label{97, 97}, 1},
-         {irs::range_label{98, 98}, 2},    {irs::range_label{99, 127}, 3},
-         {irs::range_label{192, 208}, 4},  {irs::range_label{209, 209}, 7},
-         {irs::range_label{210, 223}, 4},  {irs::range_label{224, 225}, 5},
-         {irs::range_label{226, 226}, 10}, {irs::range_label{227, 227}, 12},
-         {irs::range_label{228, 239}, 5},  {irs::range_label{240, 244}, 6},
-         {irs::range_label{245, 245}, 15}, {irs::range_label{246, 253}, 6},
-         {irs::range_label{254, 254}, 15}, {irs::range_label{255, 255}, 18}},
+        {
+          {irs::RangeLabel::From(0, 47), 3},
+          {irs::RangeLabel::From(48, 48), 1},
+          {irs::RangeLabel::From(49, 54), 3},
+          {irs::RangeLabel::From(55, 55), 2},
+          {irs::RangeLabel::From(56, 84), 3},
+          {irs::RangeLabel::From(85, 85), 1},
+          {irs::RangeLabel::From(86, 96), 3},
+          {irs::RangeLabel::From(97, 97), 1},
+          {irs::RangeLabel::From(98, 98), 2},
+          {irs::RangeLabel::From(99, 127), 3},
+          {irs::RangeLabel::From(194, 208), 4},
+          {irs::RangeLabel::From(209, 209), 7},
+          {irs::RangeLabel::From(210, 223), 4},
+          {irs::RangeLabel::From(224, 225), 5},
+          {irs::RangeLabel::From(226, 226), 10},
+          {irs::RangeLabel::From(227, 227), 12},
+          {irs::RangeLabel::From(228, 239), 5},
+          {irs::RangeLabel::From(240, 244), 6},
+        },
         {},
         {},
         {},
-        {{irs::range_label{128, 191}, 3}},
-        {{irs::range_label{128, 191}, 4}},
-        {{irs::range_label{128, 191}, 5}},
+        {{irs::RangeLabel::From(128, 191), 3}},
+        {{irs::RangeLabel::From(128, 191), 4}},
+        {{irs::RangeLabel::From(128, 191), 5}},
         {
-          {irs::range_label{128, 133}, 3},
-          {irs::range_label{134, 134}, 1},
-          {irs::range_label{135, 143}, 3},
-          {irs::range_label{144, 144}, 1},
-          {irs::range_label{145, 191}, 3},
+          {irs::RangeLabel::From(128, 133), 3},
+          {irs::RangeLabel::From(134, 134), 1},
+          {irs::RangeLabel::From(135, 143), 3},
+          {irs::RangeLabel::From(144, 144), 1},
+          {irs::RangeLabel::From(145, 191), 3},
         },
         {
-          {irs::range_label{128, 149}, 3},
-          {irs::range_label{150, 150}, 2},
-          {irs::range_label{151, 191}, 3},
+          {irs::RangeLabel::From(128, 149), 3},
+          {irs::RangeLabel::From(150, 150), 2},
+          {irs::RangeLabel::From(151, 191), 3},
         },
         {
-          {irs::range_label{128, 149}, 3},
-          {irs::range_label{150, 150}, 2},
-          {irs::range_label{151, 151}, 2},
-          {irs::range_label{152, 191}, 3},
+          {irs::RangeLabel::From(128, 149), 3},
+          {irs::RangeLabel::From(150, 150), 2},
+          {irs::RangeLabel::From(151, 151), 2},
+          {irs::RangeLabel::From(152, 191), 3},
         },
-        {{irs::range_label{128, 132}, 4},
-         {irs::range_label{133, 133}, 8},
-         {irs::range_label{134, 157}, 4},
-         {irs::range_label{158, 158}, 9},
-         {irs::range_label{159, 191}, 4}},
-        {{irs::range_label{128, 150}, 3},
-         {irs::range_label{151, 151}, 2},
-         {irs::range_label{152, 191}, 3}},
-        {{irs::range_label{128, 132}, 4},
-         {irs::range_label{133, 133}, 11},
-         {irs::range_label{134, 157}, 4},
-         {irs::range_label{158, 158}, 11},
-         {irs::range_label{159, 191}, 4}},
-        {{irs::range_label{128, 133}, 3},
-         {irs::range_label{134, 134}, 2},
-         {irs::range_label{135, 191}, 3}},
-        {{irs::range_label{128, 150}, 4},
-         {irs::range_label{151, 151}, 13},
-         {irs::range_label{152, 191}, 4}},
-        {{irs::range_label{128, 132}, 5},
-         {irs::range_label{133, 133}, 14},
-         {irs::range_label{134, 191}, 5}},
+        {{irs::RangeLabel::From(128, 132), 4},
+         {irs::RangeLabel::From(133, 133), 8},
+         {irs::RangeLabel::From(134, 157), 4},
+         {irs::RangeLabel::From(158, 158), 9},
+         {irs::RangeLabel::From(159, 191), 4}},
+        {{irs::RangeLabel::From(128, 150), 3},
+         {irs::RangeLabel::From(151, 151), 2},
+         {irs::RangeLabel::From(152, 191), 3}},
+        {{irs::RangeLabel::From(128, 132), 4},
+         {irs::RangeLabel::From(133, 133), 11},
+         {irs::RangeLabel::From(134, 157), 4},
+         {irs::RangeLabel::From(158, 158), 11},
+         {irs::RangeLabel::From(159, 191), 4}},
+        {{irs::RangeLabel::From(128, 133), 3},
+         {irs::RangeLabel::From(134, 134), 2},
+         {irs::RangeLabel::From(135, 191), 3}},
+        {{irs::RangeLabel::From(128, 150), 4},
+         {irs::RangeLabel::From(151, 151), 13},
+         {irs::RangeLabel::From(152, 191), 4}},
+        {{irs::RangeLabel::From(128, 132), 5},
+         {irs::RangeLabel::From(133, 133), 14},
+         {irs::RangeLabel::From(134, 191), 5}},
         {
-          {irs::range_label{128, 133}, 3},
-          {irs::range_label{134, 134}, 2},
-          {irs::range_label{135, 149}, 3},
-          {irs::range_label{150, 150}, 2},
-          {irs::range_label{151, 191}, 3},
+          {irs::RangeLabel::From(128, 133), 3},
+          {irs::RangeLabel::From(134, 134), 2},
+          {irs::RangeLabel::From(135, 149), 3},
+          {irs::RangeLabel::From(150, 150), 2},
+          {irs::RangeLabel::From(151, 191), 3},
         },
-        {{irs::range_label{128, 150}, 4},
-         {irs::range_label{151, 151}, 16},
-         {irs::range_label{152, 191}, 4}},
+        {{irs::RangeLabel::From(128, 150), 4},
+         {irs::RangeLabel::From(151, 151), 16},
+         {irs::RangeLabel::From(152, 191), 4}},
         {
-          {irs::range_label{128, 132}, 5},
-          {irs::range_label{133, 133}, 17},
-          {irs::range_label{134, 191}, 5},
+          {irs::RangeLabel::From(128, 132), 5},
+          {irs::RangeLabel::From(133, 133), 17},
+          {irs::RangeLabel::From(134, 191), 5},
         },
       };
 
@@ -1053,12 +1062,9 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             utf8_emplace_arc_test
-// -----------------------------------------------------------------------------
-
 class utf8_emplace_arc_test : public automaton_test_base {};
 
+/*
 TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
   // 1-byte sequence
   {
@@ -1069,21 +1075,21 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     a.SetFinal(finish);
 
     const std::string_view label = "a";
-    irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ViewCast<irs::byte_type>(label), finish);
+    irs::Utf8EmplaceArc(a, start, fst::kNoStateId,
+                        irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
-      expected_automaton{{{irs::range_label::fromRange(0x61), 1}}, {}};
+      expected_automaton{{{irs::RangeLabel{0x61, 0x61}, 1}}, {}};
 
     assert_properties(a);
     assert_automaton(a, expected_automaton);
 
-    ASSERT_FALSE(irs::accept<char>(a, ""));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<char>(a, "\xD0\xBF"));
-    ASSERT_FALSE(irs::accept<char>(a, "\xE2\x9E\x96"));
-    ASSERT_FALSE(irs::accept<char>(a, "\xF0\x9F\x98\x81"));
+    ASSERT_FALSE(irs::Accept<char>(a, ""));
+    ASSERT_TRUE(irs::Accept<char>(a, "a"));
+    ASSERT_FALSE(irs::Accept<char>(a, "\xD0\xBF"));
+    ASSERT_FALSE(irs::Accept<char>(a, "\xE2\x9E\x96"));
+    ASSERT_FALSE(irs::Accept<char>(a, "\xF0\x9F\x98\x81"));
   }
 
   // 2-byte sequence
@@ -1095,27 +1101,27 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     a.SetFinal(finish);
 
     const std::string_view label = "\xD0\xBF";
-    irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ViewCast<irs::byte_type>(label), finish);
+    irs::Utf8EmplaceArc(a, start, fst::kNoStateId,
+                        irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
       expected_automaton{
-        {{irs::range_label::fromRange(0xD0), 2}},
+        {{irs::RangeLabel{0xD0, 0xD0}, 2}},
         {},
-        {{irs::range_label::fromRange(0xBF), 1}},
+        {{irs::RangeLabel{0xBF, 0xBF}, 1}},
       };
 
     assert_properties(a);
     assert_automaton(a, expected_automaton);
 
-    ASSERT_FALSE(irs::accept<char>(a, ""));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<char>(a, ""));
+    ASSERT_FALSE(irs::Accept<char>(a, "a"));
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
@@ -1128,28 +1134,28 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     a.SetFinal(finish);
 
     const std::string_view label = "\xE2\x9E\x96";
-    irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ViewCast<irs::byte_type>(label), finish);
+    irs::Utf8EmplaceArc(a, start, fst::kNoStateId,
+                        irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
       expected_automaton{
-        {{irs::range_label::fromRange(0xE2), 2}},
+        {{irs::RangeLabel{0xE2, 0xE2}, 2}},
         {},
-        {{irs::range_label::fromRange(0x9E), 3}},
-        {{irs::range_label::fromRange(0x96), 1}},
+        {{irs::RangeLabel{0x9E, 0x9E}, 3}},
+        {{irs::RangeLabel{0x96, 0x96}, 1}},
       };
 
     assert_properties(a);
     assert_automaton(a, expected_automaton);
 
-    ASSERT_FALSE(irs::accept<char>(a, ""));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<char>(a, ""));
+    ASSERT_FALSE(irs::Accept<char>(a, "a"));
+    ASSERT_FALSE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
@@ -1162,29 +1168,27 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     a.SetFinal(finish);
 
     const std::string_view label = "\xF0\x9F\x98\x81";
-    irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ViewCast<irs::byte_type>(label), finish);
+    irs::Utf8EmplaceArc(a, start, fst::kNoStateId,
+                        irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
       expected_automaton{
-        {{irs::range_label::fromRange(0xF0), 2}},
-        {},
-        {{irs::range_label::fromRange(0x9F), 3}},
-        {{irs::range_label::fromRange(0x98), 4}},
-        {{irs::range_label::fromRange(0x81), 1}},
+        {{irs::RangeLabel{0xF0, 0xF0}, 2}}, {},
+        {{irs::RangeLabel{0x9F, 0x9F}, 3}}, {{irs::RangeLabel{0x98, 0x98}, 4}},
+        {{irs::RangeLabel{0x81, 0x81}, 1}},
       };
 
     assert_properties(a);
     assert_automaton(a, expected_automaton);
 
-    ASSERT_FALSE(irs::accept<char>(a, ""));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<char>(a, ""));
+    ASSERT_FALSE(irs::Accept<char>(a, "a"));
+    ASSERT_FALSE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(
+    ASSERT_FALSE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 }
@@ -1204,8 +1208,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "a";
-    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
-                          finish);
+    irs::Utf8EmplaceArc(a, start, def, irs::ViewCast<irs::byte_type>(label),
+                        finish);
     ASSERT_EQ(6, a.NumStates());
     assert_properties(a);
 
@@ -1216,17 +1220,17 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(6, actual_arcs.narcs);
 
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label{0, 'a' - 1}, def);
+      assert_arc(*actual_arc, irs::RangeLabel{0, 'a' - 1}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{'a', 'a'}, finish);
+      assert_arc(*actual_arc, irs::RangeLabel{'a', 'a'}, finish);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{'a' + 1, 127}, def);
+      assert_arc(*actual_arc, irs::RangeLabel{'a' + 1, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
+      assert_arc(*actual_arc, irs::RangeLabel{194, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
+      assert_arc(*actual_arc, irs::RangeLabel{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
+      assert_arc(*actual_arc, irs::RangeLabel{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1236,7 +1240,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1244,8 +1248,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1253,8 +1256,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1272,14 +1274,14 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+      irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
@@ -1297,8 +1299,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "\xD0\xBF";
-    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
-                          finish);
+    irs::Utf8EmplaceArc(a, start, def, irs::ViewCast<irs::byte_type>(label),
+                        finish);
     ASSERT_EQ(7, a.NumStates());
     assert_properties(a);
 
@@ -1308,17 +1310,17 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(6, actual_arcs.narcs);
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label{0, 127}, def);
+      assert_arc(*actual_arc, irs::RangeLabel{0, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{192, 207}, intermediate0);
+      assert_arc(*actual_arc, irs::RangeLabel{194, 207}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{208, 208}, intermediate2 + 1);
+      assert_arc(*actual_arc, irs::RangeLabel{208, 208}, intermediate2 + 1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{209, 223}, intermediate0);
+      assert_arc(*actual_arc, irs::RangeLabel{209, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
+      assert_arc(*actual_arc, irs::RangeLabel{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
+      assert_arc(*actual_arc, irs::RangeLabel{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1328,8 +1330,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2 + 1, &actual_arcs);
       ASSERT_EQ(2, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 190}, def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{191, 191}, finish);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 190}, def);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel{191, 191}, finish);
     }
 
     // arcs from 'intermediate0'
@@ -1337,7 +1339,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1345,8 +1347,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1354,8 +1355,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1373,14 +1373,14 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+      irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
@@ -1398,8 +1398,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "\xE2\x9E\x96";
-    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
-                          finish);
+    irs::Utf8EmplaceArc(a, start, def, irs::ViewCast<irs::byte_type>(label),
+                        finish);
     ASSERT_EQ(8, a.NumStates());
     assert_properties(a);
 
@@ -1409,17 +1409,17 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(6, actual_arcs.narcs);
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label{0, 127}, def);
+      assert_arc(*actual_arc, irs::RangeLabel{0, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
+      assert_arc(*actual_arc, irs::RangeLabel{194, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{224, 225}, intermediate1);
+      assert_arc(*actual_arc, irs::RangeLabel{224, 225}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{226, 226}, intermediate2 + 1);
+      assert_arc(*actual_arc, irs::RangeLabel{226, 226}, intermediate2 + 1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{227, 239}, intermediate1);
+      assert_arc(*actual_arc, irs::RangeLabel{227, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
+      assert_arc(*actual_arc, irs::RangeLabel{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1429,12 +1429,10 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2 + 1, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 157},
-                 intermediate0);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{158, 158},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 157}, intermediate0);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel{158, 158},
                  intermediate2 + 2);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{159, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel{159, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2+2'
@@ -1442,9 +1440,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2 + 2, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 149}, def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{150, 150}, finish);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{151, 191}, def);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 149}, def);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel{150, 150}, finish);
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel{151, 191}, def);
     }
 
     // arcs from 'intermediate0'
@@ -1452,7 +1450,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1460,8 +1458,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1469,8 +1466,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1488,14 +1484,14 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+      irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
@@ -1513,8 +1509,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "\xF0\x9F\x98\x81";
-    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
-                          finish);
+    irs::Utf8EmplaceArc(a, start, def, irs::ViewCast<irs::byte_type>(label),
+                        finish);
     ASSERT_EQ(9, a.NumStates());
     assert_properties(a);
 
@@ -1525,15 +1521,15 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(5, actual_arcs.narcs);
 
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label{0, 127}, def);
+      assert_arc(*actual_arc, irs::RangeLabel{0, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
+      assert_arc(*actual_arc, irs::RangeLabel{194, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
+      assert_arc(*actual_arc, irs::RangeLabel{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{240, 240}, intermediate2 + 1);
+      assert_arc(*actual_arc, irs::RangeLabel{240, 240}, intermediate2 + 1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{241, 255}, intermediate2);
+      assert_arc(*actual_arc, irs::RangeLabel{241, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1543,12 +1539,10 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2 + 1, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 158},
-                 intermediate1);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{159, 159},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 158}, intermediate1);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel{159, 159},
                  intermediate2 + 2);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{160, 191},
-                 intermediate1);
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel{160, 191}, intermediate1);
     }
 
     // arcs from 'intermediate2+2'
@@ -1556,12 +1550,10 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2 + 2, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 151},
-                 intermediate0);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{152, 152},
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 151}, intermediate0);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel{152, 152},
                  intermediate2 + 3);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{153, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel{153, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2+3'
@@ -1569,9 +1561,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2 + 3, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 128}, def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{129, 129}, finish);
-      assert_arc(actual_arcs.arcs[2], irs::range_label{130, 191}, def);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 128}, def);
+      assert_arc(actual_arcs.arcs[1], irs::RangeLabel{129, 129}, finish);
+      assert_arc(actual_arcs.arcs[2], irs::RangeLabel{130, 191}, def);
     }
 
     // arcs from 'intermediate0'
@@ -1579,7 +1571,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1587,8 +1579,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1596,8 +1587,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191},
-                 intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::RangeLabel{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1615,17 +1605,18 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+      irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(
+    ASSERT_TRUE(irs::Accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 }
+*/
 
 TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
   irs::automaton a;
@@ -1636,7 +1627,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
   auto intermediate0 = a.NumStates();
   auto intermediate1 = a.NumStates() + 1;
   auto intermediate2 = a.NumStates() + 2;
-  irs::utf8_emplace_rho_arc(a, start, finish);
+  irs::Utf8EmplaceRhoArc(a, start, finish);
 
   assert_properties(a);
 
@@ -1645,13 +1636,13 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(4, actual_arcs.narcs);
     auto* actual_arc = actual_arcs.arcs;
-    assert_arc(*actual_arc, irs::range_label{0, 127}, finish);
+    assert_arc(*actual_arc, irs::RangeLabel::From(0, 127), finish);
     ++actual_arc;
-    assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
+    assert_arc(*actual_arc, irs::RangeLabel::From(194, 223), intermediate0);
     ++actual_arc;
-    assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
+    assert_arc(*actual_arc, irs::RangeLabel::From(224, 239), intermediate1);
     ++actual_arc;
-    assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
+    assert_arc(*actual_arc, irs::RangeLabel::From(240, 244), intermediate2);
     ++actual_arc;
     ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
   }
@@ -1661,7 +1652,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(intermediate0, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
-    assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish);
+    assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191), finish);
   }
 
   // arcs from 'intermediate1'
@@ -1669,7 +1660,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(intermediate1, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
-    assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
+    assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191),
+               intermediate0);
   }
 
   // arcs from 'intermediate2'
@@ -1677,7 +1669,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(intermediate2, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
-    assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
+    assert_arc(actual_arcs.arcs[0], irs::RangeLabel::From(128, 191),
+               intermediate1);
   }
 
   // arcs from 'finish0'
@@ -1688,21 +1681,21 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
   }
 
   ASSERT_FALSE(
-    irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
-  ASSERT_TRUE(irs::accept<irs::byte_type>(
+    irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
+  ASSERT_TRUE(irs::Accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-  ASSERT_TRUE(irs::accept<irs::byte_type>(
+  ASSERT_TRUE(irs::Accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-  ASSERT_TRUE(irs::accept<irs::byte_type>(
+  ASSERT_TRUE(irs::Accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-  ASSERT_TRUE(irs::accept<irs::byte_type>(
+  ASSERT_TRUE(irs::Accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
-  ASSERT_FALSE(irs::accept<irs::byte_type>(
+  ASSERT_FALSE(irs::Accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF\xD0\xBF"))));
-  ASSERT_FALSE(irs::accept<irs::byte_type>(
+  ASSERT_FALSE(irs::Accept<irs::byte_type>(
     a,
     irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\xD0\xBF"))));
-  ASSERT_FALSE(irs::accept<irs::byte_type>(
+  ASSERT_FALSE(irs::Accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(
          std::string_view("\xF0\x9F\x98\x81\xD0\xBF"))));
 }
@@ -1714,70 +1707,70 @@ TEST_F(utf8_emplace_arc_test, add_or_expand) {
   a.SetStart(start);
   a.SetFinal(finish);
 
-  irs::add_or_expand_arc(a, start, irs::range_label{0, 5}, finish);
+  irs::AddOrExpandArc(a, start, irs::RangeLabel::From(0, 5), finish);
 
   {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
     ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
-    ASSERT_EQ((irs::range_label{0, 5}), actual_arcs.arcs[0]);
+    ASSERT_EQ(irs::RangeLabel::From(0, 5), actual_arcs.arcs[0]);
   }
 
-  irs::add_or_expand_arc(a, start, irs::range_label{5, 5}, finish);
+  irs::AddOrExpandArc(a, start, irs::RangeLabel::From(5), finish);
 
   {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
     ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
-    ASSERT_EQ((irs::range_label{0, 5}), actual_arcs.arcs[0]);
+    ASSERT_EQ(irs::RangeLabel::From(0, 5), actual_arcs.arcs[0]);
   }
 
-  irs::add_or_expand_arc(a, start, irs::range_label{5, 6}, finish);
+  irs::AddOrExpandArc(a, start, irs::RangeLabel::From(5, 6), finish);
 
   {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
     ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
-    ASSERT_EQ((irs::range_label{0, 6}), actual_arcs.arcs[0]);
+    ASSERT_EQ(irs::RangeLabel::From(0, 6), actual_arcs.arcs[0]);
   }
 
-  irs::add_or_expand_arc(a, start, irs::range_label{7, 9}, finish);
+  irs::AddOrExpandArc(a, start, irs::RangeLabel::From(7, 9), finish);
 
   {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(1, actual_arcs.narcs);
     ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
-    ASSERT_EQ((irs::range_label{0, 9}), actual_arcs.arcs[0]);
+    ASSERT_EQ(irs::RangeLabel::From(0, 9), actual_arcs.arcs[0]);
   }
 
-  irs::add_or_expand_arc(a, start, irs::range_label{11, 11}, finish);
+  irs::AddOrExpandArc(a, start, irs::RangeLabel::From(11), finish);
 
   {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(2, actual_arcs.narcs);
     ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
-    ASSERT_EQ((irs::range_label{0, 9}), actual_arcs.arcs[0]);
+    ASSERT_EQ(irs::RangeLabel::From(0, 9), actual_arcs.arcs[0]);
     ASSERT_EQ(finish, actual_arcs.arcs[1].nextstate);
-    ASSERT_EQ((irs::range_label{11, 11}), actual_arcs.arcs[1]);
+    ASSERT_EQ(irs::RangeLabel::From(11), actual_arcs.arcs[1]);
   }
 
-  irs::add_or_expand_arc(a, start, irs::range_label{12, 12}, start);
+  irs::AddOrExpandArc(a, start, irs::RangeLabel::From(12), start);
 
   {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(start, &actual_arcs);
     ASSERT_EQ(3, actual_arcs.narcs);
     ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
-    ASSERT_EQ((irs::range_label{0, 9}), actual_arcs.arcs[0]);
+    ASSERT_EQ(irs::RangeLabel::From(0, 9), actual_arcs.arcs[0]);
     ASSERT_EQ(finish, actual_arcs.arcs[1].nextstate);
-    ASSERT_EQ((irs::range_label{11, 11}), actual_arcs.arcs[1]);
+    ASSERT_EQ(irs::RangeLabel::From(11), actual_arcs.arcs[1]);
     ASSERT_EQ(start, actual_arcs.arcs[2].nextstate);
-    ASSERT_EQ((irs::range_label{12, 12}), actual_arcs.arcs[2]);
+    ASSERT_EQ(irs::RangeLabel::From(12), actual_arcs.arcs[2]);
   }
 }
 
@@ -2160,15 +2153,15 @@ transition
 //      ASSERT_EQ(0, actual_arcs.narcs);
 //    }
 //
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+//    ASSERT_FALSE(irs::Accept<irs::byte_type>(a,
 irs::EmptyRef<irs::byte_type>()));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
 //  }
 //}
@@ -2311,15 +2304,15 @@ transition
 //      ASSERT_EQ(0, actual_arcs.narcs);
 //    }
 //
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+//    ASSERT_FALSE(irs::Accept<irs::byte_type>(a,
 irs::EmptyRef<irs::byte_type>()));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("a"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//    ASSERT_TRUE(irs::Accept<irs::byte_type>(a,
 irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
 //  }
 //}

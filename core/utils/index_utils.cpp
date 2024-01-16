@@ -31,13 +31,14 @@
 namespace {
 
 // Returns percentage of live documents
-inline double_t FillFactor(const irs::SegmentInfo& segment) noexcept {
-  return double(segment.live_docs_count) / segment.docs_count;
+inline double FillFactor(const irs::SegmentInfo& segment) noexcept {
+  return static_cast<double>(segment.live_docs_count) /
+         static_cast<double>(segment.docs_count);
 }
 
 // Returns approximated size of a segment in the absence of removals
 inline size_t SizeWithoutRemovals(const irs::SegmentInfo& segment) noexcept {
-  return size_t(segment.byte_size * FillFactor(segment));
+  return size_t(static_cast<double>(segment.byte_size) * FillFactor(segment));
 }
 
 namespace tier {
@@ -83,24 +84,6 @@ struct ConsolidationCandidate {
 
   iterator_t begin() const noexcept { return segments.first; }
   iterator_t end() const noexcept { return segments.second; }
-
-  const SegmentStats& front() const noexcept {
-    IRS_ASSERT(segments.first != segments.second);
-    return *segments.first;
-  }
-
-  const SegmentStats& back() const noexcept {
-    IRS_ASSERT(segments.first != segments.second);
-    auto curr_end = segments.second;
-    return *(--curr_end);
-  }
-
-  void reset() noexcept {
-    segments = range_t();
-    count = 0;
-    size = 0;
-    score = -1.;
-  }
 
   range_t segments;
   size_t count{0};
@@ -149,16 +132,19 @@ double_t consolidation_score(const ConsolidationCandidate& consolidation,
   }
 
   // evaluate coefficient of variation
-  double_t sum_square_differences = 0;
+  double sum_square_differences = 0;
   const auto segment_size_after_consolidaton_mean =
-    double_t(size_after_consolidation_floored) / consolidation.count;
+    static_cast<double>(size_after_consolidation_floored) /
+    static_cast<double>(consolidation.count);
   for (auto& segment_stat : consolidation) {
-    const double_t diff = std::max(segment_stat.size, floor_segment_bytes) -
-                          segment_size_after_consolidaton_mean;
+    const auto diff =
+      static_cast<double>(std::max(segment_stat.size, floor_segment_bytes)) -
+      segment_size_after_consolidaton_mean;
     sum_square_differences += diff * diff;
   }
 
-  const auto stdev = std::sqrt(sum_square_differences / consolidation.count);
+  const auto stdev = std::sqrt(sum_square_differences /
+                               static_cast<double>(consolidation.count));
   const auto cv = (stdev / segment_size_after_consolidaton_mean);
 
   // evaluate initial score
@@ -166,15 +152,18 @@ double_t consolidation_score(const ConsolidationCandidate& consolidation,
 
   // favor consolidations that contain approximately the requested number of
   // segments
-  score *= std::pow(consolidation.count / double_t(segments_per_tier), 1.5);
+  score *= std::pow(static_cast<double>(consolidation.count) /
+                      static_cast<double>(segments_per_tier),
+                    1.5);
 
   // FIXME use relative measure, e.g. cosolidation_size/total_size
   // carefully prefer smaller consolidations over the bigger ones
   score /= std::pow(size_after_consolidation, 0.5);
 
   // favor consolidations which clean out removals
-  score /=
-    std::pow(double_t(size_after_consolidation) / size_before_consolidation, 2);
+  score /= std::pow(static_cast<double>(size_after_consolidation) /
+                      static_cast<double>(size_before_consolidation),
+                    2);
 
   return score;
 }
@@ -197,7 +186,9 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
 
     const auto threshold = std::clamp(byte_threshold, 0.f, 1.f);
     const auto threshold_bytes_avg =
-      (static_cast<float>(all_segment_bytes_size) / segment_count) * threshold;
+      (static_cast<float>(all_segment_bytes_size) /
+       static_cast<float>(segment_count)) *
+      threshold;
 
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes /
     // #segments)
@@ -206,7 +197,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
         continue;
       }
       const auto segment_bytes_size = segment.Meta().byte_size;
-      if (threshold_bytes_avg >= segment_bytes_size) {
+      if (threshold_bytes_avg >= static_cast<float>(segment_bytes_size)) {
         candidates.emplace_back(&segment);
       }
     }
@@ -230,24 +221,21 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
     }
 
     size_t cumulative_size = 0;
-    const auto threshold_size =
-      all_segment_bytes_size * std::clamp(byte_threshold, 0.f, 1.f);
-    struct {
-      bool operator()(const std::pair<size_t, const SubReader*>& lhs,
-                      const std::pair<size_t, const SubReader*>& rhs) const {
-        return lhs.first < rhs.first;
-      }
-    } segments_less;
+    const auto threshold_size = static_cast<float>(all_segment_bytes_size) *
+                                std::clamp(byte_threshold, 0.f, 1.f);
 
     // prefer to consolidate smaller segments
-    std::sort(segments.begin(), segments.end(), segments_less);
+    std::sort(
+      segments.begin(), segments.end(),
+      [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
     // merge segment if: {threshold} >= (segment_bytes +
     // sum_of_merge_candidate_segment_bytes) / all_segment_bytes
     for (auto& entry : segments) {
       const auto segment_bytes_size = entry.first;
 
-      if (cumulative_size + segment_bytes_size <= threshold_size) {
+      if (static_cast<float>(cumulative_size + segment_bytes_size) <=
+          threshold_size) {
         cumulative_size += segment_bytes_size;
         candidates.emplace_back(entry.second);
       }
@@ -280,7 +268,8 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
         continue;
       }
       if (!meta.live_docs_count  // if no valid doc_ids left in segment
-          || meta.docs_count * threshold >= meta.live_docs_count) {
+          || static_cast<float>(meta.docs_count) * threshold >=
+               static_cast<float>(meta.live_docs_count)) {
         candidates.emplace_back(&segment);
       }
     }
@@ -296,7 +285,9 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options) {
 
     const auto threshold = std::clamp(docs_threshold, 0.f, 1.f);
     const auto threshold_docs_avg =
-      (static_cast<float>(all_segment_docs_count) / segment_count) * threshold;
+      (static_cast<float>(all_segment_docs_count) /
+       static_cast<float>(segment_count)) *
+      threshold;
 
     // merge segment if: {threshold} >= segment_docs{valid} /
     // (all_segment_docs{valid} / #segments)
@@ -306,7 +297,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options) {
         continue;
       }
       if (!info.live_docs_count  // if no valid doc_ids left in segment
-          || threshold_docs_avg >= info.live_docs_count) {
+          || threshold_docs_avg >= static_cast<float>(info.live_docs_count)) {
         candidates.emplace_back(&segment);
       }
     }
@@ -403,14 +394,15 @@ ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
     ///////////////////////////////////////////////////////////////////////////
 
     const double_t total_fill_factor =
-      static_cast<double_t>(total_live_docs_count) / total_docs_count;
+      static_cast<double_t>(total_live_docs_count) /
+      static_cast<double_t>(total_docs_count);
     const size_t too_big_segments_threshold = max_segments_bytes / 2;
     segments_end = sorted_segments.data() + sorted_segments.size();
     for (auto begin = sorted_segments.data(); begin < segments_end;) {
       auto& segment = *begin;
       const double_t segment_fill_factor =
         static_cast<double_t>(segment.meta->live_docs_count) /
-        segment.meta->docs_count;
+        static_cast<double_t>(segment.meta->docs_count);
       if (segment.size > too_big_segments_threshold &&
           (total_fill_factor <= segment_fill_factor)) {
         // filter out segments that are too big

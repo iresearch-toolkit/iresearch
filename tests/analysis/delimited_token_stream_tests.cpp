@@ -47,8 +47,6 @@ class delimited_token_stream_tests : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-#ifndef IRESEARCH_DLL
-
 TEST_F(delimited_token_stream_tests, consts) {
   static_assert("delimiter" ==
                 irs::type<irs::analysis::delimited_token_stream>::name());
@@ -64,7 +62,6 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
     ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
@@ -366,8 +363,6 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_FALSE(stream.next());
   }
 }
-
-#endif  // IRESEARCH_DLL
 
 TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON string

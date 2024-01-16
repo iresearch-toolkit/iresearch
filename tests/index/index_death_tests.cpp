@@ -117,17 +117,6 @@ class failing_directory : public tests::directory_mock {
   explicit failing_directory(irs::directory& impl) noexcept
     : tests::directory_mock(impl) {}
 
-  template<typename Visitor>
-  bool visit_failures(Visitor visitor) const {
-    for (auto& entry : failures_) {
-      if (!visitor(entry.second, entry.first)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   bool register_failure(Failure type, const std::string& name) {
     return failures_.emplace(name, type).second;
   }

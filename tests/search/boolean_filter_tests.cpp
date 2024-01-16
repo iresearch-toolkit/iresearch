@@ -16298,10 +16298,10 @@ TEST_P(boolean_filter_test_case, mixed) {
           // name=A OR name=C OR NAME=P OR name=U OR name=X
           {
             irs::Or& subsubchild = subchild.add<irs::Or>();
-            append<irs::by_term>(subchild, "name", "A");
-            append<irs::by_term>(subchild, "name", "C");
-            append<irs::by_term>(subchild, "name", "P");
-            append<irs::by_term>(subchild, "name", "X");
+            append<irs::by_term>(subsubchild, "name", "A");
+            append<irs::by_term>(subsubchild, "name", "C");
+            append<irs::by_term>(subsubchild, "name", "P");
+            append<irs::by_term>(subsubchild, "name", "X");
           }
         }
       }
@@ -16362,8 +16362,6 @@ TEST_P(boolean_filter_test_case, mixed) {
     }
   }
 }
-
-#ifndef IRESEARCH_DLL
 
 TEST_P(boolean_filter_test_case, mixed_ordered) {
   // add segment
@@ -16434,8 +16432,6 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
     }
   }
 }
-
-#endif
 
 TEST(Not_test, ctor) {
   irs::Not q;
@@ -16528,8 +16524,6 @@ TEST(And_test, equal) {
     ASSERT_NE(lhs, rhs);
   }
 }
-
-#ifndef IRESEARCH_DLL
 
 TEST(And_test, optimize_double_negation) {
   irs::And root;
@@ -16656,12 +16650,6 @@ TEST(And_test, not_boosted) {
   ASSERT_FALSE(docs->next());
 }
 
-#endif  // IRESEARCH_DLL
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                    Or base tests
-// ----------------------------------------------------------------------------
-
 TEST(Or_test, ctor) {
   irs::Or q;
   ASSERT_EQ(irs::type<irs::Or>::id(), q.type());
@@ -16721,11 +16709,9 @@ TEST(Or_test, equal) {
   }
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST(Or_test, optimize_double_negation) {
   irs::Or root;
-  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
+  root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
     make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare({.index = irs::SubReader::empty()});
@@ -16851,8 +16837,6 @@ TEST(Or_test, boosted_not) {
   ASSERT_EQ(1, doc->value);
   ASSERT_FALSE(docs->next());
 }
-
-#endif  // IRESEARCH_DLL
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 

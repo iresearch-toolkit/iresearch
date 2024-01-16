@@ -32,8 +32,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#ifndef IRESEARCH_DLL
-
 TEST(ngram_token_stream_test, consts) {
   static_assert(
     "ngram" ==
@@ -401,6 +399,23 @@ TEST(ngram_token_stream_test, next_utf8) {
                                            9, 12},
                                           {"\xc2\xa5", 10, 12}};
     assert_utf8tokens(expected, data, stream);
+  }
+
+  {
+    SCOPED_TRACE("4-gram invalid utf8");
+    irs::analysis::ngram_token_stream<
+      irs::analysis::ngram_token_stream_base::InputType::UTF8>
+      stream(irs::analysis::ngram_token_stream_base::Options(
+        4, 4, false, irs::analysis::ngram_token_stream_base::InputType::UTF8));
+
+    const std::vector<utf8token> expected{
+      {"\xFFqui", 0, 4},
+      {"quic", 1, 5},
+      {"uick", 2, 6},
+      {"ick\xFF", 3, 7},
+    };
+
+    assert_utf8tokens(expected, "\xFFquick\xFF", stream);
   }
 
   {
@@ -1255,6 +1270,22 @@ TEST(ngram_token_stream_test, next) {
   }
 
   {
+    SCOPED_TRACE("4-gram invalid utf8");
+    irs::analysis::ngram_token_stream<
+      irs::analysis::ngram_token_stream_base::InputType::Binary>
+      stream(irs::analysis::ngram_token_stream_base::Options(4, 4, false));
+
+    const std::vector<token> expected{
+      {"\xFFqui", 0, 4},
+      {"quic", 1, 5},
+      {"uick", 2, 6},
+      {"ick\xFF", 3, 7},
+    };
+
+    assert_tokens(expected, "\xFFquick\xFF", stream);
+  }
+
+  {
     SCOPED_TRACE("4-gram");
     irs::analysis::ngram_token_stream<
       irs::analysis::ngram_token_stream_base::InputType::Binary>
@@ -1619,8 +1650,6 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //  }
 //  ASSERT_FALSE(stream.next());
 //}
-
-#endif  // IRESEARCH_DLL
 
 TEST(ngram_token_stream_test, test_load) {
   {

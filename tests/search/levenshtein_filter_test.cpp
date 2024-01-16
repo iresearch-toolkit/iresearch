@@ -135,8 +135,6 @@ TEST(by_edit_distance_test, boost) {
   counter.Reset();
 }
 
-#ifndef IRESEARCH_DLL
-
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
@@ -166,8 +164,6 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
 #ifdef __clang__
 #pragma GCC diagnostic pop
 #endif  // __clang__
-
-#endif
 
 class by_edit_distance_test_case : public tests::FilterTestCaseBase {};
 

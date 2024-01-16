@@ -399,8 +399,8 @@ void ngram_token_stream_base::emit_original() noexcept {
                          : EmitOriginal::WithEndMarker;
       inc.value = next_inc_val_;
       break;
-    default:
-      IRS_ASSERT(false);  // should not be called when None
+    case EmitOriginal::None:
+      IRS_ASSERT(false);
       break;
   }
   next_inc_val_ = 0;
@@ -464,15 +464,15 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 bool ngram_token_stream<StreamType>::next_symbol(
   const byte_type*& it) const noexcept {
   IRS_ASSERT(it);
-  if (it < data_end_) {
-    if constexpr (StreamType == InputType::Binary) {
-      ++it;
-    } else if constexpr (StreamType == InputType::UTF8) {
-      it = irs::utf8_utils::next(it, data_end_);
-    }
-    return true;
+  if (IRS_UNLIKELY(it == data_end_)) {
+    return false;
   }
-  return false;
+  if constexpr (StreamType == InputType::Binary) {
+    ++it;
+  } else if constexpr (StreamType == InputType::UTF8) {
+    it = utf8_utils::Next(it, data_end_);
+  }
+  return true;
 }
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
@@ -531,25 +531,21 @@ bool ngram_token_stream<StreamType>::next() noexcept {
         }
         return true;
       }
-    } else {
+    } else if (EmitOriginal::None == emit_original_) {
       // need to move to next position
-      if (EmitOriginal::None == emit_original_) {
-        if (next_symbol(begin_)) {
-          next_inc_val_ = 1;
-          length_ = 0;
-          ngram_end_ = begin_;
-          offset.start =
-            static_cast<uint32_t>(std::distance(data_.data(), begin_));
-        } else {
-          return false;  // stream exhausted
-        }
-      } else {
-        // as stream has unsigned incremet attribute
-        // we cannot go back, so we must emit original before we leave start pos
-        // in stream (as it starts from pos=0 in stream)
-        emit_original();
-        return true;
+      if (IRS_UNLIKELY(!next_symbol(begin_))) {
+        return false;  // stream exhausted
       }
+      next_inc_val_ = 1;
+      length_ = 0;
+      ngram_end_ = begin_;
+      offset.start = static_cast<uint32_t>(std::distance(data_.data(), begin_));
+    } else {
+      // as stream has unsigned incremet attribute
+      // we cannot go back, so we must emit original before we leave start pos
+      // in stream (as it starts from pos=0 in stream)
+      emit_original();
+      return true;
     }
   }
   return false;

@@ -25,10 +25,8 @@
 #include "utils/register.hpp"
 
 // list of statically loaded scorers via init()
-#ifndef IRESEARCH_DLL
 #include "delta_compression.hpp"
 #include "lz4compression.hpp"
-#endif
 
 namespace irs::compression {
 namespace {
@@ -162,11 +160,9 @@ decompressor::ptr get_decompressor(std::string_view name,
 }
 
 void init() {
-#ifndef IRESEARCH_DLL
   lz4::init();
   delta::init();
   none::init();
-#endif
 }
 
 void load_all(std::string_view path) {
@@ -181,10 +177,8 @@ bool visit(const std::function<bool(std::string_view)>& visitor) {
 }
 
 void none::init() {
-#ifndef IRESEARCH_DLL
   // match registration below
   REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
-#endif
 }
 
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);

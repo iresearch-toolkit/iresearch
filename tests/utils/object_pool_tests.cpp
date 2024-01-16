@@ -1709,7 +1709,7 @@ TEST(concurrent_linked_list_test, concurrent_push) {
 }
 
 TEST(concurrent_linked_list_test, concurrent_pop_push) {
-  const size_t NODES = 10000;
+  static const size_t NODES = 10000;
   const size_t THREADS = 16;
 
   struct data {
@@ -1748,7 +1748,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
   {
     auto lock = std::unique_lock(mutex);
     for (size_t i = 0; i < THREADS; ++i) {
-      threads.emplace_back([NODES, &list, &wait_for_all]() {
+      threads.emplace_back([&list, &wait_for_all]() {
         wait_for_all();
 
         // no more than NODES

@@ -31,11 +31,12 @@
 #include "tests_shared.hpp"
 #include "utils/ngram_match_utils.hpp"
 
+namespace tests {
 namespace {
 
 irs::by_ngram_similarity make_filter(
   const std::string_view& field, const std::vector<std::string_view>& ngrams,
-  float_t threshold = 1.f) {
+  float_t threshold = 1.f, bool allow_phrase = true) {
   irs::by_ngram_similarity filter;
   *filter.mutable_field() = field;
   auto* opts = filter.mutable_options();
@@ -43,16 +44,25 @@ irs::by_ngram_similarity make_filter(
     opts->ngrams.emplace_back(irs::ViewCast<irs::byte_type>(ngram));
   }
   opts->threshold = threshold;
+  opts->allow_phrase = allow_phrase;
   return filter;
 }
 
+class CustomNgramScorer : public sort::custom_sort {
+ public:
+  using custom_sort::custom_sort;
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::FREQ;
+  }
+};
+
+irs::score_t GetFilterBoost(const irs::doc_iterator::ptr& doc) {
+  const auto* filter_boost = irs::get<irs::filter_boost>(*doc);
+  return filter_boost != nullptr ? filter_boost->value : 1.F;
+}
+
 }  // namespace
-
-namespace tests {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                            by_ngram_similarity filter base tests
-// ----------------------------------------------------------------------------
 
 TEST(ngram_similarity_base_test, options) {
   irs::by_ngram_similarity_options opts;
@@ -253,7 +263,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -266,18 +276,16 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(
       bool(doc));  // ensure all iterators contain "document" attribute
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(0.75, boost->value);
+    ASSERT_DOUBLE_EQ(0.75, GetFilterBoost(docs));
     const std::string_view rhs = "134";
     const std::string_view lhs = "1234";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
@@ -308,7 +316,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -321,19 +329,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value);
+    ASSERT_DOUBLE_EQ(1, GetFilterBoost(docs));
     const std::string_view rhs = "11223344";
     const std::string_view lhs = "1234";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
@@ -362,7 +368,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -375,19 +381,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value);
+    ASSERT_DOUBLE_EQ(1, GetFilterBoost(docs));
     const std::string_view rhs = "121134";
     const std::string_view lhs = "1234";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
@@ -415,7 +419,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -428,19 +432,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value);
+    ASSERT_DOUBLE_EQ(1, GetFilterBoost(docs));
     const std::string_view rhs = "121111";
     const std::string_view lhs = "11";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(2, frequency->value);
@@ -470,7 +472,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "1"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -483,19 +485,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value);
+    ASSERT_DOUBLE_EQ(1, GetFilterBoost(docs));
     const std::string_view rhs = "121212121212121";
     const std::string_view lhs = "121";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(4, frequency->value);
@@ -523,7 +523,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 1.0f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -536,19 +536,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value);
+    ASSERT_DOUBLE_EQ(1, GetFilterBoost(docs));
     const std::string_view rhs = "11";
     const std::string_view lhs = "11";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
@@ -578,7 +576,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -591,19 +589,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(0.5, boost->value);
+    ASSERT_DOUBLE_EQ(0.5, GetFilterBoost(docs));
     const std::string_view rhs = "24241313";
     const std::string_view lhs = "1234";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(2, frequency->value);
@@ -632,7 +628,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "5", "6", "2"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -645,19 +641,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(0.5, boost->value);
+    ASSERT_DOUBLE_EQ(0.5, GetFilterBoost(docs));
     const std::string_view lhs = "1234";
     const std::string_view rhs = "1562";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
@@ -688,7 +682,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4", "5", "1"}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -701,19 +695,17 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1., boost->value);
+    ASSERT_DOUBLE_EQ(1., GetFilterBoost(docs));
     const std::string_view rhs = "1123451";
     const std::string_view lhs = "123451";
-    ASSERT_DOUBLE_EQ(boost->value,
+    ASSERT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
@@ -740,7 +732,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
 
   irs::by_ngram_similarity filter = make_filter("field", {""}, 0.5f);
 
-  tests::sort::custom_sort sort;
+  CustomNgramScorer sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare({
     .index = rdr,
@@ -753,23 +745,21 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
       .scorers = prepared_order,
     });
     auto* doc = irs::get<irs::document>(*docs);
-    auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
-    ASSERT_TRUE(bool(doc));
-    ASSERT_TRUE(bool(boost));
-    ASSERT_TRUE(bool(frequency));
-    ASSERT_TRUE(docs->next());
-    ASSERT_EQ(docs->value(), doc->value);
-    ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1., boost->value);
+    EXPECT_TRUE(bool(doc));
+    EXPECT_TRUE(bool(frequency));
+    EXPECT_TRUE(docs->next());
+    EXPECT_EQ(docs->value(), doc->value);
+    EXPECT_FALSE(irs::doc_limits::eof(doc->value));
+    EXPECT_DOUBLE_EQ(1., GetFilterBoost(docs));
     const std::string_view rhs = "";
     const std::string_view lhs = "";
-    ASSERT_DOUBLE_EQ(boost->value,
+    EXPECT_DOUBLE_EQ(GetFilterBoost(docs),
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
-    ASSERT_EQ(1, frequency->value);
-    ASSERT_FALSE(docs->next());
+    EXPECT_EQ(1, frequency->value);
+    EXPECT_FALSE(docs->next());
   }
   prepared.reset();
   EXPECT_EQ(counter.current, 0);
@@ -1180,8 +1170,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   std::vector<size_t> frequency;
   std::vector<irs::score_t> filter_boost;
 
-  irs::Scorer::ptr order{std::make_unique<tests::sort::custom_sort>()};
-  auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
+  irs::Scorer::ptr order{std::make_unique<CustomNgramScorer>()};
+  auto& scorer = static_cast<CustomNgramScorer&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
                                      const irs::SubReader&,
@@ -1197,10 +1187,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::field_collector>(scorer);
+    return std::make_unique<CustomNgramScorer::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
+    return std::make_unique<CustomNgramScorer::term_collector>(scorer);
   };
   scorer.prepare_scorer_ =
     [&frequency, &filter_boost](
@@ -1252,8 +1242,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   std::vector<size_t> frequency;
   std::vector<irs::score_t> filter_boost;
 
-  irs::Scorer::ptr order{std::make_unique<tests::sort::custom_sort>()};
-  auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
+  irs::Scorer::ptr order{std::make_unique<CustomNgramScorer>()};
+  auto& scorer = static_cast<CustomNgramScorer&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
                                      const irs::SubReader&,
@@ -1269,10 +1259,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::field_collector>(scorer);
+    return std::make_unique<CustomNgramScorer::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
+    return std::make_unique<CustomNgramScorer::term_collector>(scorer);
   };
   scorer.prepare_scorer_ =
     [&frequency, &filter_boost](
@@ -1305,8 +1295,6 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count);
 }
 
-#ifndef IRESEARCH_DLL
-
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
     irs::IndexWriterOptions opts;
@@ -1328,6 +1316,42 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   irs::Scorer::ptr scorer{std::make_unique<irs::TFIDF>(true)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
+}
+
+TEST_P(ngram_similarity_filter_test_case, all_match_ngram_score_test) {
+  {
+    irs::IndexWriterOptions opts;
+    opts.features = features_with_norms();
+
+    tests::json_doc_generator gen(resource("ngram_similarity.json"),
+                                  &tests::normalized_string_json_field_factory);
+
+    add_segment(gen, irs::OM_CREATE, opts);
+  }
+
+  auto rdr = open_reader();
+
+  irs::Scorer::ptr scorers[] = {
+    std::make_unique<irs::TFIDF>(false),
+    std::make_unique<irs::TFIDF>(true),
+    std::make_unique<irs::BM25>(),
+    std::make_unique<irs::BM25>(0.F),                  // BM1
+    std::make_unique<irs::BM25>(irs::BM25::K(), 1.F),  // BM11
+    std::make_unique<irs::BM25>(irs::BM25::K(), 0.F),  // BM15
+  };
+
+  std::vector<irs::doc_id_t> ngram;
+  std::vector<irs::doc_id_t> phrase;
+  for (auto& scorer : scorers) {
+    irs::by_ngram_similarity ngram_filter =
+      make_filter("field", {"at", "tl", "la", "as"}, 1.F, false);
+    irs::by_ngram_similarity phrase_filter =
+      make_filter("field", {"at", "tl", "la", "as"}, 1.F, true);
+
+    MakeResult(ngram_filter, std::span{&scorer, 1}, rdr, ngram);
+    MakeResult(phrase_filter, std::span{&scorer, 1}, rdr, phrase);
+    EXPECT_EQ(ngram, phrase);
+  }
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
@@ -1501,8 +1525,6 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
   EXPECT_GT(counter.max, 0);
   counter.Reset();
 }
-
-#endif
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 

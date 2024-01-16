@@ -24,23 +24,22 @@
 
 #include "shared.hpp"
 
+namespace irs {
 namespace {
 
-struct empty_position final : irs::position {
-  void reset() final {}
-  bool next() final { return false; }
-  attribute* get_mutable(irs::type_info::type_id) noexcept final {
+struct EmptyPosition final : position {
+  attribute* get_mutable(type_info::type_id /*type*/) noexcept final {
     return nullptr;
   }
+
+  bool next() final { return false; }
 };
 
-empty_position NO_POSITION;
+EmptyPosition kNoPosition;
 
 }  // namespace
 
-namespace irs {
-
-irs::position* position::empty() noexcept { return &NO_POSITION; }
+position& position::empty() noexcept { return kNoPosition; }
 
 REGISTER_ATTRIBUTE(frequency);
 REGISTER_ATTRIBUTE(position);

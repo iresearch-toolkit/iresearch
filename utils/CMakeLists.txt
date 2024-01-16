@@ -7,14 +7,10 @@ include_directories(
   ${PROJECT_BINARY_DIR}/core
 )
 
-if (SUPPRESS_EXTERNAL_WARNINGS)
-  include_directories(SYSTEM
-    ${EXTERNAL_INCLUDE_DIRS}
-    ${FROZEN_INCLUDE_DIR})
-else ()
-  include_directories(${EXTERNAL_INCLUDE_DIRS}
-    ${FROZEN_INCLUDE_DIR})
-endif ()
+include_directories(SYSTEM
+  ${EXTERNAL_INCLUDE_DIRS}
+  ${FROZEN_INCLUDE_DIR}
+)
 
 ################################################################################
 ### iresearch-util
