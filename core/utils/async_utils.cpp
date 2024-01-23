@@ -124,7 +124,7 @@ void ThreadPool<UseDelay>::Work() {
       if constexpr (UseDelay) {
         auto& top = tasks_.top();
         if (top.at > Clock::now()) {
-          auto const at = top.at;
+          const auto at = top.at;
           cv_.wait_until(lock, at);
           continue;
         }
