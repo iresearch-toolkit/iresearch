@@ -107,12 +107,12 @@ void ThreadPool<UseDelay>::stop(bool skip_pending) noexcept {
     return;
   }
   state_ |= 1;
+  auto threads = std::move(threads_);
   lock.unlock();
   cv_.notify_all();
-  for (auto& t : threads_) {
+  for (auto& t : threads) {
     t.join();
   }
-  threads_ = decltype(threads_){};
 }
 
 template<bool UseDelay>
