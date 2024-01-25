@@ -28,10 +28,10 @@
 namespace irs {
 namespace {
 
-class column_existence_query : public irs::filter::prepared {
+class column_existence_query : public filter::prepared {
  public:
   column_existence_query(std::string_view field, bstring&& stats, score_t boost)
-    : filter::prepared(boost), field_{field}, stats_(std::move(stats)) {}
+    : field_{field}, stats_{std::move(stats)}, boost_{boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     const auto& segment = ctx.segment;
@@ -48,6 +48,8 @@ class column_existence_query : public irs::filter::prepared {
     // No terms to visit
   }
 
+  score_t boost() const noexcept final { return boost_; }
+
  protected:
   doc_iterator::ptr iterator(const SubReader& segment,
                              const column_reader& column,
@@ -62,7 +64,7 @@ class column_existence_query : public irs::filter::prepared {
       if (auto* score = irs::get_mutable<irs::score>(it.get()); score) {
         CompileScore(*score, ord.buckets(), segment,
                      empty_term_reader(column.size()), stats_.c_str(), *it,
-                     boost());
+                     boost_);
       }
     }
 
@@ -71,6 +73,7 @@ class column_existence_query : public irs::filter::prepared {
 
   std::string field_;
   bstring stats_;
+  score_t boost_;
 };
 
 class column_prefix_existence_query : public column_existence_query {

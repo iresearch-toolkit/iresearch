@@ -1165,7 +1165,6 @@ TEST(by_column_existence, equal) {
     irs::by_column_existence q0 = make_filter("name", false);
     irs::by_column_existence q1 = make_filter("name", false);
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {

@@ -107,7 +107,7 @@ namespace irs {
 void MultiTermQuery::visit(const SubReader& segment,
                            PreparedStateVisitor& visitor, score_t boost) const {
   if (auto state = states_.find(segment); state) {
-    visitor.Visit(*this, *state, boost * this->boost());
+    visitor.Visit(*this, *state, boost * boost_);
   }
 }
 
@@ -151,7 +151,7 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
       IRS_ASSERT(entry.stat_offset < stats.size());
       auto* stat = stats[entry.stat_offset].c_str();
       CompileScore(*score, ord.buckets(), segment, *state->reader, stat, *docs,
-                   entry.boost * boost());
+                   entry.boost * boost_);
     }
 
     IRS_ASSERT(it != std::end(itrs));

@@ -30,14 +30,41 @@
 #include "search/prepared_state_visitor.hpp"
 #include "search/states/phrase_state.hpp"
 #include "search/states_cache.hpp"
+#include "search/top_terms_collector.hpp"
 
 namespace irs {
 namespace {
 
-struct GetVisitor {
-  using result_type = field_visitor;
+struct TopTermsCollector final : filter_visitor {
+  explicit TopTermsCollector(size_t size) : impl_{size} { IRS_ASSERT(size); }
 
-  result_type operator()(const by_term_options& part) const {
+  void prepare(const SubReader& segment, const term_reader& field,
+               const seek_term_iterator& terms) final {
+    impl_.prepare(segment, field, terms);
+  }
+
+  void visit(score_t boost) final { impl_.visit(boost); }
+
+  field_visitor ToVisitor() {
+    // TODO(MBkkt) we can avoid by_terms, but needs to change
+    // top_terms_collector, to make it able keep equal elements
+    irs::by_terms_options::search_terms terms;
+    impl_.visit([&](top_term<score_t>& term) {
+      terms.emplace(std::move(term.term), term.key);
+    });
+    return [terms = std::move(terms)](const SubReader& segment,
+                                      const term_reader& field,
+                                      filter_visitor& visitor) {
+      return by_terms::visit(segment, field, terms, visitor);
+    };
+  }
+
+ private:
+  top_terms_collector<top_term<score_t>> impl_;
+};
+
+struct GetVisitor {
+  field_visitor operator()(const by_term_options& part) const {
     return [term = bytes_view(part.term)](const SubReader& segment,
                                           const term_reader& field,
                                           filter_visitor& visitor) {
@@ -45,7 +72,7 @@ struct GetVisitor {
     };
   }
 
-  result_type operator()(const by_prefix_options& part) const {
+  field_visitor operator()(const by_prefix_options& part) const {
     return [term = bytes_view(part.term)](const SubReader& segment,
                                           const term_reader& field,
                                           filter_visitor& visitor) {
@@ -53,15 +80,18 @@ struct GetVisitor {
     };
   }
 
-  result_type operator()(const by_wildcard_options& part) const {
+  field_visitor operator()(const by_wildcard_options& part) const {
     return by_wildcard::visitor(part.term);
   }
 
-  result_type operator()(const by_edit_distance_filter_options& part) const {
+  field_visitor operator()(const by_edit_distance_options& part) const {
+    if (part.max_terms != 0) {
+      return {};
+    }
     return by_edit_distance::visitor(part);
   }
 
-  result_type operator()(const by_terms_options& part) const {
+  field_visitor operator()(const by_terms_options& part) const {
     return
       [terms = &part.terms](const SubReader& segment, const term_reader& field,
                             filter_visitor& visitor) {
@@ -69,7 +99,7 @@ struct GetVisitor {
       };
   }
 
-  result_type operator()(const by_range_options& part) const {
+  field_visitor operator()(const by_range_options& part) const {
     return
       [range = &part.range](const SubReader& segment, const term_reader& field,
                             filter_visitor& visitor) {
@@ -79,32 +109,27 @@ struct GetVisitor {
 };
 
 struct PrepareVisitor : util::noncopyable {
-  using result_type = filter::prepared::ptr;
-
-  result_type operator()(const by_term_options& opts) const {
+  auto operator()(const by_term_options& opts) const {
     return by_term::prepare(ctx, field, opts.term);
   }
 
-  result_type operator()(const by_prefix_options& part) const {
+  auto operator()(const by_prefix_options& part) const {
     return by_prefix::prepare(ctx, field, part.term, part.scored_terms_limit);
   }
 
-  result_type operator()(const by_wildcard_options& part) const {
+  auto operator()(const by_wildcard_options& part) const {
     return by_wildcard::prepare(ctx, field, part.term, part.scored_terms_limit);
   }
 
-  result_type operator()(const by_edit_distance_filter_options& part) const {
-    return by_edit_distance::prepare(ctx, field, part.term,
-                                     0,  // collect all terms
+  auto operator()(const by_edit_distance_options& part) const {
+    return by_edit_distance::prepare(ctx, field, part.term, part.max_terms,
                                      part.max_distance, part.provider,
                                      part.with_transpositions, part.prefix);
   }
 
-  result_type operator()(const by_terms_options&) const {
-    return nullptr;  // TODO(MBkkt) Some tests doesn't work for by_terms :(
-  }
+  filter::prepared::ptr operator()(const by_terms_options&) const { return {}; }
 
-  result_type operator()(const by_range_options& part) const {
+  auto operator()(const by_range_options& part) const {
     return by_range::prepare(ctx, field, part.range, part.scored_terms_limit);
   }
 
@@ -175,6 +200,15 @@ class phrase_term_visitor final : public filter_visitor,
   bool volatile_boost_ = false;
 };
 
+bool Valid(const term_reader* reader) noexcept {
+  static_assert(FixedPhraseQuery::kRequiredFeatures ==
+                VariadicPhraseQuery::kRequiredFeatures);
+  // check field reader exists with required features
+  return reader != nullptr && (reader->meta().index_features &
+                               FixedPhraseQuery::kRequiredFeatures) ==
+                                FixedPhraseQuery::kRequiredFeatures;
+}
+
 filter::prepared::ptr FixedPrepareCollect(const PrepareContext& ctx,
                                           std::string_view field,
                                           const by_phrase_options& options) {
@@ -198,31 +232,20 @@ filter::prepared::ptr FixedPrepareCollect(const PrepareContext& ctx,
   for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
-
-    if (reader == nullptr) {
+    if (!Valid(reader)) {
       continue;
     }
 
-    // check required features
-    if (FixedPhraseQuery::kRequiredFeatures !=
-        (reader->meta().index_features & FixedPhraseQuery::kRequiredFeatures)) {
-      continue;
-    }
-
-    field_stats.collect(segment,
-                        *reader);  // collect field statistics once per segment
+    // collect field statistics once per segment
+    field_stats.collect(segment, *reader);
     ptv.reset(term_stats);
 
     for (const auto& word : options) {
       IRS_ASSERT(std::get_if<by_term_options>(&word.second));
       by_term::visit(segment, *reader,
                      std::get<by_term_options>(word.second).term, ptv);
-      if (!ptv.found()) {
-        if (is_ord_empty) {
-          break;
-        }
-        // continue here because we should collect
-        // stats for other terms in phrase
+      if (!ptv.found() && is_ord_empty) {
+        break;
       }
     }
 
@@ -281,9 +304,40 @@ filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
   phrase_part_visitors.reserve(phrase_size);
   std::vector<term_collectors> phrase_part_stats;
   phrase_part_stats.reserve(phrase_size);
+
+  std::vector<field_visitor*> all_terms_visitors;
+  std::vector<TopTermsCollector> top_terms_collectors;
+
   for (const auto& word : options) {
     phrase_part_stats.emplace_back(ctx.scorers, 0);
-    phrase_part_visitors.emplace_back(std::visit(GetVisitor{}, word.second));
+    auto& visitor =
+      phrase_part_visitors.emplace_back(std::visit(GetVisitor{}, word.second));
+    if (!visitor) {
+      auto& opts = std::get<by_edit_distance_options>(word.second);
+      visitor = irs::by_edit_distance::visitor(opts);
+      all_terms_visitors.push_back(&visitor);
+      top_terms_collectors.emplace_back(opts.max_terms);
+    }
+  }
+
+  if (!all_terms_visitors.empty()) {
+    // TODO(MBkkt) we should move all terms search to here
+    // And make second loop for index only to make correct order of terms
+    for (const auto& segment : ctx.index) {
+      // get term dictionary for field
+      const auto* reader = segment.field(field);
+      if (!Valid(reader)) {
+        continue;
+      }
+      auto it = top_terms_collectors.begin();
+      for (auto* visitor : all_terms_visitors) {
+        (*visitor)(segment, *reader, *it++);
+      }
+    }
+    auto it = top_terms_collectors.begin();
+    for (auto* visitor : all_terms_visitors) {
+      *visitor = it++->ToVisitor();
+    }
   }
 
   // per segment phrase states
@@ -303,46 +357,30 @@ filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
   for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
-
-    if (reader == nullptr) {
+    if (!Valid(reader)) {
       continue;
     }
 
-    // check required features
-    if (FixedPhraseQuery::kRequiredFeatures !=
-        (reader->meta().index_features & FixedPhraseQuery::kRequiredFeatures)) {
-      continue;
-    }
-
-    ptv.reset();  // reset boost volaitility mark
-    field_stats.collect(segment, *reader);
     // collect field statistics once per segment
+    field_stats.collect(segment, *reader);
+    ptv.reset();  // reset boost volaitility mark
 
-    size_t part_offset = 0;
-    size_t found_words_count = 0;
-
+    size_t found_parts = 0;
     for (const auto& visitor : phrase_part_visitors) {
-      const auto terms_count = phrase_terms.size();
-
-      ptv.reset(phrase_part_stats[part_offset]);
+      const auto was_terms_count = phrase_terms.size();
+      ptv.reset(phrase_part_stats[found_parts]);
       visitor(segment, *reader, ptv);
-      if (!ptv.found()) {
-        if (is_ord_empty) {
-          break;
-        }
-        // continue here because we should collect
-        // stats for other terms in phrase
-      } else {
-        ++found_words_count;
+      const auto new_terms_count = phrase_terms.size() - was_terms_count;
+      // TODO(MBkkt) Avoid unnecessary work for min_match > 1 queries
+      if (new_terms_count != 0) {
+        num_terms[found_parts++] = new_terms_count;
+      } else if (is_ord_empty) {
+        break;
       }
-
-      // number of terms per phrase part
-      num_terms[part_offset] = phrase_terms.size() - terms_count;
-      ++part_offset;
     }
 
     // we have not found all needed terms
-    if (found_words_count != phrase_size) {
+    if (found_parts != phrase_size) {
       phrase_terms.clear();
       continue;
     }
@@ -367,7 +405,7 @@ filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
 
   // offset of the first term in a phrase
   IRS_ASSERT(!options.empty());
-  const size_t base_offset = options.begin()->first;
+  const auto base_offset = options.begin()->first;
 
   // finish stats
   IRS_ASSERT(phrase_size == phrase_part_stats.size());
@@ -376,15 +414,13 @@ filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
   auto collector = phrase_part_stats.begin();
 
   VariadicPhraseQuery::positions_t positions(phrase_size);
-  auto pos_itr = positions.begin();
+  auto position = positions.begin();
 
   for (const auto& term : options) {
-    *pos_itr = static_cast<position::value_t>(term.first - base_offset);
-    for (size_t term_idx = 0, size = collector->size(); term_idx < size;
-         ++term_idx) {
-      collector->finish(stats_buf, term_idx, field_stats, ctx.index);
+    *position++ = static_cast<position::value_t>(term.first - base_offset);
+    for (size_t i = 0, size = collector->size(); i < size; ++i) {
+      collector->finish(stats_buf, i, field_stats, ctx.index);
     }
-    ++pos_itr;
     ++collector;
   }
 

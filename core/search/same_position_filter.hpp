@@ -41,24 +41,15 @@ struct by_same_position_options {
   bool operator==(const by_same_position_options& rhs) const noexcept {
     return terms == rhs.terms;
   }
-
-  size_t hash() const noexcept {
-    size_t hash = 0;
-    for (auto& term : terms) {
-      hash = hash_combine(hash, term.first);
-      hash = hash_combine(hash, term.second);
-    }
-    return hash;
-  }
 };
 
-class by_same_position : public filter_with_options<by_same_position_options> {
+class by_same_position : public FilterWithOptions<by_same_position_options> {
  public:
   // Returns features required for the filter
   static constexpr IndexFeatures kRequiredFeatures =
     IndexFeatures::FREQ | IndexFeatures::POS;
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs

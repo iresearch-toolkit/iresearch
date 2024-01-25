@@ -36,8 +36,6 @@ struct by_wildcard_filter_options {
   bool operator==(const by_wildcard_filter_options& rhs) const noexcept {
     return term == rhs.term;
   }
-
-  size_t hash() const noexcept { return std::hash<bstring>()(term); }
 };
 
 // Options for wildcard filter
@@ -52,14 +50,10 @@ struct by_wildcard_options : by_wildcard_filter_options {
     return filter_options::operator==(rhs) &&
            scored_terms_limit == rhs.scored_terms_limit;
   }
-
-  size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(), scored_terms_limit);
-  }
 };
 
 // User-side wildcard filter
-class by_wildcard final : public filter_base<by_wildcard_options> {
+class by_wildcard final : public FilterWithField<by_wildcard_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
@@ -67,21 +61,10 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
 
   static field_visitor visitor(bytes_view term);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     return prepare(ctx.Boost(boost()), field(), options().term,
                    options().scored_terms_limit);
   }
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_wildcard_options> {
-  size_t operator()(const ::irs::by_wildcard_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

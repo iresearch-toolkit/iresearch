@@ -30,9 +30,7 @@
 namespace irs {
 
 TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
-  : filter::prepared(boost),
-    states_{std::move(states)},
-    stats_{std::move(stats)} {}
+  : states_{std::move(states)}, stats_{std::move(stats)}, boost_{boost} {}
 
 doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   const auto& rdr = ctx.segment;
@@ -55,7 +53,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
         *state->cookie, ord.features(), {[&](const attribute_provider& attrs) {
           return front.bucket->prepare_scorer(
             rdr, state->reader->meta().features,
-            stats_.c_str() + front.stats_offset, attrs, boost());
+            stats_.c_str() + front.stats_offset, attrs, boost_);
         }},
         ctx.wand);
     }
@@ -69,7 +67,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
     auto* score = irs::get_mutable<irs::score>(docs.get());
     IRS_ASSERT(score);
     CompileScore(*score, ord_buckets, rdr, *state->reader, stats_.c_str(),
-                 *docs, boost());
+                 *docs, boost_);
   }
 
   return docs;
@@ -77,8 +75,8 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
 
 void TermQuery::visit(const SubReader& segment, PreparedStateVisitor& visitor,
                       score_t boost) const {
-  if (auto state = states_.find(segment); state) {
-    visitor.Visit(*this, *state, boost * this->boost());
+  if (const auto* state = states_.find(segment); state) {
+    visitor.Visit(*this, *state, boost * boost_);
   }
 }
 

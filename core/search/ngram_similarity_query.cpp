@@ -582,14 +582,14 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
   if (itrs.size() == min_match_count_) {
     return memory::make_managed<NGramSimilarityDocIterator<
       NGramApprox<true>, SerialPositionsChecker<Dummy>>>(
-      std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
+      std::move(itrs), segment, *query_state->field, boost_, stats_.c_str(),
       query_state->terms.size(), min_match_count_, ord);
   }
   // TODO(MBkkt) min_match_count_ == 1: disjunction for approx,
   // optimization for low threshold case
   return memory::make_managed<NGramSimilarityDocIterator<
     NGramApprox<false>, SerialPositionsChecker<Dummy>>>(
-    std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
+    std::move(itrs), segment, *query_state->field, boost_, stats_.c_str(),
     query_state->terms.size(), min_match_count_, ord);
 }
 

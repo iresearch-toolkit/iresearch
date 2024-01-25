@@ -142,7 +142,7 @@ doc_iterator::ptr BooleanQuery::execute(const ExecutionContext& ctx) const {
   // exclusion part does not affect scoring at all
   auto excl = make_disjunction(
     {.segment = ctx.segment, .scorers = Scorers::kUnordered, .ctx = ctx.ctx},
-    irs::ScoreMergeType::kSum, excl_begin, end);
+    irs::ScoreMergeType::kNoop, excl_begin, end);
 
   // got empty iterator for excluded
   if (doc_limits::eof(excl->value())) {
@@ -156,7 +156,7 @@ doc_iterator::ptr BooleanQuery::execute(const ExecutionContext& ctx) const {
 void BooleanQuery::visit(const irs::SubReader& segment,
                          irs::PreparedStateVisitor& visitor,
                          score_t boost) const {
-  boost *= this->boost();
+  boost *= boost_;
 
   if (!visitor.Visit(*this, boost)) {
     return;
@@ -167,10 +167,11 @@ void BooleanQuery::visit(const irs::SubReader& segment,
     (*it)->visit(segment, visitor, boost);
   }
 }
+
 void BooleanQuery::prepare(const PrepareContext& ctx, ScoreMergeType merge_type,
                            queries_t queries, size_t exclude_start) {
   // apply boost to the current node
-  this->boost(ctx.boost);
+  boost_ *= ctx.boost;
   // nothrow block
   queries_ = std::move(queries);
   excl_ = exclude_start;
@@ -214,7 +215,7 @@ doc_iterator::ptr MinMatchQuery::execute(const ExecutionContext& ctx,
   const auto size = size_t(std::distance(begin, end));
 
   // 1 <= min_match_count
-  size_t min_match_count = std::max(size_t(1), min_match_count_);
+  size_t min_match_count = std::max(size_t{1}, min_match_count_);
 
   // check the size before the execution
   if (0 == size || min_match_count > size) {

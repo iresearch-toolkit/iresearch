@@ -210,20 +210,16 @@ struct Hasher {
 }  // namespace hash_utils
 }  // namespace irs
 
-namespace std {
-
 template<>
-struct hash<::irs::bstring> {
+struct std::hash<::irs::bstring> {
   size_t operator()(const ::irs::bstring& value) const noexcept {
     return ::irs::hash_utils::Hash(value);
   }
 };
 
 template<>
-struct hash<::irs::bytes_view> {
+struct std::hash<::irs::bytes_view> {
   size_t operator()(::irs::bytes_view value) const noexcept {
     return ::irs::hash_utils::Hash(value);
   }
 };
-
-}  // namespace std

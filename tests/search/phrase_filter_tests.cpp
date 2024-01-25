@@ -1199,8 +1199,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 0;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
@@ -1323,8 +1322,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fol"));
 
@@ -2424,8 +2422,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 1;
     lt.with_transpositions = true;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fxo"));
@@ -3121,9 +3118,8 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(
-        std::numeric_limits<size_t>::max());
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>(
+      std::numeric_limits<size_t>::max());
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fkx"));
 
@@ -3598,8 +3594,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 0;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("quick"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
@@ -3662,8 +3657,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("quck"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
@@ -3974,8 +3968,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     *q.mutable_field() = "phrase_anl";
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 2;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("brkln"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
@@ -4290,8 +4283,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("brown"));
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 1;
     lt.with_transpositions = true;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fxo"));
@@ -4644,12 +4636,10 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt1 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt1 = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt1.max_distance = 2;
     lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("qui"));
-    auto& lt2 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt2 = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt2.max_distance = 1;
     lt2.term = irs::ViewCast<irs::byte_type>(std::string_view("brow"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
@@ -5066,14 +5056,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt1 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt1 = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt1.max_distance = 1;
     lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("qoick"));
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("br__n"));
-    auto& lt2 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt2 = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt2.max_distance = 1;
     lt2.term = irs::ViewCast<irs::byte_type>(std::string_view("fix"));
 
@@ -6226,8 +6214,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fpx"));
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
@@ -6473,10 +6460,9 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt1 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt1 = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     auto& lt2 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(1);
+      q.mutable_options()->push_back<irs::by_edit_distance_options>(1);
     lt1.max_distance = 1;
     lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fx"));
     lt2.max_distance = 1;
@@ -6528,10 +6514,9 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt1 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt1 = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     auto& lt2 =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(1);
+      q.mutable_options()->push_back<irs::by_edit_distance_options>(1);
     lt1.max_distance = 1;
     lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fx"));
     lt2.max_distance = 1;
@@ -7641,8 +7626,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     *q.mutable_field() = "phrase_anl";
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(
       std::numeric_limits<size_t>::max());
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(1);
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>(1);
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("quik"));
@@ -7757,7 +7741,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
     auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>(10);
+      q.mutable_options()->push_back<irs::by_edit_distance_options>(10);
     lt.max_distance = 2;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("quc"));
 
@@ -7868,8 +7852,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
   {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
-    auto& lt =
-      q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+    auto& lt = q.mutable_options()->push_back<irs::by_edit_distance_options>();
     lt.max_distance = 2;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("ass"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
@@ -8529,7 +8512,7 @@ TEST(by_phrase_test, boost) {
       auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
       wt.term = irs::ViewCast<irs::byte_type>(std::string_view("qu__k"));
       auto& lt =
-        q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+        q.mutable_options()->push_back<irs::by_edit_distance_options>();
       lt.max_distance = 1;
       lt.term = irs::ViewCast<irs::byte_type>(std::string_view("brwn"));
       q.boost(boost);
@@ -8601,11 +8584,11 @@ TEST(by_phrase_test, push_back_insert) {
       ASSERT_TRUE(wt2);
       ASSERT_EQ(wt1, *wt2);
 
-      irs::by_edit_distance_filter_options lt1;
+      irs::by_edit_distance_options lt1;
       lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("whale"));
       q.push_back(lt1, 0);
-      const irs::by_edit_distance_filter_options* lt2 =
-        q.get<irs::by_edit_distance_filter_options>(7);
+      const irs::by_edit_distance_options* lt2 =
+        q.get<irs::by_edit_distance_options>(7);
       ASSERT_TRUE(lt2);
       ASSERT_EQ(lt1, *lt2);
 
@@ -8695,11 +8678,11 @@ TEST(by_phrase_test, push_back_insert) {
       ASSERT_EQ(wt1, *wt2);
       ASSERT_EQ(10, q.size());
 
-      irs::by_edit_distance_filter_options lt1;
+      irs::by_edit_distance_options lt1;
       lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("whale"));
       q.insert(lt1, 29);
-      const irs::by_edit_distance_filter_options* lt2 =
-        q.get<irs::by_edit_distance_filter_options>(29);
+      const irs::by_edit_distance_options* lt2 =
+        q.get<irs::by_edit_distance_options>(29);
       ASSERT_TRUE(lt2);
       ASSERT_EQ(lt1, *lt2);
       ASSERT_EQ(11, q.size());
@@ -8747,7 +8730,6 @@ TEST(by_phrase_test, equal) {
     q1.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("brown"));
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
@@ -8764,7 +8746,7 @@ TEST(by_phrase_test, equal) {
       auto& wt1 = q0.mutable_options()->push_back<irs::by_wildcard_options>();
       wt1.term = irs::ViewCast<irs::byte_type>(std::string_view("br_wn"));
       auto& lt1 =
-        q0.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+        q0.mutable_options()->push_back<irs::by_edit_distance_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
       auto& rt1 = q0.mutable_options()->push_back<irs::by_range_options>();
@@ -8789,7 +8771,7 @@ TEST(by_phrase_test, equal) {
       auto& wt1 = q1.mutable_options()->push_back<irs::by_wildcard_options>();
       wt1.term = irs::ViewCast<irs::byte_type>(std::string_view("br_wn"));
       auto& lt1 =
-        q1.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+        q1.mutable_options()->push_back<irs::by_edit_distance_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
       auto& rt1 = q1.mutable_options()->push_back<irs::by_range_options>();
@@ -8802,7 +8784,6 @@ TEST(by_phrase_test, equal) {
     }
 
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
@@ -8868,7 +8849,7 @@ TEST(by_phrase_test, equal) {
       auto& wt1 = q0.mutable_options()->push_back<irs::by_wildcard_options>();
       wt1.term = irs::ViewCast<irs::byte_type>(std::string_view("br_wn"));
       auto& lt1 =
-        q0.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+        q0.mutable_options()->push_back<irs::by_edit_distance_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
       auto& rt1 = q0.mutable_options()->push_back<irs::by_range_options>();
@@ -8893,7 +8874,7 @@ TEST(by_phrase_test, equal) {
       auto& wt1 = q1.mutable_options()->push_back<irs::by_wildcard_options>();
       wt1.term = irs::ViewCast<irs::byte_type>(std::string_view("br_wn"));
       auto& lt1 =
-        q1.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
+        q1.mutable_options()->push_back<irs::by_edit_distance_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
       auto& rt1 = q1.mutable_options()->push_back<irs::by_range_options>();
@@ -8920,7 +8901,7 @@ TEST(by_phrase_test, copy_move) {
     ct.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("dark")));
     irs::by_wildcard_options wt;
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("br_wn"));
-    irs::by_edit_distance_filter_options lt;
+    irs::by_edit_distance_options lt;
     lt.max_distance = 2;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
     irs::by_range_options rt;
@@ -8946,11 +8927,9 @@ TEST(by_phrase_test, copy_move) {
 
     irs::by_phrase q1 = q0;
     ASSERT_EQ(q0, q1);
-    ASSERT_EQ(q0.hash(), q1.hash());
     irs::by_phrase q2 = q0;
     irs::by_phrase q3 = std::move(q2);
     ASSERT_EQ(q0, q3);
-    ASSERT_EQ(q0.hash(), q3.hash());
   }
 }
 

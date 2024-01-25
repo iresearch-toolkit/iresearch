@@ -42,8 +42,6 @@ struct by_range_filter_options {
   bool operator==(const by_range_filter_options& rhs) const noexcept {
     return range == rhs.range;
   }
-
-  size_t hash() const noexcept { return range.hash(); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,19 +61,13 @@ struct by_range_options : by_range_filter_options {
     return filter_options::operator==(rhs) &&
            scored_terms_limit == rhs.scored_terms_limit;
   }
-
-  size_t hash() const noexcept {
-    return hash_combine(
-      filter_options::hash(),
-      std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
-  }
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class by_range : public filter_base<by_range_options> {
+class by_range : public FilterWithField<by_range_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field,
@@ -86,21 +78,10 @@ class by_range : public filter_base<by_range_options> {
                     const options_type::range_type& rng,
                     filter_visitor& visitor);
 
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+  prepared::ptr prepare(const PrepareContext& ctx) const final {
     return prepare(ctx.Boost(boost()), field(), options().range,
                    options().scored_terms_limit);
   }
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_range_options> {
-  size_t operator()(const ::irs::by_range_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

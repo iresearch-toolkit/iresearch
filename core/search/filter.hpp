@@ -68,69 +68,67 @@ class filter {
 
     static prepared::ptr empty();
 
-    explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
-
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
 
     virtual void visit(const SubReader& segment, PreparedStateVisitor& visitor,
                        score_t boost) const = 0;
 
-    score_t boost() const noexcept { return boost_; }
-
-   protected:
-    void boost(score_t boost) noexcept { boost_ *= boost; }
-
-   private:
-    score_t boost_;
+    // test only member
+    virtual score_t boost() const noexcept = 0;
   };
 
   using ptr = std::unique_ptr<filter>;
 
   virtual ~filter() = default;
 
-  virtual size_t hash() const noexcept {
-    return std::hash<type_info::type_id>()(type());
+  IRS_FORCE_INLINE bool operator==(const filter& rhs) const noexcept {
+    return equals(rhs);
   }
 
-  bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
-
-  virtual filter::prepared::ptr prepare(const PrepareContext& ctx) const = 0;
-
-  score_t boost() const noexcept { return boost_; }
-
-  void boost(score_t boost) noexcept { boost_ = boost; }
+  virtual prepared::ptr prepare(const PrepareContext& ctx) const = 0;
 
   virtual type_info::type_id type() const noexcept = 0;
+
+  // kludge for optimization in And::prepare
+  virtual score_t BoostImpl() const noexcept { return kNoBoost; }
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept {
     return type() == rhs.type();
   }
-
- private:
-  score_t boost_{kNoBoost};
 };
 
-// boost::hash_combine support
-inline size_t hash_value(const filter& q) noexcept { return q.hash(); }
+class FilterWithBoost : public filter {
+ public:
+  score_t boost() const noexcept { return boost_; }
+
+  void boost(score_t boost) noexcept { boost_ = boost; }
+
+ private:
+  score_t BoostImpl() const noexcept final { return boost(); }
+
+  score_t boost_ = kNoBoost;
+};
+
+template<typename Type>
+class FilterWithType : public FilterWithBoost {
+ public:
+  using filter_type = Type;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<Type>::id();
+  }
+};
 
 // Convenient base class filters with options
 template<typename Options>
-class filter_with_options : public filter {
+class FilterWithOptions : public FilterWithType<typename Options::filter_type> {
  public:
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
-
-  size_t hash() const noexcept override {
-    return hash_combine(filter::hash(), options_.hash());
-  }
-
-  type_info::type_id type() const noexcept final {
-    return irs::type<filter_type>::id();
-  }
 
  protected:
   bool equals(const filter& rhs) const noexcept override {
@@ -139,27 +137,22 @@ class filter_with_options : public filter {
   }
 
  private:
-  options_type options_;
+  IRS_NO_UNIQUE_ADDRESS options_type options_;
 };
 
 // Convenient base class for single field filters
 template<typename Options>
-class filter_base : public filter_with_options<Options> {
+class FilterWithField : public FilterWithOptions<Options> {
  public:
-  using options_type = typename filter_with_options<Options>::options_type;
+  using options_type = typename FilterWithOptions<Options>::options_type;
   using filter_type = typename options_type::filter_type;
 
   std::string_view field() const noexcept { return field_; }
   std::string* mutable_field() noexcept { return &field_; }
 
-  size_t hash() const noexcept final {
-    return hash_combine(hash_utils::Hash(field_),
-                        filter_with_options<options_type>::hash());
-  }
-
  protected:
   bool equals(const filter& rhs) const noexcept final {
-    return filter_with_options<options_type>::equals(rhs) &&
+    return FilterWithOptions<options_type>::equals(rhs) &&
            field_ == DownCast<filter_type>(rhs).field_;
   }
 
@@ -168,13 +161,9 @@ class filter_base : public filter_with_options<Options> {
 };
 
 // Filter which returns no documents
-class empty final : public filter {
+class Empty final : public FilterWithType<Empty> {
  public:
-  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
-
-  type_info::type_id type() const noexcept final {
-    return irs::type<empty>::id();
-  }
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 struct filter_visitor;
@@ -182,12 +171,3 @@ using field_visitor =
   std::function<void(const SubReader&, const term_reader&, filter_visitor&)>;
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<irs::filter> {
-  size_t operator()(const irs::filter& key) const { return key.hash(); }
-};
-
-}  // namespace std

@@ -129,13 +129,13 @@ filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
   bstring buf;
   return ExecuteWildcard(
     buf, term,
-    [&](bytes_view term) -> filter::prepared::ptr {
+    [&](bytes_view term) -> prepared::ptr {
       return by_term::prepare(ctx, field, term);
     },
-    [&, scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
+    [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
       return by_prefix::prepare(ctx, field, term, scored_terms_limit);
     },
-    [&, scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
+    [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
       return PrepareAutomatonFilter(ctx, field, FromWildcard(term),
                                     scored_terms_limit);
     });

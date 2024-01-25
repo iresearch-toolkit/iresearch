@@ -37,9 +37,9 @@ class MultiTermQuery : public filter::prepared {
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
                           ScoreMergeType merge_type, size_t min_match)
-    : prepared{boost},
-      states_{std::move(states)},
+    : states_{std::move(states)},
       stats_{std::move(stats)},
+      boost_{boost},
       merge_type_{merge_type},
       min_match_{min_match} {}
 
@@ -48,9 +48,12 @@ class MultiTermQuery : public filter::prepared {
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final;
 
+  score_t boost() const noexcept final { return boost_; }
+
  private:
   States states_;
   Stats stats_;
+  score_t boost_;
   ScoreMergeType merge_type_;
   size_t min_match_;
 };
