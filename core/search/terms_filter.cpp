@@ -155,7 +155,7 @@ filter::prepared::ptr by_terms::Prepare(const PrepareContext& ctx,
 
 filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
   if (options().terms.empty() || options().min_match != 0) {
-    return Prepare(ctx, field(), options());
+    return Prepare(ctx.Boost(boost()), field(), options());
   }
   if (ctx.scorers.empty()) {
     return MakeAllDocsFilter(kNoBoost)->prepare({
@@ -168,6 +168,7 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
   disj.add(MakeAllDocsFilter(0.F));
   // Reset min_match to 1
   auto& terms = disj.add<by_terms>();
+  terms.boost(boost());
   *terms.mutable_field() = field();
   *terms.mutable_options() = options();
   terms.mutable_options()->min_match = 1;

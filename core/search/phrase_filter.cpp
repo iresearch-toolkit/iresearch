@@ -128,7 +128,7 @@ struct PrepareVisitor : util::noncopyable {
   }
 
   auto operator()(const by_terms_options& part) const {
-    return by_terms::Prepare(ctx, field, part);
+    return filter::prepared::ptr{};
   }
 
   auto operator()(const by_range_options& part) const {
@@ -444,8 +444,9 @@ filter::prepared::ptr by_phrase::Prepare(const PrepareContext& ctx,
   if (1 == options.size()) {
     auto query =
       std::visit(PrepareVisitor{ctx, field}, options.begin()->second);
-    IRS_ASSERT(query);
-    return query;
+    if (query) {
+      return query;
+    }
   }
 
   // prepare phrase stats (collector for each term)
