@@ -127,9 +127,7 @@ struct PrepareVisitor : util::noncopyable {
                                      part.with_transpositions, part.prefix);
   }
 
-  auto operator()(const by_terms_options& part) const {
-    return filter::prepared::ptr{};
-  }
+  filter::prepared::ptr operator()(const by_terms_options&) const { return {}; }
 
   auto operator()(const by_range_options& part) const {
     return by_range::prepare(ctx, field, part.range, part.scored_terms_limit);
