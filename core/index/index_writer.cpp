@@ -1139,8 +1139,7 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
-  const ResourceManagementOptions& rm)
+  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1154,8 +1153,7 @@ IndexWriter::IndexWriter(
     last_gen_{committed_reader_->Meta().index_meta.gen},
     writer_{codec_->get_index_meta_writer()},
     write_lock_{std::move(lock)},
-    write_lock_file_ref_{std::move(lock_file_ref)},
-    resource_manager_{rm} {
+    write_lock_file_ref_{std::move(lock_file_ref)} {
   IRS_ASSERT(column_info);   // ensured by 'make'
   IRS_ASSERT(feature_info);  // ensured by 'make'
   IRS_ASSERT(codec_);
@@ -1221,11 +1219,6 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
   IRS_ASSERT(std::all_of(options.reader_options.scorers.begin(),
                          options.reader_options.scorers.end(),
                          [](const auto* v) { return v != nullptr; }));
-  IRS_ASSERT(options.reader_options.resource_manager.cached_columns);
-  IRS_ASSERT(options.reader_options.resource_manager.consolidations);
-  IRS_ASSERT(options.reader_options.resource_manager.file_descriptors);
-  IRS_ASSERT(options.reader_options.resource_manager.readers);
-  IRS_ASSERT(options.reader_options.resource_manager.transactions);
   index_lock::ptr lock;
   index_file_refs::ref_t lock_ref;
 
@@ -1291,8 +1284,7 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
     options.comparator,
     options.column_info ? options.column_info : kDefaultColumnInfo,
     options.features ? options.features : kDefaultFeatureInfo,
-    options.meta_payload_provider, std::move(reader),
-    options.reader_options.resource_manager);
+    options.meta_payload_provider, std::move(reader));
 
   // Remove non-index files from directory
   directory_utils::RemoveAllUnreferenced(dir);
@@ -1535,7 +1527,7 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(candidates),        // consolidation context candidates
         std::move(pending_reader),    // consolidated reader
         std::move(committed_reader),  // consolidation context meta
-        *resource_manager_.consolidations);
+        *dir.ResourceManager().consolidations);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1583,7 +1575,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
       // handle removals if something changed
       if (has_removals) {
-        DocumentMask docs_mask{{*resource_manager_.readers}};
+        DocumentMask docs_mask{{*dir.ResourceManager().readers}};
 
         if (!MapRemovals(mappings, merger, docs_mask)) {
           // consolidated segment has docs missing from
@@ -1617,7 +1609,7 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(candidates),        // consolidation context candidates
         std::move(pending_reader),    // consolidated reader
         std::move(committed_reader),  // consolidation context meta
-        *resource_manager_.consolidations);
+        *dir.ResourceManager().consolidations);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1702,9 +1694,9 @@ bool IndexWriter::Import(const IndexReader& reader,
   // TODO(MBkkt) Can be fixed: needs to add overload with external tick and
   // moving not suited import segments to the next FlushContext in PrepareFlush
   flush->imports_.emplace_back(
-    std::move(segment), tick_.load(std::memory_order_relaxed), std::move(refs),
-    std::move(imported_reader),
-    resource_manager_);  // do not forget to track refs
+    std::move(segment), tick_.load(std::memory_order_relaxed),
+    std::move(refs),  // do not forget to track refs
+    std::move(imported_reader), *dir.ResourceManager().consolidations);
 
   return true;
 }
@@ -1806,8 +1798,8 @@ SegmentWriterOptions IndexWriter::GetSegmentWriterOptions(
     .scorers_features = wand_features_,
     .scorers = wand_scorers_,
     .comparator = comparator_,
-    .resource_manager = consolidation ? *resource_manager_.consolidations
-                                      : *resource_manager_.transactions,
+    .resource_manager = consolidation ? *dir_.ResourceManager().consolidations
+                                      : *dir_.ResourceManager().transactions,
   };
 }
 
@@ -1889,7 +1881,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   readers.reserve(committed_reader_size);
   pending_meta.segments.reserve(committed_reader_size);
 
-  for (DocumentMask deleted_docs{{*resource_manager_.transactions}};
+  for (DocumentMask deleted_docs{{*dir.ResourceManager().transactions}};
        const auto& existing_segment : committed_reader.GetReaders()) {
     auto& index_segment =
       committed_meta.index_meta.segments[current_segment_index];
@@ -2177,7 +2169,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
           IRS_ASSERT(flushed_last_tick <= tick);
           // reuse existing reader with initial meta and docs_mask
           reader = it->second->ReopenDocsMask(
-            dir, flushed.meta, DocumentMask{*resource_manager_.readers});
+            dir, flushed.meta, DocumentMask{*dir.ResourceManager().readers});
         } else {
           reader = SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
         }
@@ -2194,7 +2186,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         }
 
         auto& segment_ctx = segment_ctxs.emplace_back(
-          std::move(reader), *segment, flushed, resource_manager_);
+          std::move(reader), *segment, flushed, dir.ResourceManager());
 
         // mask documents matching filters from all flushed segment_contexts
         // (i.e. from new operations)
@@ -2220,7 +2212,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       if (segment_ctx.segment.has_replace_) {
         segment_ctx.MaskUnusedReplace(committed_tick_, tick);
       }
-      DocumentMask document_mask{{*resource_manager_.readers}};
+      DocumentMask document_mask{{*dir.ResourceManager().readers}};
       IndexSegment new_segment;
       if (segment_ctx.MakeDocumentMask(tick, document_mask, new_segment)) {
         modified |= segment_ctx.flushed.was_flush;

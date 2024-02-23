@@ -884,9 +884,10 @@ class Columnstore {
     : progress_{progress, kProgressStepColumn}, writer_{std::move(writer)} {}
 
   Columnstore(directory& dir, const SegmentMeta& meta,
-              const MergeWriter::FlushProgress& progress, IResourceManager& rm)
+              const MergeWriter::FlushProgress& progress,
+              IResourceManager& resource_manager)
     : progress_{progress, kProgressStepColumn} {
-    auto writer = meta.codec->get_columnstore_writer(true, rm);
+    auto writer = meta.codec->get_columnstore_writer(true, resource_manager);
     writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
@@ -1493,14 +1494,14 @@ const MergeWriter::FlushProgress kProgressNoop = []() { return true; };
 
 MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader,
                                   IResourceManager& rm) noexcept
-  : reader{reader}, doc_id_map{{rm}}, doc_map{[](doc_id_t) noexcept {
-      return doc_limits::eof();
-    }} {
+  : reader{reader},
+    doc_id_map{{rm}},
+    doc_map{[](doc_id_t) noexcept { return doc_limits::eof(); }} {
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter(IResourceManager& rm) noexcept
-  : dir_(NoopDirectory::instance()), readers_{{rm}} {}
+MergeWriter::MergeWriter(IResourceManager& resource_manager) noexcept
+  : dir_{NoopDirectory::instance()}, readers_{{resource_manager}} {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1576,8 +1577,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   // write merged segment data
   REGISTER_TIMER_DETAILED();
-  Columnstore cs(dir, segment, progress,
-                 readers_.get_allocator().ResourceManager());
+  Columnstore cs(dir, segment, progress, readers_.get_allocator().Manager());
 
   if (!cs.valid()) {
     return false;  // flush failure
@@ -1595,7 +1595,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
+  BufferedColumns buffered_columns{readers_.get_allocator().Manager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1609,7 +1609,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
                    fields_itr, *scorers_features_, progress,
-                   readers_.get_allocator().ResourceManager())) {
+                   readers_.get_allocator().Manager())) {
     return false;  // Flush failure
   }
 
@@ -1733,7 +1733,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   // Write new sorted column and fill doc maps for each reader
   auto writer = segment.codec->get_columnstore_writer(
-    true, readers_.get_allocator().ResourceManager());
+    true, readers_.get_allocator().Manager());
   writer->prepare(dir, segment);
 
   // Get column info for sorted column
@@ -1829,7 +1829,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // Progress callback requested termination
   }
 
-  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
+  BufferedColumns buffered_columns{readers_.get_allocator().Manager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1843,7 +1843,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
                    fields_itr, *scorers_features_, progress,
-                   readers_.get_allocator().ResourceManager())) {
+                   readers_.get_allocator().Manager())) {
     return false;  // flush failure
   }
 

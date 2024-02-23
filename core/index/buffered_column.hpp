@@ -45,8 +45,10 @@ struct BufferedValue {
 class BufferedColumn final : public column_output, private util::noncopyable {
  public:
   using BufferedValues = ManagedVector<BufferedValue>;
+  // FIXME use memory_file or block_pool instead
   using Buffer = irs::basic_string<irs::byte_type,
                                    irs::ManagedTypedAllocator<irs::byte_type>>;
+
   explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)
     : data_buf_{{rm}}, index_{{rm}}, info_{info} {}
 
@@ -142,7 +144,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
 
   void FlushSparse(column_output& writer, DocMapView docmap);
 
-  Buffer data_buf_;  // FIXME use memory_file or block_pool instead
+  Buffer data_buf_;
   BufferedValues index_;
   size_t pending_offset_{};
   doc_id_t pending_key_{doc_limits::invalid()};

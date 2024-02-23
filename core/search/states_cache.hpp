@@ -49,8 +49,7 @@ class StatesCache : private util::noncopyable {
   StatesCache& operator=(StatesCache&&) = default;
 
   state_type& insert(const SubReader& segment) {
-    auto result =
-      states_.emplace(&segment, states_.get_allocator().ResourceManager());
+    auto result = states_.emplace(&segment, states_.get_allocator().Manager());
     return result.first->second;
   }
 

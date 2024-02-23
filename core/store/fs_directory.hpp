@@ -40,7 +40,7 @@ class FSDirectory : public directory {
     const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault,
     size_t fd_pool_size = kDefaultPoolSize);
 
-  const std::filesystem::path& directory() const noexcept;
+  const std::filesystem::path& path() const noexcept;
 
   using directory::attributes;
   directory_attributes& attributes() noexcept final { return attrs_; }
@@ -65,11 +65,6 @@ class FSDirectory : public directory {
   bool sync(std::span<const std::string_view> files) noexcept override;
 
   bool visit(const visitor_f& visitor) const final;
-
- protected:
-  // TODO(MBkkt) store ResourceManagementOptions only in directory
-  // Don't pass them to IndexWriter
-  ResourceManagementOptions resource_manager_;
 
  private:
   bool sync(std::string_view name) noexcept;

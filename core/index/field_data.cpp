@@ -692,6 +692,7 @@ field_data::field_data(
     proc_table_{kTermProcessingTables[size_t(random_access)]},
     requested_features_{index_features},
     last_doc_{doc_limits::invalid()} {
+  auto& rm = cached_columns.get_allocator().Manager();
   for (const type_info::type_id feature : features) {
     IRS_ASSERT(feature_columns);
     auto [feature_column_info, feature_writer_factory] =
@@ -712,9 +713,8 @@ field_data::field_data(
 
     // sorted index case or the feature is required for wand
     if (random_access || cached_features.contains(feature)) {
-      auto& column = cached_columns.emplace_back(
-        id, feature_column_info, std::move(finalizer),
-        cached_columns.get_allocator().ResourceManager());
+      auto& column = cached_columns.emplace_back(id, feature_column_info,
+                                                 std::move(finalizer), rm);
       features_.emplace_back(std::move(feature_writer), column.Stream());
     } else {
       auto [column, out] =

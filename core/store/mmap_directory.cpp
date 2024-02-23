@@ -155,11 +155,9 @@ class MMapIndexInput final : public bytes_view_input {
 
   uint64_t CountMappedMemory() const final {
 #ifdef __linux__
-    if (handle_ == nullptr) {
-      return 0;
-    }
-    return BytesInCache(static_cast<uint8_t*>(handle_->addr()),
-                        handle_->size());
+    return handle_ ? BytesInCache(static_cast<uint8_t*>(handle_->addr()),
+                                  handle_->size())
+                   : 0;
 #else
     return 0;
 #endif
@@ -192,7 +190,7 @@ index_input::ptr MMapDirectory::open(std::string_view name,
   }
 
   auto handle =
-    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
+    OpenHandle(path(), name, advice, *ResourceManager().file_descriptors);
 
   if (!handle) {
     return nullptr;
@@ -245,7 +243,7 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
   }
 
   handle =
-    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
+    OpenHandle(path(), name, advice, *ResourceManager().file_descriptors);
   if (handle) {
     cache_.Put(name, [&]() noexcept { return handle; });
 

@@ -400,11 +400,14 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
       auto name = codec()->type()().name();
       EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 5) << name;
     }
+    auto mapped_memory = reader->CountMappedMemory();
 #ifdef __linux__
     if (dynamic_cast<irs::MMapDirectory*>(&dir()) != nullptr) {
-      EXPECT_GT(reader->CountMappedMemory(), 0);
+      EXPECT_GT(mapped_memory, 0);
+      mapped_memory = 0;
     }
 #endif
+    EXPECT_EQ(mapped_memory, 0);
 
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());

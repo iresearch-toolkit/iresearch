@@ -53,7 +53,7 @@ class aligned_storage {
 // align(#) valid entries are integer powers of two from 1 to 8192 (bytes)
 // e.g. 2, 4, 8, 16, 32, or 64
 #pragma warning( \
-  disable : 4324)  // structure was padded due to __declspec(align())
+    disable : 4324)  // structure was padded due to __declspec(align())
   template<size_t Align>
   struct align_t {};
   template<>

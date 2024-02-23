@@ -48,12 +48,12 @@ enum class Version : int32_t {
   MAX = WAND
 };
 
-irs::field_writer::ptr make_writer(Version version,
-                                   irs::postings_writer::ptr&& writer,
-                                   IResourceManager& rm, bool consolidation);
+field_writer::ptr make_writer(Version version, postings_writer::ptr&& writer,
+                              bool consolidation,
+                              IResourceManager& resource_manager);
 
-irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader,
-                                   IResourceManager& rm);
+field_reader::ptr make_reader(postings_reader::ptr&& reader,
+                              IResourceManager& resource_manager);
 
 }  // namespace burst_trie
 }  // namespace irs

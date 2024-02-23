@@ -54,11 +54,11 @@ class CompositeReaderImpl : public IndexReader {
   std::span<ReaderType> GetMutReaders() noexcept { return readers_; }
 
   uint64_t CountMappedMemory() const final {
-    uint64_t mapped{0};
+    uint64_t bytes = 0;
     for (const auto& segment : readers_) {
-      mapped += segment.CountMappedMemory();
+      bytes += segment.CountMappedMemory();
     }
-    return mapped;
+    return bytes;
   }
 
   // maximum number of documents

@@ -335,11 +335,11 @@ class column_base : public column_reader, private util::noncopyable {
   }
 
   ~column_base() override {
-    if (!column_data_.empty()) {
-      auto released = static_cast<int64_t>(column_data_.size());
-      // force memory release
-      column_data_ = {};
-      resource_manager_cached_.DecreaseChecked(released);
+    // TODO(MBkkt) Maybe move to the derived classes?
+    // This will allow to batch Decrease calls
+    if (const auto released = column_data_.size(); released != 0) {
+      column_data_ = {};  // force memory release
+      resource_manager_cached_.Decrease(released);
     }
   }
 
@@ -383,6 +383,7 @@ class column_base : public column_reader, private util::noncopyable {
   void reset_stream(const index_input* stream) { stream_ = stream; }
 
   bool allocate_buffered_memory(size_t size, size_t mappings) noexcept try {
+    IRS_ASSERT(size != 0);
     resource_manager_cached_.Increase(size + mappings);
     // should be only one alllocation
     IRS_ASSERT(column_data_.empty());
@@ -432,6 +433,7 @@ class column_base : public column_reader, private util::noncopyable {
     }
   }
 
+  // TODO(MBkkt) remove unnecessary memset to zero!
   std::vector<byte_type> column_data_;
   index_input::ptr buffered_input_;
   IResourceManager& resource_manager_cached_;
@@ -678,9 +680,7 @@ class dense_fixed_length_column : public column_base {
 
   ~dense_fixed_length_column() override {
     if (is_encrypted(header()) && !column_data_.empty()) {
-      // account approximated number of mappings
-      // We don not want to store actual number to not increase column size
-      buffered_input_.reset();
+      buffered_input_.reset();  // force memory release
       resource_manager_cached_.Decrease(
         sizeof(remapped_bytes_view_input::mapping_value) * 2);
     }
@@ -697,9 +697,10 @@ class dense_fixed_length_column : public column_base {
       calculate_bitmap_size(in.length(), next_sorted_columns);
     const auto total_size = data_size + bitmap_size;
     size_t mapping_size{0};
-    if (is_encrypted(hdr)) {
-      // account approximated number of mappings
-      // We don not want to store actual number to not increase column size
+    const bool encrypted = is_encrypted(hdr);
+    if (encrypted) {
+      // We don't want to store actual number to not increase column size,
+      // so it's approximated number of mappings
       mapping_size = sizeof(remapped_bytes_view_input::mapping_value) * 2;
     }
     if (!allocate_buffered_memory(total_size, mapping_size)) {
@@ -710,7 +711,7 @@ class dense_fixed_length_column : public column_base {
     if (bitmap_size) {
       store_bitmap_index(bitmap_size, data_size, &mapping, hdr, in);
     }
-    if (is_encrypted(hdr)) {
+    if (encrypted) {
       mapping.emplace_back(data_, 0);
       buffered_input_ = std::make_unique<remapped_bytes_view_input>(
         bytes_view{column_data_.data(), column_data_.size()},
@@ -823,7 +824,7 @@ class fixed_length_column : public column_base {
 
   ~fixed_length_column() override {
     if (is_encrypted(header()) && !column_data_.empty()) {
-      buffered_input_.reset();
+      buffered_input_.reset();  // force memory release
       resource_manager_cached_.Decrease(
         sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size());
     }
@@ -894,6 +895,8 @@ class fixed_length_column : public column_base {
     blocks_offsets.reserve(blocks.size());
     size_t mapping_size{0};
     if constexpr (encrypted) {
+      // We don't want to store actual number to not increase column size,
+      // so it's approximated number of mappings
       mapping_size =
         sizeof(remapped_bytes_view_input::mapping_value) * blocks.size();
     }
@@ -1022,7 +1025,7 @@ class sparse_column : public column_base {
 
   ~sparse_column() override {
     if (is_encrypted(header()) && !column_data_.empty()) {
-      buffered_input_.reset();
+      buffered_input_.reset();  // force memory release
       resource_manager_cached_.Decrease(
         sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2);
     }
@@ -1086,8 +1089,8 @@ class sparse_column : public column_base {
     chunks.reserve(blocks.size());  // minimum, we may even need more chunks
     size_t mapping_size{0};
     if constexpr (encrypted) {
-      // account approximated number of mappings
-      // We don not want to store actual number to not increase column size
+      // We don't want to store actual number to not increase column size,
+      // so it's approximated number of mappings
       mapping_size =
         sizeof(remapped_bytes_view_input::mapping_value) * blocks.size() * 2;
     }
@@ -1541,8 +1544,8 @@ void column::finish(index_output& index_out) {
   }
 }
 
-writer::writer(Version version, IResourceManager& resource_manager,
-               bool consolidation)
+writer::writer(Version version, bool consolidation,
+               IResourceManager& resource_manager)
   : dir_{nullptr},
     columns_{{resource_manager}},
     ver_{version},
@@ -1622,7 +1625,7 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
                     .consolidation = consolidation_,
                     .version = ToSparseBitmapVersion(info)},
     static_cast<field_id>(id), compression, std::move(finalizer),
-    std::move(compressor), columns_.get_allocator().ResourceManager());
+    std::move(compressor), columns_.get_allocator().Manager());
 
   return {id, column};
 }
@@ -1814,11 +1817,11 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
 
     auto index = hdr.docs_index ? read_bitmap_index(*index_in) : column_index{};
 
-    if (const size_t idx = static_cast<size_t>(hdr.type);
+    if (const auto idx = static_cast<size_t>(hdr.type);
         IRS_LIKELY(idx < std::size(kFactories))) {
       auto column = kFactories[idx](
-        std::move(name), *opts.resource_manager.readers,
-        *opts.resource_manager.cached_columns, std::move(payload),
+        std::move(name), *dir.ResourceManager().readers,
+        *dir.ResourceManager().cached_columns, std::move(payload),
         std::move(hdr), std::move(index), *index_in, *data_in_,
         std::move(inflater), data_cipher_.get());
       IRS_ASSERT(column);
@@ -1918,8 +1921,8 @@ bool reader::visit(const column_visitor_f& visitor) const {
 }
 
 columnstore_writer::ptr make_writer(Version version, bool consolidation,
-                                    IResourceManager& rm) {
-  return std::make_unique<writer>(version, rm, consolidation);
+                                    IResourceManager& resource_manager) {
+  return std::make_unique<writer>(version, consolidation, resource_manager);
 }
 
 columnstore_reader::ptr make_reader() { return std::make_unique<reader>(); }
