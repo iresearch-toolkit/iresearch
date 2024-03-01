@@ -110,7 +110,7 @@ class same_position_query : public filter::prepared {
 
   explicit same_position_query(states_t&& states, stats_t&& stats,
                                score_t boost)
-    : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
+    : states_{std::move(states)}, stats_{std::move(stats)}, boost_{boost} {}
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // FIXME(gnusi): implement
@@ -162,7 +162,7 @@ class same_position_query : public filter::prepared {
         IRS_ASSERT(score);
 
         CompileScore(*score, ord.buckets(), segment, *term_state.reader,
-                     term_stats->c_str(), *docs, boost());
+                     term_stats->c_str(), *docs, boost_);
       }
 
       // add iterator
@@ -180,9 +180,12 @@ class same_position_query : public filter::prepared {
       });
   }
 
+  score_t boost() const noexcept final { return boost_; }
+
  private:
   states_t states_;
   stats_t stats_;
+  score_t boost_;
 };
 
 }  // namespace

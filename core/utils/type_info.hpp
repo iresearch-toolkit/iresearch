@@ -87,13 +87,9 @@ class type_info {
 
 }  // namespace irs
 
-namespace std {
-
 template<>
-struct hash<::irs::type_info> {
+struct std::hash<::irs::type_info> {
   size_t operator()(const ::irs::type_info& key) const {
     return std::hash<decltype(key.id())>()(key.id());
   }
 };
-
-}  // namespace std

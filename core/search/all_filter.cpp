@@ -30,21 +30,24 @@ namespace irs {
 class all_query : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, score_t boost)
-    : filter::prepared(boost), stats_(std::move(stats)) {}
+    : stats_{std::move(stats)}, boost_{boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     auto& rdr = ctx.segment;
 
     return memory::make_managed<AllIterator>(rdr, stats_.c_str(), ctx.scorers,
-                                             rdr.docs_count(), boost());
+                                             rdr.docs_count(), boost_);
   }
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
 
+  score_t boost() const noexcept final { return boost_; }
+
  private:
   bstring stats_;
+  score_t boost_;
 };
 
 filter::prepared::ptr all::prepare(const PrepareContext& ctx) const {

@@ -237,11 +237,11 @@ struct seek_doc {
 
 namespace detail {
 
-struct boosted : public irs::filter {
+struct boosted : public irs::FilterWithBoost {
   struct prepared : irs::filter::prepared {
     explicit prepared(const basic_doc_iterator::docids_t& docs,
                       irs::score_t boost)
-      : irs::filter::prepared(boost), docs(docs) {}
+      : docs{docs}, boost_{boost} {}
 
     irs::doc_iterator::ptr execute(
       const irs::ExecutionContext& ctx) const final {
@@ -255,8 +255,13 @@ struct boosted : public irs::filter {
       // No terms to visit
     }
 
+    irs::score_t boost() const noexcept final { return boost_; }
+
     basic_doc_iterator::docids_t docs;
     irs::bstring stats;
+
+   private:
+    irs::score_t boost_;
   };
 
   irs::filter::prepared::ptr prepare(
@@ -1161,7 +1166,7 @@ TEST(boolean_query_boost, or_filter) {
 
 namespace detail {
 
-struct unestimated : public irs::filter {
+struct unestimated : public irs::FilterWithBoost {
   struct doc_iterator : irs::doc_iterator {
     irs::doc_id_t value() const final {
       // prevent iterator to filter out
@@ -1187,6 +1192,8 @@ struct unestimated : public irs::filter {
                irs::score_t) const final {
       // No terms to visit
     }
+
+    irs::score_t boost() const noexcept final { return irs::kNoBoost; }
   };
 
   filter::prepared::ptr prepare(
@@ -1199,7 +1206,7 @@ struct unestimated : public irs::filter {
   }
 };
 
-struct estimated : public irs::filter {
+struct estimated : public irs::FilterWithBoost {
   struct doc_iterator : irs::doc_iterator {
     doc_iterator(irs::cost::cost_t est, bool* evaluated) {
       cost.reset([est, evaluated]() noexcept {
@@ -1240,6 +1247,8 @@ struct estimated : public irs::filter {
                irs::score_t) const final {
       // No terms to visit
     }
+
+    irs::score_t boost() const noexcept final { return irs::kNoBoost; }
 
     bool* evaluated;
     irs::cost::cost_t est;
@@ -15616,7 +15625,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   {
     irs::Or root;
     append<irs::by_term>(root, "name", "A");  // 1
-    root.add<irs::empty>();
+    root.add<irs::Empty>();
 
     CheckQuery(root, Docs{1}, rdr);
   }
@@ -15626,7 +15635,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     irs::Or root;
     root.add<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("name", "A");  // 1
-    root.add<irs::empty>();
+    root.add<irs::Empty>();
 
     CheckQuery(
       root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
@@ -16444,7 +16453,6 @@ TEST(Not_test, equal) {
   {
     irs::Not lhs, rhs;
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16454,7 +16462,6 @@ TEST(Not_test, equal) {
     irs::Not rhs;
     rhs.filter<irs::by_term>() = make_filter<irs::by_term>("abc", "def");
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16507,7 +16514,6 @@ TEST(And_test, equal) {
     }
 
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16691,7 +16697,6 @@ TEST(Or_test, equal) {
     }
 
     ASSERT_EQ(lhs, rhs);
-    ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
@@ -16755,9 +16760,9 @@ TEST(Or_test, optimize_all_unscored) {
     node.docs = {3};
   }
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
 
   auto prep = root.prepare({.index = irs::SubReader::empty()});
 
@@ -16782,9 +16787,9 @@ TEST(Or_test, optimize_all_scored) {
     node.docs = {3};
   }
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
   root.add<irs::all>();
-  root.add<irs::empty>();
+  root.add<irs::Empty>();
   tests::sort::boost sort{};
   auto pord = irs::Scorers::Prepare(sort);
   auto prep = root.prepare({.index = irs::SubReader::empty(), .scorers = pord});

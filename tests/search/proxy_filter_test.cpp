@@ -95,7 +95,7 @@ class doclist_test_iterator : public doc_iterator, private util::noncopyable {
 class doclist_test_query : public filter::prepared {
  public:
   doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
-    : documents_(documents){};
+    : documents_(documents) {}
 
   doc_iterator::ptr execute(const ExecutionContext&) const final {
     ++executes_;
@@ -105,6 +105,8 @@ class doclist_test_query : public filter::prepared {
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
+
+  irs::score_t boost() const noexcept final { return kNoBoost; }
 
   static size_t get_execs() noexcept { return executes_; }
 

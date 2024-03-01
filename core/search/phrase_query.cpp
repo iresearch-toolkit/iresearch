@@ -107,7 +107,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
 
   return memory::make_managed<FixedPhraseIterator<false, true>>(
     std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
-    stats_.c_str(), ord, boost());
+    stats_.c_str(), ord, boost_);
 }
 
 doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
@@ -284,13 +284,13 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
     return memory::make_managed<
       VariadicPhraseIterator<Adapter, true, false, true>>(
       std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-      stats_.c_str(), ord, boost());
+      stats_.c_str(), ord, boost_);
   }
 
   return memory::make_managed<
     VariadicPhraseIterator<Adapter, false, false, true>>(
     std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-    stats_.c_str(), ord, boost());
+    stats_.c_str(), ord, boost_);
 }
 
 doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(

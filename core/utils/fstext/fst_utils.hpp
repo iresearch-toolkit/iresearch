@@ -24,8 +24,7 @@
 
 #include <fst/fst.h>
 
-namespace fst {
-namespace fstext {
+namespace fst::fstext {
 
 template<typename Label>
 struct EmptyLabel {
@@ -117,29 +116,22 @@ struct ILabelArc {
     : ilabel(ilabel), nextstate(nextstate) {}
 };
 
-}  // namespace fstext
-}  // namespace fst
-
-namespace std {
-
 template<typename L>
-inline void swap(typename ::fst::fstext::EmptyLabel<L>& /*lhs*/,
-                 L& rhs) noexcept {
+inline void swap(EmptyLabel<L>& /*lhs*/, L& rhs) noexcept {
   rhs = ::fst::kNoLabel;
 }
 
 template<typename L>
-inline void swap(L& lhs,
-                 typename ::fst::fstext::EmptyLabel<L>& /*rhs*/) noexcept {
+inline void swap(L& lhs, EmptyLabel<L>& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 
+}  // namespace fst::fstext
+
 template<typename L>
-struct hash<typename ::fst::fstext::EmptyLabel<L>> {
+struct std::hash<typename ::fst::fstext::EmptyLabel<L>> {
   constexpr size_t operator()(
     typename ::fst::fstext::EmptyLabel<L>) const noexcept {
     return 0;
   }
 };
-
-}  // namespace std

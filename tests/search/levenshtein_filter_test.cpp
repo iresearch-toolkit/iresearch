@@ -935,7 +935,7 @@ TEST_P(by_edit_distance_test_case, visit) {
   ASSERT_NE(nullptr, reader);
 
   {
-    irs::by_edit_distance_filter_options opts;
+    irs::by_edit_distance_options opts;
     opts.term = term;
     opts.max_distance = 0;
     opts.provider = nullptr;
@@ -954,7 +954,7 @@ TEST_P(by_edit_distance_test_case, visit) {
   }
 
   {
-    irs::by_edit_distance_filter_options opts;
+    irs::by_edit_distance_options opts;
     opts.term = term;
     opts.max_distance = 1;
     opts.provider = irs::default_pdp;
@@ -987,7 +987,7 @@ TEST_P(by_edit_distance_test_case, visit) {
 
   // with prefix
   {
-    irs::by_edit_distance_filter_options opts;
+    irs::by_edit_distance_options opts;
     opts.term = irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts.max_distance = 2;
     opts.provider = irs::default_pdp;

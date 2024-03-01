@@ -41,19 +41,21 @@ class NGramSimilarityQuery : public filter::prepared {
 
   NGramSimilarityQuery(size_t min_match_count, NGramStates&& states,
                        bstring&& stats, score_t boost = kNoBoost)
-    : prepared{boost},
-      min_match_count_{min_match_count},
+    : min_match_count_{min_match_count},
       states_{std::move(states)},
-      stats_{std::move(stats)} {}
+      stats_{std::move(stats)},
+      boost_{boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
     if (const auto* state = states_.find(segment); state) {
-      visitor.Visit(*this, *state, boost * this->boost());
+      visitor.Visit(*this, *state, boost * boost_);
     }
   }
+
+  score_t boost() const noexcept final { return boost_; }
 
   doc_iterator::ptr ExecuteWithOffsets(const SubReader& rdr) const;
 
@@ -61,6 +63,7 @@ class NGramSimilarityQuery : public filter::prepared {
   size_t min_match_count_;
   NGramStates states_;
   bstring stats_;
+  score_t boost_;
 };
 
 }  // namespace irs

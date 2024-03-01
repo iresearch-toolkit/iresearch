@@ -88,26 +88,10 @@ struct ByNestedOptions {
              match) &&
            merge_type == rhs.merge_type && equal(child.get(), rhs.child.get());
   }
-
-  size_t hash() const noexcept {
-    size_t hash = std::visit(
-      []<typename T>(const T& v) noexcept -> size_t {
-        if constexpr (std::is_same_v<T, Match>) {
-          return hash_combine(std::hash<doc_id_t>{}(v.Min),
-                              std::hash<doc_id_t>{}(v.Max));
-        }
-        return 0;
-      },
-      match);
-    if (child) {
-      hash = hash_combine(hash, child->hash());
-    }
-    return hash_combine(hash, merge_type);
-  }
 };
 
 // Filter is capable of finding parents by the corresponding child filter.
-class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
+class ByNestedFilter final : public FilterWithOptions<ByNestedOptions> {
  public:
   prepared::ptr prepare(const PrepareContext& ctx) const final;
 };

@@ -37,6 +37,8 @@ struct EmptyQuery : public filter::prepared {
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
+
+  score_t boost() const noexcept final { return kNoBoost; }
 };
 
 EmptyQuery kEmptyQuery;
@@ -44,11 +46,11 @@ EmptyQuery kEmptyQuery;
 }  // namespace
 
 filter::prepared::ptr filter::prepared::empty() {
-  return memory::to_managed<filter::prepared>(kEmptyQuery);
+  return memory::to_managed<prepared>(kEmptyQuery);
 }
 
-filter::prepared::ptr empty::prepare(const PrepareContext& /*ctx*/) const {
-  return memory::to_managed<filter::prepared>(kEmptyQuery);
+filter::prepared::ptr Empty::prepare(const PrepareContext& /*ctx*/) const {
+  return memory::to_managed<prepared>(kEmptyQuery);
 }
 
 }  // namespace irs

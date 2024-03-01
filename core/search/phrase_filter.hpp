@@ -42,8 +42,7 @@ class by_phrase_options {
  private:
   using phrase_part =
     std::variant<by_term_options, by_prefix_options, by_wildcard_options,
-                 by_edit_distance_filter_options, by_terms_options,
-                 by_range_options>;
+                 by_edit_distance_options, by_terms_options, by_range_options>;
 
   using phrase_type = std::map<size_t, phrase_part>;
 
@@ -103,16 +102,6 @@ class by_phrase_options {
     return phrase_ == rhs.phrase_;
   }
 
-  // Returns hash value
-  size_t hash() const noexcept {
-    size_t hash = 0;
-    for (auto& part : phrase_) {
-      hash = hash_combine(hash, part.first);
-      hash = hash_combine(hash, part.second);
-    }
-    return hash;
-  }
-
   // Clear phrase contents
   void clear() noexcept {
     phrase_.clear();
@@ -143,7 +132,7 @@ class by_phrase_options {
   bool is_simple_term_only_{true};
 };
 
-class by_phrase : public filter_base<by_phrase_options> {
+class by_phrase : public FilterWithField<by_phrase_options> {
  public:
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field,

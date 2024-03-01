@@ -65,17 +65,14 @@ struct value {
 
 }  // namespace
 
-namespace std {
-
 template<>
-struct hash<::key> {
+struct std::hash<::key> {
   size_t operator()(const ::key& value) const noexcept {
     return irs::hash_combine(
       std::hash<irs::type_info::type_id>()(value.args_format.id()), value.type);
   }
 };
 
-}  // namespace std
 namespace irs::analysis {
 namespace {
 

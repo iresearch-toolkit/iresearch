@@ -54,10 +54,6 @@ struct by_terms_options {
     bool operator<(const search_term& rhs) const noexcept {
       return term < rhs.term;
     }
-
-    size_t hash() const noexcept {
-      return hash_combine(std::hash<decltype(boost)>()(boost), term);
-    }
   };
 
   using filter_type = by_terms;
@@ -71,18 +67,10 @@ struct by_terms_options {
     return min_match == rhs.min_match && merge_type == rhs.merge_type &&
            terms == rhs.terms;
   }
-
-  size_t hash() const noexcept {
-    size_t hash = hash_combine(0, min_match);
-    for (auto& term : terms) {
-      hash = hash_combine(hash, term.hash());
-    }
-    return hash_combine(hash, merge_type);
-  }
 };
 
 // Filter by a set of terms
-class by_terms final : public filter_base<by_terms_options>,
+class by_terms final : public FilterWithField<by_terms_options>,
                        public AllDocsProvider {
  public:
   static void visit(const SubReader& segment, const term_reader& field,
@@ -91,23 +79,9 @@ class by_terms final : public filter_base<by_terms_options>,
 
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field,
-                               const by_terms_options& options,
-                               const AllDocsProvider& provider = {});
+                               const by_terms_options& options);
 
-  prepared::ptr prepare(const PrepareContext& ctx) const final {
-    return Prepare(ctx.Boost(boost()), field(), options(), *this);
-  }
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs
-
-namespace std {
-
-template<>
-struct hash<::irs::by_terms_options> {
-  size_t operator()(const ::irs::by_terms_options& v) const noexcept {
-    return v.hash();
-  }
-};
-
-}  // namespace std

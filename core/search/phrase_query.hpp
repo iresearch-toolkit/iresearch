@@ -49,15 +49,15 @@ class PhraseQuery : public filter::prepared {
 
   PhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
               score_t boost) noexcept
-    : prepared{boost},
-      states_{std::move(states)},
+    : states_{std::move(states)},
       positions_{std::move(positions)},
-      stats_{std::move(stats)} {}
+      stats_{std::move(stats)},
+      boost_{boost} {}
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
     if (auto state = states_.find(segment); state) {
-      boost *= this->boost();
+      boost *= boost_;
       if constexpr (std::is_same_v<State, FixedPhraseState>) {
         visitor.Visit(DownCast<FixedPhraseQuery>(*this), *state, boost);
       } else if constexpr (std::is_same_v<State, VariadicPhraseState>) {
@@ -66,9 +66,12 @@ class PhraseQuery : public filter::prepared {
     }
   }
 
+  score_t boost() const noexcept final { return boost_; }
+
   states_t states_;
   positions_t positions_;
   bstring stats_;
+  score_t boost_;
 };
 
 class FixedPhraseQuery : public PhraseQuery<FixedPhraseState> {

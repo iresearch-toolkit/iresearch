@@ -233,7 +233,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 }  // namespace
 
 field_visitor by_edit_distance::visitor(
-  const options_type::filter_options& opts) {
+  const by_edit_distance_all_options& opts) {
   return executeLevenshtein(
     opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
     opts.term,
@@ -286,8 +286,8 @@ filter::prepared::ptr by_edit_distance::prepare(
   bool with_transpositions, bytes_view prefix) {
   return executeLevenshtein(
     max_distance, provider, with_transpositions, prefix, term,
-    []() -> filter::prepared::ptr { return prepared::empty(); },
-    [&]() -> filter::prepared::ptr {
+    []() -> prepared::ptr { return prepared::empty(); },
+    [&]() -> prepared::ptr {
       if (!prefix.empty() && !term.empty()) {
         bstring target;
         target.reserve(prefix.size() + term.size());
@@ -300,7 +300,7 @@ filter::prepared::ptr by_edit_distance::prepare(
     },
     [&, scored_terms_limit](const parametric_description& d,
                             const bytes_view prefix,
-                            const bytes_view term) -> filter::prepared::ptr {
+                            const bytes_view term) -> prepared::ptr {
       return prepare_levenshtein_filter(ctx, field, prefix, term,
                                         scored_terms_limit, d);
     });
