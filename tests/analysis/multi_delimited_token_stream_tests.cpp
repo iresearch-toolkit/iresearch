@@ -21,6 +21,10 @@
 #include "analysis/multi_delimited_token_stream.hpp"
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
+#include "velocypack/Parser.h"
+
+using namespace arangodb::velocypack;
+using namespace irs::analysis;
 
 namespace {
 
@@ -30,6 +34,9 @@ irs::bstring operator""_b(const char* ptr, std::size_t size) {
 }
 
 class multi_delimited_token_stream_tests : public ::testing::Test {
+ public:
+  static void SetUpTestCase() { MultiDelimitedAnalyser::init(); }
+
   virtual void SetUp() {
     // Code here will be called immediately after the constructor (right before
     // each test).
@@ -48,15 +55,12 @@ class multi_delimited_token_stream_tests : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(multi_delimited_token_stream_tests, consts) {
-  static_assert("multi_delimiter" ==
-                irs::type<irs::analysis::MultiDelimitedAnalyser>::name());
+  static_assert("multi_delimiter" == irs::type<MultiDelimitedAnalyser>::name());
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter) {
-  auto stream =
-    irs::analysis::MultiDelimitedAnalyser::Make({.delimiters = {"a"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream = MultiDelimitedAnalyser::Make({.delimiters = {"a"_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("baccaad"));
 
@@ -83,10 +87,8 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_empty_match) {
-  auto stream =
-    irs::analysis::MultiDelimitedAnalyser::Make({.delimiters = {"."_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream = MultiDelimitedAnalyser::Make({.delimiters = {"."_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset(".."));
 
@@ -97,10 +99,9 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_empty_match) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_3) {
-  auto stream = irs::analysis::MultiDelimitedAnalyser::Make(
-    {.delimiters = {";"_b, ","_b, "|"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream =
+    MultiDelimitedAnalyser::Make({.delimiters = {";"_b, ","_b, "|"_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("a;b||c|d,ff"));
 
@@ -133,10 +134,9 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_3) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
-  auto stream = irs::analysis::MultiDelimitedAnalyser::Make(
+  auto stream = MultiDelimitedAnalyser::Make(
     {.delimiters = {";"_b, ","_b, "|"_b, "."_b, ":"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("a:b||c.d,ff."));
 
@@ -169,10 +169,8 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_5) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, test_delimiter_single_long) {
-  auto stream =
-    irs::analysis::MultiDelimitedAnalyser::Make({.delimiters = {"foo"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream = MultiDelimitedAnalyser::Make({.delimiters = {"foo"_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("foobarfoobazbarfoobar"));
 
@@ -197,9 +195,8 @@ TEST_F(multi_delimited_token_stream_tests, test_delimiter_single_long) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, no_delimiter) {
-  auto stream = irs::analysis::MultiDelimitedAnalyser::Make({.delimiters = {}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream = MultiDelimitedAnalyser::Make({.delimiters = {}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("foobar"));
 
@@ -216,10 +213,9 @@ TEST_F(multi_delimited_token_stream_tests, no_delimiter) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, multi_words) {
-  auto stream = irs::analysis::MultiDelimitedAnalyser::Make(
-    {.delimiters = {"foo"_b, "bar"_b, "baz"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream =
+    MultiDelimitedAnalyser::Make({.delimiters = {"foo"_b, "bar"_b, "baz"_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("fooxyzbarbazz"));
 
@@ -240,10 +236,9 @@ TEST_F(multi_delimited_token_stream_tests, multi_words) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, multi_words_2) {
-  auto stream = irs::analysis::MultiDelimitedAnalyser::Make(
-    {.delimiters = {"foo"_b, "bar"_b, "baz"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream =
+    MultiDelimitedAnalyser::Make({.delimiters = {"foo"_b, "bar"_b, "baz"_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("foobarbaz"));
 
@@ -254,10 +249,9 @@ TEST_F(multi_delimited_token_stream_tests, multi_words_2) {
 }
 
 TEST_F(multi_delimited_token_stream_tests, trick_matching_1) {
-  auto stream = irs::analysis::MultiDelimitedAnalyser::Make(
-    {.delimiters = {"foo"_b, "ffa"_b}});
-  ASSERT_EQ(irs::type<irs::analysis::MultiDelimitedAnalyser>::id(),
-            stream->type());
+  auto stream =
+    MultiDelimitedAnalyser::Make({.delimiters = {"foo"_b, "ffa"_b}});
+  ASSERT_EQ(irs::type<MultiDelimitedAnalyser>::id(), stream->type());
 
   ASSERT_TRUE(stream->reset("abcffoobar"));
 
@@ -275,4 +269,59 @@ TEST_F(multi_delimited_token_stream_tests, trick_matching_1) {
   ASSERT_EQ(offset->start, 7);
   ASSERT_EQ(offset->end, 10);
   ASSERT_FALSE(stream->next());
+}
+
+TEST_F(multi_delimited_token_stream_tests, construct) {
+  // wrong name
+  {
+    auto builder = Parser::fromJson(R"({"delimiter":["a", "b"]})");
+    std::string in_str;
+    in_str.assign(builder->slice().startAs<char>(),
+                  builder->slice().byteSize());
+    auto stream = analyzers::get(
+      "multi_delimiter", irs::type<irs::text_format::vpack>::get(), in_str);
+    ASSERT_EQ(nullptr, stream);
+  }
+
+  // wrong type
+  {
+    auto builder = Parser::fromJson(R"({"delimiters":1})");
+    std::string in_str;
+    in_str.assign(builder->slice().startAs<char>(),
+                  builder->slice().byteSize());
+    auto stream = analyzers::get(
+      "multi_delimiter", irs::type<irs::text_format::vpack>::get(), in_str);
+    ASSERT_EQ(nullptr, stream);
+  }
+
+  {
+    auto builder = Parser::fromJson(R"({"delimiters":["a", "b"]})");
+    std::string in_str;
+    in_str.assign(builder->slice().startAs<char>(),
+                  builder->slice().byteSize());
+    auto stream = analyzers::get(
+      "multi_delimiter", irs::type<irs::text_format::vpack>::get(), in_str);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset("aib"));
+    ASSERT_TRUE(stream->next());
+    auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_EQ("i", irs::ViewCast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
+  {
+    auto builder = Parser::fromJson(R"({"delimiters":["a", "b", "c", "d"]})");
+    std::string in_str;
+    in_str.assign(builder->slice().startAs<char>(),
+                  builder->slice().byteSize());
+    std::string actual;
+    auto stream =
+      analyzers::normalize(actual, "multi_delimiter",
+                           irs::type<irs::text_format::vpack>::get(), in_str);
+
+    auto slice = Slice(reinterpret_cast<uint8_t*>(actual.data()));
+    ASSERT_TRUE(slice.isObject());
+    auto delimiters = slice.get("delimiters");
+    ASSERT_TRUE(delimiters.isArray());
+    ASSERT_EQ(4, delimiters.length());
+  }
 }
