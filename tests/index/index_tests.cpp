@@ -7048,7 +7048,7 @@ static void ConsolidateRange(irs::Consolidation& candidates,
 
   for (; begin < end; ++begin) {
     auto& r = reader[begin];
-    if (!segments.contains(r.Meta().id)) {
+    if (!segments.contains(r.Meta().name)) {
       candidates.emplace_back(&r);
     }
   }
@@ -7564,7 +7564,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       for (auto i : expected_consolidating_segments) {
         auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().id));
+          expected_consolidating_segment.Meta().name));
       }
     };
 
@@ -7756,7 +7756,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           for (auto i : expected_consolidating_segments) {
             const auto& expected_consolidating_segment = reader[i];
             ASSERT_TRUE(consolidating_segments.contains(
-              expected_consolidating_segment.Meta().id));
+              expected_consolidating_segment.Meta().name));
           }
         };
       // check segments registered for consolidation
@@ -8111,7 +8111,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           for (auto i : expected_consolidating_segments) {
             const auto& expected_consolidating_segment = reader[i];
             ASSERT_TRUE(consolidating_segments.contains(
-              expected_consolidating_segment.Meta().id));
+              expected_consolidating_segment.Meta().name));
           }
         };
       // check segments registered for consolidation
@@ -8272,7 +8272,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           for (auto i : expected_consolidating_segments) {
             const auto& expected_consolidating_segment = reader[i];
             ASSERT_TRUE(consolidating_segments.contains(
-              expected_consolidating_segment.Meta().id));
+              expected_consolidating_segment.Meta().name));
           }
         };
       // check segments registered for consolidation
@@ -8405,7 +8405,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().id));
+          expected_consolidating_segment.Meta().name));
       }
     };
 
@@ -8567,7 +8567,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().id));
+          expected_consolidating_segment.Meta().name));
       }
     };
 
@@ -9000,7 +9000,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
         ASSERT_EQ(reader.size(), consolidating_segments.size());
         for (auto& expected_consolidating_segment : reader) {
           ASSERT_TRUE(consolidating_segments.contains(
-            expected_consolidating_segment.Meta().id));
+            expected_consolidating_segment.Meta().name));
         }
       };
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
@@ -9080,7 +9080,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().id));
+          expected_consolidating_segment.Meta().name));
       }
     };
 
@@ -9093,7 +9093,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       for (auto i : expected_consolidating_segments) {
         const auto& expected_consolidating_segment = reader[i];
         ASSERT_TRUE(consolidating_segments.contains(
-          expected_consolidating_segment.Meta().id));
+          expected_consolidating_segment.Meta().name));
       }
     };
 

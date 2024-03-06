@@ -72,7 +72,7 @@ using Consolidation = std::vector<const SubReader*>;
 using ConsolidationView = std::span<const SubReader* const>;
 
 // segments that are under consolidation
-using ConsolidatingSegments = absl::flat_hash_set<SegmentInfo::Id>;
+using ConsolidatingSegments = absl::flat_hash_set<std::string_view>;
 
 // Mark consolidation candidate segments matching the current policy
 // candidates the segments that should be consolidated

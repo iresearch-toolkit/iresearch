@@ -66,7 +66,7 @@ bool operator<(const SegmentStats& lhs, const SegmentStats& rhs) noexcept {
   if (lhs.fill_factor != rhs.fill_factor) {
     return lhs.fill_factor > rhs.fill_factor;
   }
-  return lhs.meta->id < rhs.meta->id;
+  return lhs.meta->name < rhs.meta->name;
 }
 
 struct ConsolidationCandidate {
@@ -186,7 +186,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes /
     // #segments)
     for (auto& segment : reader) {
-      if (consolidating_segments.contains(segment.Meta().id)) {
+      if (consolidating_segments.contains(segment.Meta().name)) {
         continue;
       }
       const auto segment_bytes_size = segment.Meta().byte_size;
@@ -206,7 +206,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
     segments.reserve(reader.size());
 
     for (auto& segment : reader) {
-      if (consolidating_segments.contains(segment.Meta().id)) {
+      if (consolidating_segments.contains(segment.Meta().name)) {
         continue;  // segment is already under consolidation
       }
       segments.emplace_back(SizeWithoutRemovals(segment.Meta()), &segment);
@@ -257,7 +257,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
     // (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment : reader) {
       auto& meta = segment.Meta();
-      if (consolidating_segments.contains(meta.id)) {
+      if (consolidating_segments.contains(meta.name)) {
         continue;
       }
       if (!meta.live_docs_count  // if no valid doc_ids left in segment
@@ -286,7 +286,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options) {
     // (all_segment_docs{valid} / #segments)
     for (auto& segment : meta) {
       auto& info = segment.Meta();
-      if (consolidating_segments.contains(info.id)) {
+      if (consolidating_segments.contains(info.name)) {
         continue;
       }
       if (!info.live_docs_count  // if no valid doc_ids left in segment
@@ -359,7 +359,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
       total_index_size += segment.size;
       total_live_docs_count += segment.meta->live_docs_count;
 
-      if (consolidating_segments.contains(segment.reader->Meta().id)) {
+      if (consolidating_segments.contains(segment.reader->Meta().name)) {
         consolidating_size += segment.size;
         // exclude removals from stats for consolidating segments
         total_docs_count += segment.meta->live_docs_count;

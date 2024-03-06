@@ -3036,11 +3036,6 @@ void IndexMetaReader::read(const directory& dir, IndexMeta& meta,
     auto& segment = segments[i];
 
     segment.filename = read_string<std::string>(*in);
-    std::string_view idStr{segment.filename};
-    idStr = idStr.substr(1, idStr.find('.') - 1);
-    if (!absl::SimpleAtoi(idStr, &segment.meta.id)) {
-      throw io_error{absl::StrCat("Failed to read meta")};
-    }
     segment.meta.codec = formats::get(read_string<std::string>(*in));
 
     auto reader = segment.meta.codec->get_segment_meta_reader();

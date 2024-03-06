@@ -43,7 +43,7 @@ struct SegmentInfo {
 
   using Id = uint64_t;
 
-  Id id{};
+  std::string name;  // TODO(MBkkt) remove
   Id version{};
   uint64_t docs_count{};       // Total number of documents in a segment
   uint64_t live_docs_count{};  // Total number of live documents in a segment
@@ -56,7 +56,6 @@ static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
 struct SegmentMeta : SegmentInfo {
   bool operator==(const SegmentMeta&) const = default;
 
-  std::string name;  // TODO(MBkkt) remove
   std::vector<std::string> files;
   std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};

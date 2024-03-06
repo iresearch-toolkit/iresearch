@@ -223,7 +223,7 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
   }
 
   static constexpr size_t kInvalidCandidate{std::numeric_limits<size_t>::max()};
-  absl::flat_hash_map<SegmentInfo::Id, size_t> reuse_candidates;
+  absl::flat_hash_map<std::string_view, size_t> reuse_candidates;
 
   if (cached) {
     const auto& segments = cached->Meta().index_meta.segments;
@@ -231,7 +231,7 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
 
     for (size_t i = 0; const auto& segment : segments) {
       IRS_ASSERT(cached);  // ensured by loop condition above
-      auto it = reuse_candidates.emplace(segment.meta.id, i++);
+      auto it = reuse_candidates.emplace(segment.meta.name, i++);
 
       if (IRS_UNLIKELY(!it.second)) {
         it.first->second = kInvalidCandidate;  // treat collisions as invalid
@@ -245,7 +245,7 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
   auto reader = readers.begin();
 
   for (const auto& [filename, meta] : segments) {
-    const auto it = reuse_candidates.find(meta.id);
+    const auto it = reuse_candidates.find(meta.name);
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
         meta == cached->meta_.index_meta.segments[it->second].meta) {
