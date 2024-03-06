@@ -85,7 +85,7 @@ class MultiDelimitedTokenStreamSingleCharsBase
  public:
   auto FindNextDelim() {
     auto where = static_cast<Derived*>(this)->FindNextDelim();
-    return std::make_pair(where, 1);
+    return std::make_pair(where, size_t{1});
   }
 };
 
