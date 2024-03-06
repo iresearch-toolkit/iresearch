@@ -41,11 +41,13 @@ class IndexWriter;
 struct SegmentInfo {
   bool operator==(const SegmentInfo&) const = default;
 
-  std::string name;            // FIXME(gnusi): move to SegmentMeta
+  using Id = uint64_t;
+
+  Id id{};
+  Id version{};
   uint64_t docs_count{};       // Total number of documents in a segment
   uint64_t live_docs_count{};  // Total number of live documents in a segment
-  uint64_t version{};
-  uint64_t byte_size{};  // Size of a segment in bytes
+  uint64_t byte_size{};        // Size of a segment in bytes
 };
 
 static_assert(std::is_nothrow_move_constructible_v<SegmentInfo>);
@@ -54,6 +56,7 @@ static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
 struct SegmentMeta : SegmentInfo {
   bool operator==(const SegmentMeta&) const = default;
 
+  std::string name;  // TODO(MBkkt) remove
   std::vector<std::string> files;
   std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};
