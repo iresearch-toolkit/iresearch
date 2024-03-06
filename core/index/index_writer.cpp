@@ -395,7 +395,7 @@ struct CandidateMapping {
 
 // mapping: name -> { new segment, old segment }
 using CandidatesMapping =
-  absl::flat_hash_map<std::string_view, CandidateMapping>;
+  absl::flat_hash_map<SegmentInfo::Id, CandidateMapping>;
 
 struct MapCandidatesResult {
   // Number of mapped candidates.
@@ -412,7 +412,7 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
   size_t num_candidates = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
-      candidate->Meta().name,
+      candidate->Meta().id,
       CandidateMapping{.old = {candidate, num_candidates++}});
   }
 
@@ -422,7 +422,7 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
 
   for (const auto& segment : index) {
     const auto& meta = segment.Meta();
-    const auto it = candidates_mapping.find(meta.name);
+    const auto it = candidates_mapping.find(meta.id);
 
     if (candidate_not_found == it) {
       // not a candidate
@@ -484,11 +484,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
       if (!merged_itr->next()) {
         if (current_itr->next()) {
           IRS_LOG_WARN(absl::StrCat(
-            "Failed to map removals for consolidated segment '", old_meta.name,
-            "' version '", old_meta.version, "' from current segment '",
-            new_meta.name, "' version '", new_meta.version,
-            "', current segment has doc_id '", current_itr->value(),
-            "' not present in the consolidated segment"));
+            "Failed to map removals for consolidated segment ", old_meta.id,
+            " version ", old_meta.version, " from current segment ",
+            new_meta.id, " version ", new_meta.version,
+            ", current segment has doc_id ", current_itr->value(),
+            " not present in the consolidated segment"));
 
           return false;  // current reader has unmerged docs
         }
@@ -517,12 +517,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
 
           if (!merged_itr->next()) {
             IRS_LOG_WARN(absl::StrCat(
-              "Failed to map removals for consolidated segment '",
-              old_meta.name, "' version '", old_meta.version,
-              "' from current segment '", new_meta.name, "' version '",
-              new_meta.version, "', current segment has doc_id '",
-              current_itr->value(),
-              "' not present in the consolidated segment"));
+              "Failed to map removals for consolidated segment ", old_meta.id,
+              " version ", old_meta.version, " from current segment ",
+              new_meta.id, " version ", new_meta.version,
+              ", current segment has doc_id ", current_itr->value(),
+              " not present in the consolidated segment"));
 
             return false;  // current reader has unmerged docs
           }
@@ -530,11 +529,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
 
         if (merged_itr->value() > current_itr->value()) {
           IRS_LOG_WARN(absl::StrCat(
-            "Failed to map removals for consolidated segment '", old_meta.name,
-            "' version '", old_meta.version, "' from current segment '",
-            new_meta.name, "' version '", new_meta.version,
-            "', current segment has doc_id '", current_itr->value(),
-            "' not present in the consolidated segment"));
+            "Failed to map removals for consolidated segment ", old_meta.id,
+            " version ", old_meta.version, " from current segment ",
+            new_meta.id, " version ", new_meta.version,
+            ", current segment has doc_id ", current_itr->value(),
+            " not present in the consolidated segment"));
 
           return false;  // current reader has unmerged docs
         }
@@ -543,12 +542,11 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
         if (!merged_itr->next()) {
           if (current_itr->next()) {
             IRS_LOG_WARN(absl::StrCat(
-              "Failed to map removals for consolidated segment '",
-              old_meta.name, "' version '", old_meta.version,
-              "' from current segment '", new_meta.name, "' version '",
-              new_meta.version, "', current segment has doc_id '",
-              current_itr->value(),
-              "' not present in the consolidated segment"));
+              "Failed to map removals for consolidated segment ", old_meta.id,
+              " version ", old_meta.version, " from current segment ",
+              new_meta.id, " version ", new_meta.version,
+              ", current segment has doc_id ", current_itr->value(),
+              " not present in the consolidated segment"));
 
             return false;  // current reader has unmerged docs
           }
@@ -584,8 +582,8 @@ std::string ToString(ConsolidationView consolidation) {
   for (const auto* segment : consolidation) {
     auto& meta = segment->Meta();
 
-    absl::StrAppend(&str, "Name='", meta.name,
-                    "', docs_count=", meta.docs_count,
+    absl::StrAppend(&str, "Id=", meta.id, ", version=", meta.version,
+                    ", docs_count=", meta.docs_count,
                     ", live_docs_count=", meta.live_docs_count,
                     ", size=", meta.byte_size, "\n");
 
@@ -874,15 +872,15 @@ void IndexWriter::Cleanup(FlushContext& curr, FlushContext* next) noexcept {
   for (auto& import : curr.imports_) {
     auto& candidates = import.consolidation_ctx.candidates;
     for (const auto* candidate : candidates) {
-      consolidating_segments_.erase(candidate->Meta().name);
+      consolidating_segments_.erase(candidate->Meta().id);
     }
   }
   for (const auto& entry : curr.cached_) {
-    consolidating_segments_.erase(entry.second->Meta().name);
+    consolidating_segments_.erase(entry.second->Meta().id);
   }
   if (next != nullptr) {
     for (const auto& entry : next->cached_) {
-      consolidating_segments_.erase(entry.second->Meta().name);
+      consolidating_segments_.erase(entry.second->Meta().id);
     }
   }
 }
@@ -1384,7 +1382,7 @@ ConsolidationResult IndexWriter::Consolidate(
     for (const auto* candidate : candidates) {
       IRS_ASSERT(candidate != nullptr);
       // TODO(MBkkt) Make this check assert in future
-      if (consolidating_segments_.contains(candidate->Meta().name)) {
+      if (consolidating_segments_.contains(candidate->Meta().id)) {
         return {0, ConsolidationError::FAIL};
       }
     }
@@ -1393,7 +1391,7 @@ ConsolidationResult IndexWriter::Consolidate(
     consolidating_segments_.reserve(consolidating_segments_.size() +
                                     candidates.size());
     for (const auto* candidate : candidates) {
-      consolidating_segments_.emplace(candidate->Meta().name);
+      consolidating_segments_.emplace(candidate->Meta().id);
     }
   }
 
@@ -1404,7 +1402,7 @@ ConsolidationResult IndexWriter::Consolidate(
     }
     std::lock_guard lock{consolidation_lock_};
     for (const auto* candidate : candidates) {
-      consolidating_segments_.erase(candidate->Meta().name);
+      consolidating_segments_.erase(candidate->Meta().id);
     }
   };
 
@@ -1430,11 +1428,9 @@ ConsolidationResult IndexWriter::Consolidate(
 
   ConsolidationResult result{candidates.size(), ConsolidationError::FAIL};
 
-  IndexSegment consolidation_segment;
-  consolidation_segment.meta.codec = codec;  // Should use new codec
-  consolidation_segment.meta.version = 0;    // Reset version for new segment
-  // Increment active meta
-  consolidation_segment.meta.name = file_name(NextSegmentId());
+  IndexSegment consolidation_segment{.meta = {.codec = codec}};
+  consolidation_segment.meta.id = NextSegmentId();
+  consolidation_segment.meta.name = file_name(consolidation_segment.meta.id);
 
   RefTrackingDirectory dir{dir_};  // Track references for new segment
 
@@ -1472,18 +1468,17 @@ ConsolidationResult IndexWriter::Consolidate(
 
         // pointers are different so check by name
         for (const auto* candidate : candidates) {
-          if (end == std::find_if(
-                       begin, end,
-                       [candidate = std::string_view{candidate->Meta().name}](
-                         const SubReader& s) {
-                         // FIXME(gnusi): compare pointers?
-                         return candidate == s.Meta().name;
-                       })) {
+          if (end ==
+              std::find_if(begin, end,
+                           [id = candidate->Meta().id](const SubReader& s) {
+                             // FIXME(gnusi): compare pointers?
+                             return id == s.Meta().id;
+                           })) {
             // not all candidates are valid
             IRS_LOG_DEBUG(absl::StrCat(
               "Failed to start consolidation for index generation '",
               committed_reader->Meta().index_meta.gen, "', not found segment ",
-              candidate->Meta().name, " in committed state"));
+              candidate->Meta().id, " in committed state"));
             return result;
           }
         }
@@ -1544,7 +1539,7 @@ ConsolidationResult IndexWriter::Consolidate(
       // mask mapped candidates
       // segments from the to-be added new segment
       for (const auto* candidate : consolidation_ctx.candidates) {
-        segment_mask.emplace(candidate->Meta().name);
+        segment_mask.emplace(candidate->Meta().id);
       }
 
       IRS_LOG_TRACE(
@@ -1626,14 +1621,14 @@ ConsolidationResult IndexWriter::Consolidate(
       // mask mapped candidates
       // segments from the to-be added new segment
       for (const auto* candidate : consolidation_ctx.candidates) {
-        segment_mask.emplace(candidate->Meta().name);
+        segment_mask.emplace(candidate->Meta().id);
       }
 
       // mask mapped (matched) segments
       // segments from the already finished commit
       for (const auto& segment : *current_committed_reader) {
-        if (mappings.contains(segment.Meta().name)) {
-          segment_mask.emplace(segment.Meta().name);
+        if (mappings.contains(segment.Meta().id)) {
+          segment_mask.emplace(segment.Meta().id);
         }
       }
 
@@ -1670,9 +1665,9 @@ bool IndexWriter::Import(const IndexReader& reader,
 
   RefTrackingDirectory dir{dir_};  // Track references
 
-  IndexSegment segment;
-  segment.meta.name = file_name(NextSegmentId());
-  segment.meta.codec = codec;
+  IndexSegment segment{.meta = {.codec = codec}};
+  segment.meta.id = NextSegmentId();
+  segment.meta.name = file_name(segment.meta.id);
 
   MergeWriter merger{dir, GetSegmentWriterOptions(true)};
   merger.Reset(reader.begin(), reader.end());
@@ -1781,7 +1776,8 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
     dir_,
     [this] {
       SegmentMeta meta{.codec = codec_};
-      meta.name = file_name(NextSegmentId());
+      meta.id = NextSegmentId();
+      meta.name = file_name(meta.id);
       return meta;
     },
     options);
@@ -1880,7 +1876,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   auto& segment_mask = ctx->segment_mask_;
   segment_mask.reserve(segment_mask.size() + ctx->cached_.size());
   for (const auto& entry : ctx->cached_) {
-    segment_mask.emplace(entry.second->Meta().name);
+    segment_mask.emplace(entry.second->Meta().id);
   }
 
   size_t current_segment_index = 0;
@@ -1897,7 +1893,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
              current_segment_index++, committed_reader_size);
 
     // skip already masked segments
-    if (segment_mask.contains(existing_segment->Meta().name)) {
+    if (segment_mask.contains(existing_segment->Meta().id)) {
       continue;
     }
 
@@ -1919,7 +1915,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         // It's important to mask empty segment to rollback
         // the affected consolidations
 
-        segment_mask.emplace(existing_segment->Meta().name);
+        segment_mask.emplace(existing_segment->Meta().id);
         modified = true;
         continue;
       }
@@ -1991,14 +1987,14 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       for (const auto& mapping : mappings) {
         const auto* reader = mapping.second.old.segment;
         IRS_ASSERT(reader);
-        segment_mask.emplace(reader->Meta().name);
+        segment_mask.emplace(reader->Meta().id);
       }
 
       // Mask mapped (matched) segments from the currently ongoing commit
       for (const auto& segment : readers) {
-        if (mappings.contains(segment.Meta().name)) {
+        if (mappings.contains(segment.Meta().id)) {
           // Important to store the address of implementation
-          segment_mask.emplace(segment.Meta().name);
+          segment_mask.emplace(segment.Meta().id);
         }
       }
 
@@ -2080,7 +2076,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
     auto partial_sync_begin = partial_sync.begin();
     for (size_t i = 0; i < partial_sync_threshold; ++i) {
       if (auto& segment = readers[i];
-          !segment_mask.contains(segment->Meta().name)) {
+          !segment_mask.contains(segment->Meta().id)) {
         partial_sync_begin =
           std::find_if(partial_sync_begin, partial_sync.end(),
                        [i](const auto& v) { return i == v.segment_index; });
@@ -2291,7 +2287,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
     consolidating_segments_.reserve(consolidating_segments_.size() +
                                     next_cached.size());
     for (const auto& entry : next_cached) {
-      consolidating_segments_.emplace(entry.second->Meta().name);
+      consolidating_segments_.emplace(entry.second->Meta().id);
     }
     cleanup_lock.unlock();
   }

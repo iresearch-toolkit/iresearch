@@ -51,23 +51,6 @@ struct SegmentStats {
       size{SizeWithoutRemovals(*meta)},
       fill_factor{FillFactor(*meta)} {}
 
-  bool operator<(const SegmentStats& rhs) const noexcept {
-    // cppcheck-suppress constVariable
-    auto& lhs = *this;
-
-    if (lhs.size == rhs.size) {
-      if (lhs.fill_factor > rhs.fill_factor) {
-        return true;
-      } else if (lhs.fill_factor < rhs.fill_factor) {
-        return false;
-      }
-
-      return lhs.meta->name < rhs.meta->name;
-    }
-
-    return lhs.size < rhs.size;
-  }
-
   operator const irs::SubReader*() const noexcept { return reader; }
 
   const irs::SubReader* reader;
@@ -75,6 +58,16 @@ struct SegmentStats {
   size_t size;  // approximate size of segment without removals
   double_t fill_factor;
 };
+
+bool operator<(const SegmentStats& lhs, const SegmentStats& rhs) noexcept {
+  if (lhs.size != rhs.size) {
+    return lhs.size < rhs.size;
+  }
+  if (lhs.fill_factor != rhs.fill_factor) {
+    return lhs.fill_factor > rhs.fill_factor;
+  }
+  return lhs.meta->id < rhs.meta->id;
+}
 
 struct ConsolidationCandidate {
   using iterator_t = std::vector<SegmentStats>::const_iterator;
@@ -193,7 +186,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes /
     // #segments)
     for (auto& segment : reader) {
-      if (consolidating_segments.contains(segment.Meta().name)) {
+      if (consolidating_segments.contains(segment.Meta().id)) {
         continue;
       }
       const auto segment_bytes_size = segment.Meta().byte_size;
@@ -213,7 +206,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
     segments.reserve(reader.size());
 
     for (auto& segment : reader) {
-      if (consolidating_segments.contains(segment.Meta().name)) {
+      if (consolidating_segments.contains(segment.Meta().id)) {
         continue;  // segment is already under consolidation
       }
       segments.emplace_back(SizeWithoutRemovals(segment.Meta()), &segment);
@@ -264,7 +257,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
     // (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment : reader) {
       auto& meta = segment.Meta();
-      if (consolidating_segments.contains(meta.name)) {
+      if (consolidating_segments.contains(meta.id)) {
         continue;
       }
       if (!meta.live_docs_count  // if no valid doc_ids left in segment
@@ -293,7 +286,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options) {
     // (all_segment_docs{valid} / #segments)
     for (auto& segment : meta) {
       auto& info = segment.Meta();
-      if (consolidating_segments.contains(info.name)) {
+      if (consolidating_segments.contains(info.id)) {
         continue;
       }
       if (!info.live_docs_count  // if no valid doc_ids left in segment
@@ -366,7 +359,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
       total_index_size += segment.size;
       total_live_docs_count += segment.meta->live_docs_count;
 
-      if (consolidating_segments.contains(segment.reader->Meta().name)) {
+      if (consolidating_segments.contains(segment.reader->Meta().id)) {
         consolidating_size += segment.size;
         // exclude removals from stats for consolidating segments
         total_docs_count += segment.meta->live_docs_count;

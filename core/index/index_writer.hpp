@@ -72,7 +72,7 @@ using Consolidation = std::vector<const SubReader*>;
 using ConsolidationView = std::span<const SubReader* const>;
 
 // segments that are under consolidation
-using ConsolidatingSegments = absl::flat_hash_set<std::string_view>;
+using ConsolidatingSegments = absl::flat_hash_set<SegmentInfo::Id>;
 
 // Mark consolidation candidate segments matching the current policy
 // candidates the segments that should be consolidated
@@ -903,9 +903,9 @@ class IndexWriter : private util::noncopyable {
     bool consolidation) const noexcept;
 
   // Return next segment identifier
-  uint64_t NextSegmentId() noexcept;
+  SegmentInfo::Id NextSegmentId() noexcept;
   // Return current segment identifier
-  uint64_t CurrentSegmentId() const noexcept;
+  SegmentInfo::Id CurrentSegmentId() const noexcept;
   // Initialize new index meta
   void InitMeta(IndexMeta& meta, uint64_t tick) const;
 
