@@ -393,9 +393,11 @@ class column_base : public column_reader, private util::noncopyable {
     if (irs::IsNull(column_name)) {
       column_name = "<anonymous>";
     }
-    IRS_LOG_WARN(
+    IRS_LOG_INFO(
       absl::StrCat("Failed to allocate memory for buffered column id ",
-                   header().id, " name: ", column_name, " of size ", size));
+                   header().id, " name: ", column_name, " of size ", (size + mappings),
+                   ". This can happen if no columns cache was configured or the "
+                   "column data size exceeds the columns cache size."));
     return false;
   }
 
