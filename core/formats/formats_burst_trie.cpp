@@ -929,7 +929,7 @@ class fst_buffer : public vector_byte_fst {
   };
 
   fst_buffer(IResourceManager& rm)
-    : vector_byte_fst(ManagedTypedAllocator<byte_arc>(rm)) {}
+    : vector_byte_fst{ManagedTypedAllocator<byte_arc>{rm}} {}
 
   using fst_byte_builder = fst_builder<byte_type, vector_byte_fst, fst_stats>;
 
@@ -1205,23 +1205,21 @@ void field_writer::Push(bytes_view term) {
   last_term_.assign(term, consolidation_);
 }
 
-field_writer::field_writer(
-  irs::postings_writer::ptr&& pw, bool consolidation, IResourceManager& rm,
-  burst_trie::Version version /* = Format::MAX */,
-  uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
-  uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
-  : output_buffer_(rm, 32),
-    blocks_(ManagedTypedAllocator<entry>(rm)),
-    suffix_(rm),
-    stats_(rm),
-    pw_(std::move(pw)),
-    stack_(ManagedTypedAllocator<entry>(rm)),
-    fst_buf_(new fst_buffer(rm)),
-    prefixes_(DEFAULT_SIZE, 0),
-    version_(version),
-    min_block_size_(min_block_size),
-    max_block_size_(max_block_size),
-    consolidation_(consolidation) {
+field_writer::field_writer(irs::postings_writer::ptr&& pw, bool consolidation,
+                           IResourceManager& rm, burst_trie::Version version,
+                           uint32_t min_block_size, uint32_t max_block_size)
+  : output_buffer_{rm, 32},
+    blocks_{ManagedTypedAllocator<entry>{rm}},
+    suffix_{rm},
+    stats_{rm},
+    pw_{std::move(pw)},
+    stack_{ManagedTypedAllocator<entry>{rm}},
+    fst_buf_{new fst_buffer{rm}},
+    prefixes_{DEFAULT_SIZE, 0},
+    version_{version},
+    min_block_size_{min_block_size},
+    max_block_size_{max_block_size},
+    consolidation_{consolidation} {
   IRS_ASSERT(this->pw_);
   IRS_ASSERT(min_block_size > 1);
   IRS_ASSERT(min_block_size <= max_block_size);
@@ -3118,14 +3116,14 @@ class field_reader final : public irs::field_reader {
   explicit field_reader(irs::postings_reader::ptr&& pr, IResourceManager& rm);
 
   uint64_t CountMappedMemory() const final {
-    uint64_t mapped{0};
+    uint64_t bytes = 0;
     if (pr_ != nullptr) {
-      mapped += pr_->CountMappedMemory();
+      bytes += pr_->CountMappedMemory();
     }
     if (terms_in_ != nullptr) {
-      mapped += terms_in_->CountMappedMemory();
+      bytes += terms_in_->CountMappedMemory();
     }
-    return mapped;
+    return bytes;
   }
 
   void prepare(const ReaderState& state) final;
@@ -3315,8 +3313,8 @@ class field_reader final : public irs::field_reader {
   IResourceManager& resource_manager_;
 };
 
-field_reader::field_reader(irs::postings_reader::ptr&& pr, IResourceManager& rm)
-  : pr_(std::move(pr)), resource_manager_(rm) {
+field_reader::field_reader(postings_reader::ptr&& pr, IResourceManager& rm)
+  : pr_{std::move(pr)}, resource_manager_{rm} {
   IRS_ASSERT(pr_);
 }
 
@@ -3612,17 +3610,17 @@ class dumper : util::noncopyable {
 namespace irs {
 namespace burst_trie {
 
-irs::field_writer::ptr make_writer(Version version,
-                                   irs::postings_writer::ptr&& writer,
-                                   IResourceManager& rm, bool consolidation) {
+field_writer::ptr make_writer(Version version, postings_writer::ptr&& writer,
+                              bool consolidation,
+                              IResourceManager& resource_manager) {
   // Here we can parametrize field_writer via version20::term_meta
-  return std::make_unique<::field_writer>(std::move(writer), consolidation, rm,
-                                          version);
+  return std::make_unique<::field_writer>(std::move(writer), consolidation,
+                                          resource_manager, version);
 }
 
-irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader,
-                                   IResourceManager& rm) {
-  return std::make_shared<::field_reader>(std::move(reader), rm);
+field_reader::ptr make_reader(postings_reader::ptr&& reader,
+                              IResourceManager& resource_manager) {
+  return std::make_shared<::field_reader>(std::move(reader), resource_manager);
 }
 
 }  // namespace burst_trie

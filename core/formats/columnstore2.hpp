@@ -182,9 +182,9 @@ class writer final : public columnstore_writer {
   static constexpr std::string_view kDataFormatExt = "csd";
   static constexpr std::string_view kIndexFormatExt = "csi";
 
-  writer(Version version, IResourceManager& resource_manager,
-         bool consolidation);
-  ~writer() override;
+  writer(Version version, bool consolidation,
+         IResourceManager& resource_manager);
+  ~writer() final;
 
   void prepare(directory& dir, const SegmentMeta& meta) final;
   column_t push_column(const ColumnInfo& info,
@@ -195,8 +195,8 @@ class writer final : public columnstore_writer {
  private:
   directory* dir_;
   std::string data_filename_;
-  std::deque<column, ManagedTypedAllocator<column>>
-    columns_;  // pointers remain valid
+  // pointers remain valid
+  std::deque<column, ManagedTypedAllocator<column>> columns_;
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
@@ -293,7 +293,7 @@ class reader final : public columnstore_reader {
 };
 
 irs::columnstore_writer::ptr make_writer(Version version, bool consolidation,
-                                         IResourceManager& rm);
+                                         IResourceManager& resource_manager);
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2

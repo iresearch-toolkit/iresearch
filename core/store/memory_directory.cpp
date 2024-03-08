@@ -437,8 +437,7 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
     auto& file = res.first->second;
 
     if (res.second) {
-      file =
-        std::make_unique<memory_file>(files_.get_allocator().ResourceManager());
+      file = std::make_unique<memory_file>(files_.get_allocator().Manager());
     }
 
     file->reset();

@@ -480,7 +480,7 @@ index_output::ptr AsyncDirectory::create(std::string_view name) noexcept {
   std::filesystem::path path;
 
   try {
-    (path /= directory()) /= name;
+    (path /= this->path()) /= name;
 
     return AsyncIndexOutput::open(path.c_str(),
                                   async_pool_.emplace(queue_size_, flags_));
@@ -495,7 +495,7 @@ bool AsyncDirectory::sync(std::span<const std::string_view> names) noexcept {
 
   try {
     std::vector<file_utils::handle_t> handles(names.size());
-    path /= directory();
+    path /= this->path();
 
     auto async = async_pool_.emplace(queue_size_, flags_);
 

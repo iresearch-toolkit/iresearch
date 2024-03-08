@@ -166,13 +166,13 @@ class fs_index_output : public buffered_index_output {
                                 const ResourceManagementOptions& rm) noexcept
     try {
     IRS_ASSERT(name);
-    size_t descriptors{1};
+    size_t descriptors = 1;
     rm.file_descriptors->Increase(descriptors);
-    irs::Finally cleanup = [&]() noexcept {
+    Finally cleanup = [&]() noexcept {
       rm.file_descriptors->DecreaseChecked(descriptors);
     };
-    file_utils::handle_t handle(
-      file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
+    auto handle =
+      file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL);
 
     if (nullptr == handle) {
       IRS_LOG_ERROR(
@@ -198,7 +198,7 @@ class fs_index_output : public buffered_index_output {
   size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
     IRS_ASSERT(handle_);
-    handle_.reset(nullptr);
+    handle_.reset();
     rm_.file_descriptors->Decrease(1);
     return size;
   }
@@ -218,8 +218,8 @@ class fs_index_output : public buffered_index_output {
 
  private:
   fs_index_output(file_utils::handle_t&& handle,
-                  const ResourceManagementOptions& rm)
-    : handle_(std::move(handle)), rm_{rm} {
+                  const ResourceManagementOptions& rm) noexcept
+    : handle_{std::move(handle)}, rm_{rm} {
     IRS_ASSERT(handle_);
     rm_.transactions->Increase(sizeof(fs_index_output));
     buffered_index_output::reset(buf_, sizeof buf_);
@@ -229,6 +229,7 @@ class fs_index_output : public buffered_index_output {
     rm_.transactions->Decrease(sizeof(fs_index_output));
   }
 
+  // TODO(MBkkt) Find better size?
   byte_type buf_[1024];
   file_utils::handle_t handle_;
   const ResourceManagementOptions& rm_;
@@ -274,23 +275,21 @@ class fs_index_input : public buffered_index_input {
     try {
     IRS_ASSERT(name);
 
-    size_t descriptors{1};
+    size_t descriptors = 1;
     rm.file_descriptors->Increase(descriptors);
-    irs::Finally cleanup = [&]() noexcept {
+    Finally cleanup = [&]() noexcept {
       rm.file_descriptors->DecreaseChecked(descriptors);
     };
 
     auto handle = file_handle::make(rm);
     handle->io_advice = advice;
-    handle->handle =
-      irs::file_utils::open(name, get_read_mode(handle->io_advice),
-                            get_posix_fadvice(handle->io_advice));
+    handle->handle = file_utils::open(name, get_read_mode(handle->io_advice),
+                                      get_posix_fadvice(handle->io_advice));
 
     if (nullptr == handle->handle) {
       IRS_LOG_ERROR(
         absl::StrCat("Failed to open input file, error: ", GET_ERROR(),
                      ", path: ", file_utils::ToStr(name)));
-
       return nullptr;
     }
     uint64_t size;
@@ -298,15 +297,14 @@ class fs_index_input : public buffered_index_input {
       IRS_LOG_ERROR(
         absl::StrCat("Failed to get stat for input file, error: ", GET_ERROR(),
                      ", path: ", file_utils::ToStr(name)));
-
       return nullptr;
     }
 
     handle->size = size;
 
-    auto res = ptr(new fs_index_input(std::move(handle), pool_size));
+    ptr input{new fs_index_input(std::move(handle), pool_size)};
     descriptors = 0;
-    return res;
+    return input;
   } catch (...) {
     return nullptr;
   }
@@ -360,12 +358,13 @@ class fs_index_input : public buffered_index_input {
       return std::make_shared<file_handle>(rm);
     }
 
-    file_handle(const ResourceManagementOptions& rm) : resource_manager{rm} {}
+    file_handle(const ResourceManagementOptions& rm) noexcept
+      : resource_manager{rm} {}
 
     ~file_handle() {
-      const bool release = handle.get() != nullptr;
+      const auto released = static_cast<size_t>(handle != nullptr);
       handle.reset();
-      resource_manager.file_descriptors->DecreaseChecked(release);
+      resource_manager.file_descriptors->DecreaseChecked(released);
     }
     operator void*() const { return handle.get(); }
 
@@ -432,9 +431,9 @@ fs_index_input::fs_index_input(const fs_index_input& rhs)
 
 fs_index_input::~fs_index_input() {
   if (handle_) {
-    auto* r = handle_->resource_manager.readers;
+    auto& r = *handle_->resource_manager.readers;
     handle_.reset();
-    r->Decrease(sizeof(pooled_fs_index_input));
+    r.Decrease(sizeof(pooled_fs_index_input));
   }
 }
 
@@ -449,9 +448,9 @@ pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
 
 pooled_fs_index_input::~pooled_fs_index_input() noexcept {
   IRS_ASSERT(handle_);
-  auto* r = handle_->resource_manager.readers;
+  auto& r = *handle_->resource_manager.readers;
   handle_.reset();  // release handle before the fs_pool_ is deallocated
-  r->Decrease(sizeof(pooled_fs_index_input));
+  r.Decrease(sizeof(pooled_fs_index_input));
 }
 
 index_input::ptr pooled_fs_index_input::reopen() const {
@@ -508,7 +507,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
                          const ResourceManagementOptions& rm,
                          size_t fd_pool_size)
-  : resource_manager_{rm},
+  : directory{rm},
     attrs_{std::move(attrs)},
     dir_{std::move(dir)},
     fd_pool_size_{fd_pool_size} {}
@@ -517,7 +516,7 @@ index_output::ptr FSDirectory::create(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
-    auto out = fs_index_output::open(path.c_str(), resource_manager_);
+    auto out = fs_index_output::open(path.c_str(), ResourceManager());
 
     if (!out) {
       IRS_LOG_ERROR(absl::StrCat("Failed to open output file, path: ", name));
@@ -530,9 +529,7 @@ index_output::ptr FSDirectory::create(std::string_view name) noexcept {
   return nullptr;
 }
 
-const std::filesystem::path& FSDirectory::directory() const noexcept {
-  return dir_;
-}
+const std::filesystem::path& FSDirectory::path() const noexcept { return dir_; }
 
 bool FSDirectory::exists(bool& result, std::string_view name) const noexcept {
   const auto path = dir_ / name;
@@ -575,7 +572,7 @@ index_input::ptr FSDirectory::open(std::string_view name,
     const auto path = dir_ / name;
 
     return fs_index_input::open(path.c_str(), fd_pool_size_, advice,
-                                resource_manager_);
+                                ResourceManager());
   } catch (...) {
   }
 

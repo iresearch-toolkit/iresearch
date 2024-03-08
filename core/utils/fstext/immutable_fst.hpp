@@ -233,7 +233,8 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
   }
 
   // OpenFST API compliance broken. But as only we use it here it is ok.
-  static ImmutableFst<A>* Read(std::istream& strm, const FstReadOptions&,
+  static ImmutableFst<A>* Read(std::istream& strm,
+                               const FstReadOptions& /*opts*/,
                                irs::IResourceManager& rm) {
     auto* rdbuf = irs::DownCast<irs::input_buf>(strm.rdbuf());
     IRS_ASSERT(rdbuf && rdbuf->internal());

@@ -202,16 +202,15 @@ column_output& segment_writer::stream(const hashed_string_view& name,
                                       const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(column_info_);
-  auto& out =
-    *columns_
-       .lazy_emplace(name,
-                     [this, &name](const auto& ctor) {
-                       ctor(name, *col_writer_,
-                            docs_context_.get_allocator().ResourceManager(),
-                            *column_info_, cached_columns_,
-                            nullptr != fields_.comparator());
-                     })
-       ->writer;
+  auto& out = *columns_
+                 .lazy_emplace(name,
+                               [this, &name](const auto& ctor) {
+                                 ctor(name, *col_writer_,
+                                      docs_context_.get_allocator().Manager(),
+                                      *column_info_, cached_columns_,
+                                      nullptr != fields_.comparator());
+                               })
+                 ->writer;
   out.Prepare(doc_id);
   return out;
 }
@@ -315,13 +314,13 @@ void segment_writer::reset(const SegmentMeta& meta) {
 
   if (!field_writer_) {
     field_writer_ = meta.codec->get_field_writer(
-      false, docs_context_.get_allocator().ResourceManager());
+      false, docs_context_.get_allocator().Manager());
     IRS_ASSERT(field_writer_);
   }
 
   if (!col_writer_) {
     col_writer_ = meta.codec->get_columnstore_writer(
-      false, docs_context_.get_allocator().ResourceManager());
+      false, docs_context_.get_allocator().Manager());
     IRS_ASSERT(col_writer_);
   }
 

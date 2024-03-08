@@ -25,6 +25,7 @@
 #include "file_utils.hpp"
 #include "noncopyable.hpp"
 #include "resource_manager.hpp"
+
 #if defined(_MSC_VER)
 
 #include "mman_win32.hpp"

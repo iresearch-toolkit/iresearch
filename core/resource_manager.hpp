@@ -52,6 +52,7 @@ struct IResourceManager {
   }
 
   IRS_FORCE_INLINE void DecreaseChecked(size_t v) noexcept {
+    IRS_ASSERT(this != &kForbidden);
     if (v != 0) {
       Decrease(v);
     }
@@ -68,19 +69,21 @@ struct ResourceManagementOptions {
   IResourceManager* cached_columns{&IResourceManager::kNoop};
 };
 
+// TODO(MBkkt) rename to ManagedStdAllocator
 template<typename T>
 struct ManagedTypedAllocator
-  : ManagedAllocator<std::allocator<T>, IResourceManager> {
-  using Base = ManagedAllocator<std::allocator<T>, IResourceManager>;
-  explicit ManagedTypedAllocator()
-    : Base(
+  : ManagedAllocator<IResourceManager, std::allocator<T>> {
+  using Base = ManagedAllocator<IResourceManager, std::allocator<T>>;
+
+  explicit ManagedTypedAllocator() : Base {
 #if !defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
-        IResourceManager::kForbidden
+    IResourceManager::kForbidden
 #else
-        IResourceManager::kNoop
+    IResourceManager::kNoop
 #endif
-      ) {
   }
+  {}
+
   using Base::Base;
 };
 

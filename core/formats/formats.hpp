@@ -79,6 +79,7 @@ struct SegmentWriterOptions {
   const feature_set_t& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
+  // TODO(MBkkt) Remove it from here? We could use directory
   IResourceManager& resource_manager{IResourceManager::kNoop};
 };
 
@@ -348,8 +349,6 @@ struct columnstore_reader {
   struct options {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
-    // memory usage accounting
-    ResourceManagementOptions resource_manager;
   };
 
   virtual ~columnstore_reader() = default;
@@ -441,12 +440,13 @@ class format {
   virtual document_mask_writer::ptr get_document_mask_writer() const = 0;
   virtual document_mask_reader::ptr get_document_mask_reader() const = 0;
 
-  virtual field_writer::ptr get_field_writer(bool consolidation,
-                                             IResourceManager& rm) const = 0;
-  virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
+  virtual field_writer::ptr get_field_writer(
+    bool consolidation, IResourceManager& resource_manager) const = 0;
+  virtual field_reader::ptr get_field_reader(
+    IResourceManager& resource_manager) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, IResourceManager& rm) const = 0;
+    bool consolidation, IResourceManager& resource_manager) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   virtual irs::type_info::type_id type() const noexcept = 0;

@@ -126,7 +126,8 @@ class raw_block_vector_base : private util::noncopyable {
 #endif
 
  protected:
-  IRS_NO_UNIQUE_ADDRESS ManagedTypedAllocator<byte_type> alloc_;
+  // TODO(MBkkt) Maybe make it batched for push, clear and dtor
+  ManagedTypedAllocator<byte_type> alloc_;
   ManagedVector<buffer_t> buffers_;
 };
 
@@ -162,7 +163,7 @@ class raw_block_vector : public raw_block_vector_base {
   }
 
  private:
-  buffer_t CreateValue() {
+  IRS_FORCE_INLINE buffer_t CreateValue() {
     if (buffers_.size() < NumBuckets) {
       const auto& bucket = kMeta[buffers_.size()];
       return {bucket.offset, alloc_.allocate(bucket.size), bucket.size};

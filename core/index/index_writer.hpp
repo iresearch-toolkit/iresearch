@@ -577,8 +577,7 @@ class IndexWriter : private util::noncopyable {
               const ColumnInfoProvider& column_info,
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
-              std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
-              const ResourceManagementOptions& rm);
+              std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
 
  private:
   struct ConsolidationContext : util::noncopyable {
@@ -607,12 +606,12 @@ class IndexWriter : private util::noncopyable {
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  const ResourceManagementOptions& rm) noexcept
+                  IResourceManager& resource_manager) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)},
-        consolidation_ctx{.merger{*rm.consolidations}} {}
+        consolidation_ctx{.merger{resource_manager}} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -956,7 +955,6 @@ class IndexWriter : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
-  ResourceManagementOptions resource_manager_;
 };
 
 }  // namespace irs

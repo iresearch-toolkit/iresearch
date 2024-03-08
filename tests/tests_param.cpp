@@ -57,8 +57,9 @@ std::string to_string(dir_generator_f generator) {
 }
 
 std::shared_ptr<irs::directory> memory_directory(
-  const test_base* /*test*/, irs::directory_attributes attrs) {
-  return std::make_shared<irs::memory_directory>(std::move(attrs));
+  const test_base* test, irs::directory_attributes attrs) {
+  return std::make_shared<irs::memory_directory>(
+    std::move(attrs), test->GetResourceManager().options);
 }
 
 std::shared_ptr<irs::directory> fs_directory(const test_base* test,

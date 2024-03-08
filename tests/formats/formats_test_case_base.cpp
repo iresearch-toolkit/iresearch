@@ -809,7 +809,6 @@ TEST_P(format_test_case, fields_read_write) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::DocumentMask docs_mask{{irs::IResourceManager::kNoop}};
     auto reader = codec()->get_field_reader(irs::IResourceManager::kNoop);
     reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta});
     ASSERT_EQ(1, reader->size());
@@ -3713,7 +3712,6 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
 
   irs::SegmentMeta meta;
   meta.name = "segment_name";
-  irs::DocumentMask docs_mask{{irs::IResourceManager::kNoop}};
 
   auto reader = codec()->get_field_reader(irs::IResourceManager::kNoop);
   ASSERT_NE(nullptr, reader);

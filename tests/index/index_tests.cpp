@@ -101,7 +101,7 @@ irs::filter::ptr MakeOr(
 
 class SubReaderMock final : public irs::SubReader {
  public:
-  virtual uint64_t CountMappedMemory() const { return 0; }
+  uint64_t CountMappedMemory() const final { return 0; }
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
 
@@ -16876,7 +16876,6 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc1 = gen.next();
 
   irs::IndexWriterOptions writer_options;
-  writer_options.reader_options.resource_manager = GetResourceManager().options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto reader = writer->GetSnapshot();
@@ -16921,11 +16920,14 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
     EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 4);
   }
+  auto mapped_memory = reader.CountMappedMemory();
 #ifdef __linux__
   if (dynamic_cast<irs::MMapDirectory*>(&directory) != nullptr) {
-    EXPECT_GT(reader.CountMappedMemory(), 0);
+    EXPECT_GT(mapped_memory, 0);
+    mapped_memory = 0;
   }
 #endif
+  EXPECT_EQ(mapped_memory, 0);
 
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
@@ -17006,8 +17008,9 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
 
   bool cache = false;
   TestResourceManager memory;
+  const_cast<irs::ResourceManagementOptions&>(dir().ResourceManager()) =
+    memory.options;
   irs::IndexWriterOptions opts;
-  opts.reader_options.resource_manager = memory.options;
   opts.reader_options.warmup_columns =
     [&](const irs::SegmentMeta& /*meta*/, const irs::field_reader& /*fields*/,
         const irs::column_reader& /*column*/) { return cache; };

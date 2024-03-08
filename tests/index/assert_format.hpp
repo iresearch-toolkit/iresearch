@@ -165,7 +165,6 @@ class index_segment : irs::util::noncopyable {
 
   irs::doc_id_t doc_count() const noexcept { return count_; }
   size_t size() const noexcept { return fields_.size(); }
-  auto& doc_mask() const noexcept { return doc_mask_; }
   auto& fields() const noexcept { return fields_; }
   auto& columns() noexcept { return columns_; }
   auto& columns() const noexcept { return columns_; }
@@ -212,7 +211,6 @@ class index_segment : irs::util::noncopyable {
   std::set<field*> doc_fields_;
   field_map_t fields_;
   columns_t columns_;
-  irs::DocumentMask doc_mask_;
   irs::bstring buf_;
   irs::doc_id_t count_{};
   irs::doc_id_t empty_count_{};

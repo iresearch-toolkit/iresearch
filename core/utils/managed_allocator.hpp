@@ -22,86 +22,93 @@
 
 #pragma once
 
+#include <memory>
+#include <type_traits>
+
 #include "misc.hpp"
 
 namespace irs {
-template<typename Allocator, typename Manager>
-class ManagedAllocator : private Allocator {
+
+// It's possible to allow unsafe swap: swap without allocator propagation.
+// But beware of UB in case of non equal allocators.
+template<typename M, typename A, bool SafeSwap = true>
+class ManagedAllocator {
+  using Traits = std::allocator_traits<A>;
+
  public:
-  using difference_type =
-    typename std::allocator_traits<Allocator>::difference_type;
-  using propagate_on_container_move_assignment = typename std::allocator_traits<
-    Allocator>::propagate_on_container_move_assignment;
-  using propagate_on_container_copy_assignment = typename std::allocator_traits<
-    Allocator>::propagate_on_container_copy_assignment;
-  using propagate_on_container_swap = std::true_type;
-  // Note: If swap would be needed this code should do the trick.
-  // But beware of UB in case of non equal allocators.
-  // std::conditional_t<std::is_empty_v<Allocator>, std::true_type,
-  // typename std::allocator_traits<Allocator>::propagate_on_container_swap>;
-  using size_type = typename std::allocator_traits<Allocator>::size_type;
-  using value_type = typename std::allocator_traits<Allocator>::value_type;
+  using value_type = typename Traits::value_type;
+  using size_type = typename Traits::size_type;
+  using difference_type = typename Traits::difference_type;
+  using propagate_on_container_move_assignment =
+    typename Traits::propagate_on_container_move_assignment;
+  using propagate_on_container_copy_assignment =
+    typename Traits::propagate_on_container_copy_assignment;
+  using propagate_on_container_swap = std::bool_constant<SafeSwap>;
 
   template<typename... Args>
-  ManagedAllocator(Manager& rm, Args&&... args) noexcept(
-    std::is_nothrow_constructible_v<Allocator, Args&&...>)
-    : Allocator(std::forward<Args>(args)...), rm_(&rm) {}
+  ManagedAllocator(M& manager, Args&&... args) noexcept(
+    std::is_nothrow_constructible_v<A, Args&&...>)
+    : manager_{&manager}, allocator_{std::forward<Args>(args)...} {}
 
   ManagedAllocator(ManagedAllocator&& other) noexcept(
-    std::is_nothrow_move_constructible_v<Allocator>)
-    : Allocator(std::move(other)), rm_(&other.ResourceManager()) {}
+    std::is_nothrow_move_constructible_v<A>)
+    : manager_{other.manager_}, allocator_{std::move(other.allocator_)} {}
 
   ManagedAllocator(const ManagedAllocator& other) noexcept(
-    std::is_nothrow_copy_constructible_v<Allocator>)
-    : Allocator(other), rm_(&other.ResourceManager()) {}
+    std::is_nothrow_copy_constructible_v<A>)
+    : manager_{other.manager_}, allocator_{other.allocator_} {}
+
+  // TODO(MBkkt) Assign:
+  //  Is it safe in case of other == &this? Looks like yes
+  //  Maybe swap idiom?
 
   ManagedAllocator& operator=(ManagedAllocator&& other) noexcept(
-    std::is_nothrow_move_assignable_v<Allocator>) {
-    static_cast<Allocator&>(*this) = std::move(other);
-    rm_ = &other.ResourceManager();
+    std::is_nothrow_move_assignable_v<A>) {
+    manager_ = other.manager_;
+    allocator_ = std::move(other.allocator_);
     return *this;
   }
 
   ManagedAllocator& operator=(const ManagedAllocator& other) noexcept(
-    std::is_nothrow_copy_assignable_v<Allocator>) {
-    static_cast<Allocator&>(*this) = other;
-    rm_ = &other.ResourceManager();
+    std::is_nothrow_copy_assignable_v<A>) {
+    manager_ = other.manager_;
+    allocator_ = other.allocator_;
     return *this;
   }
 
-  template<typename A>
-  ManagedAllocator(const ManagedAllocator<A, Manager>& other) noexcept(
-    std::is_nothrow_copy_constructible_v<Allocator>)
-    : Allocator(other.RawAllocator()), rm_(&other.ResourceManager()) {}
+  template<typename T>
+  ManagedAllocator(const ManagedAllocator<M, T, SafeSwap>& other) noexcept(
+    std::is_nothrow_constructible_v<A, const T&>)
+    : manager_{&other.Manager()}, allocator_{other.Allocator()} {}
 
   value_type* allocate(size_type n) {
-    rm_->Increase(sizeof(value_type) * n);
+    manager_->Increase(sizeof(value_type) * n);
     Finally cleanup = [&]() noexcept {
-      rm_->DecreaseChecked(sizeof(value_type) * n);
+      manager_->DecreaseChecked(sizeof(value_type) * n);
     };
-    auto* res = Allocator::allocate(n);
+    auto* p = allocator_.allocate(n);
     n = 0;
-    return res;
+    return p;
   }
 
   void deallocate(value_type* p, size_type n) noexcept {
-    Allocator::deallocate(p, n);
-    rm_->Decrease(sizeof(value_type) * n);
+    allocator_.deallocate(p, n);
+    IRS_ASSERT(n != 0);
+    manager_->Decrease(sizeof(value_type) * n);
   }
 
-  const Allocator& RawAllocator() const noexcept {
-    return static_cast<const Allocator&>(*this);
-  }
+  M& Manager() const noexcept { return *manager_; }
+  const A& Allocator() const noexcept { return allocator_; }
 
-  template<typename A>
-  bool operator==(const ManagedAllocator<A, Manager>& other) const noexcept {
-    return rm_ == &other.ResourceManager() &&
-           RawAllocator() == other.RawAllocator();
+  template<typename T>
+  bool operator==(
+    const ManagedAllocator<M, T, SafeSwap>& other) const noexcept {
+    return manager_ == &other.Manager() && allocator_ == other.Allocator();
   }
-
-  Manager& ResourceManager() const noexcept { return *rm_; }
 
  private:
-  Manager* rm_;
+  M* manager_;
+  IRS_NO_UNIQUE_ADDRESS A allocator_;
 };
+
 }  // namespace irs
