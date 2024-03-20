@@ -409,7 +409,7 @@ irs::analysis::analyzer::ptr Make(MultiDelimitedAnalyser::Options&& opts) {
   return std::make_unique<MultiDelimitedTokenStreamGeneric>(std::move(opts));
 }
 
-constexpr std::string_view kDelimiterParamName{"delimiter"};
+constexpr std::string_view kDelimiterParamName{"delimiters"};
 
 bool ParseVpackOptions(VPackSlice slice,
                        MultiDelimitedAnalyser::Options& options) {
@@ -418,46 +418,42 @@ bool ParseVpackOptions(VPackSlice slice,
       "Slice for multi_delimited_token_stream is not an object or string");
     return false;
   }
+  auto delim_array_slice = slice.get(kDelimiterParamName);
+  if (!delim_array_slice.isArray()) {
+    IRS_LOG_WARN(
+      absl::StrCat("Invalid type or missing '", kDelimiterParamName,
+                   "' (array expected) for multi_delimited_token_stream from "
+                   "VPack arguments"));
+    return false;
+  }
 
-  if (auto delim_array_slice = slice.get(kDelimiterParamName);
-      !delim_array_slice.isNone()) {
-    if (!delim_array_slice.isArray()) {
-      IRS_LOG_WARN(
-        absl::StrCat("Invalid type '", kDelimiterParamName,
-                     "' (array expected) for multi_delimited_token_stream from "
-                     "VPack arguments"));
+  for (auto delim : VPackArrayIterator(delim_array_slice)) {
+    if (!delim.isString()) {
+      IRS_LOG_WARN(absl::StrCat(
+        "Invalid type in '", kDelimiterParamName,
+        "' (string expected) for multi_delimited_token_stream from "
+        "VPack arguments"));
+      return false;
+    }
+    auto view = ViewCast<byte_type>(delim.stringView());
+
+    if (view.empty()) {
+      IRS_LOG_ERROR("Delimiter list contains an empty string.");
       return false;
     }
 
-    for (auto delim : VPackArrayIterator(delim_array_slice)) {
-      if (!delim.isString()) {
-        IRS_LOG_WARN(absl::StrCat(
-          "Invalid type in '", kDelimiterParamName,
-          "' (string expected) for multi_delimited_token_stream from "
-          "VPack arguments"));
+    for (const auto& known : options.delimiters) {
+      if (view.starts_with(known) || known.starts_with(view)) {
+        IRS_LOG_ERROR(
+          absl::StrCat("Some delimiters are a prefix of others. See `",
+                       ViewCast<char>(bytes_view{known}), "` and `",
+                       delim.stringView(), "`"));
         return false;
       }
-      auto view = ViewCast<byte_type>(delim.stringView());
-
-      if (view.empty()) {
-        IRS_LOG_ERROR("Delimiter list contains an empty string.");
-        return false;
-      }
-
-      for (const auto& known : options.delimiters) {
-        if (view.starts_with(known) || known.starts_with(view)) {
-          IRS_LOG_ERROR(
-            absl::StrCat("Some delimiters are a prefix of others. See `",
-                         ViewCast<char>(bytes_view{known}), "` and `",
-                         delim.stringView(), "`"));
-          return false;
-        }
-      }
-
-      options.delimiters.emplace_back(view);
     }
-  }
 
+    options.delimiters.emplace_back(view);
+  }
   return true;
 }
 
