@@ -1,4 +1,5 @@
 include(UpdateModule)
+include(CheckCCompilerFlag)
 
 ### Suppressing all warnings from external libs
 if (SUPPRESS_EXTERNAL_WARNINGS)
