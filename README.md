@@ -9,6 +9,10 @@
 [AppveyorLink]: https://ci.appveyor.com/project/gnusi/iresearch/branch/master "Windows"
 -->
 
+# !!! THE PROJECT IS ARCHIVED AND NO LONGER MAINTAINED !!!
+
+
+
 # IResearch search engine
 
 ### Version 1.3
